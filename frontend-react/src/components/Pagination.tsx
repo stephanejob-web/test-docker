@@ -47,6 +47,7 @@ export default function Pagination({
         count={totalPages}
         page={currentPage}
         onChange={(_, page) => onPageChange(page)}
+        variant="outlined"
         color="primary"
         shape="rounded"
         showFirstButton
@@ -56,6 +57,18 @@ export default function Pagination({
         sx={{
           '& .MuiPaginationItem-root': {
             fontWeight: 500,
+            borderColor: 'rgba(99, 102, 241, 0.3)',
+            '&:hover': {
+              borderColor: 'rgba(99, 102, 241, 0.6)',
+              backgroundColor: 'rgba(99, 102, 241, 0.1)',
+            },
+            '&.Mui-selected': {
+              borderColor: 'primary.main',
+              backgroundColor: 'rgba(99, 102, 241, 0.15)',
+              '&:hover': {
+                backgroundColor: 'rgba(99, 102, 241, 0.25)',
+              },
+            },
           },
         }}
       />
