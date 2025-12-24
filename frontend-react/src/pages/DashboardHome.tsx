@@ -144,6 +144,9 @@ export default function DashboardHome() {
     // --- ADMIN DASHBOARD ---
     if (!stats) return <div className="p-8 text-white">Impossible de charger les statistiques.</div>;
 
+    console.log('📊 Stats reçues:', stats);
+    console.log('📈 Graphiques:', stats.charts);
+
     // Trouver le nombre d'événements en cours
     const ongoingEvents = stats.charts.events_status.find((s: any) => s.name === 'En cours')?.count || 0;
 
@@ -166,6 +169,11 @@ export default function DashboardHome() {
 
     const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
+    console.log('📊 Growth Data:', growthData);
+    console.log('📊 Denominations:', stats.charts.by_denomination);
+    console.log('📊 Cities:', stats.charts.churches_by_city);
+    console.log('📊 Events Status:', stats.charts.events_status);
+
     return (
         <div className="space-y-8">
             <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent">
@@ -182,10 +190,14 @@ export default function DashboardHome() {
             </div>
 
             {/* CHARTS ROW 1 */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <Card className="border-gray-800 bg-surface/50 hover:shadow-lg hover:shadow-blue-500/10 transition-shadow">
-                    <CardHeader><CardTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5" /> Croissance Mensuelle</CardTitle></CardHeader>
-                    <CardContent className="h-80">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
+                <Card>
+                    <CardHeader>
+                        <CardTitle style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <TrendingUp size={20} /> Croissance Mensuelle
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent style={{ height: '320px' }}>
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={growthData}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
@@ -203,9 +215,13 @@ export default function DashboardHome() {
                     </CardContent>
                 </Card>
 
-                <Card className="border-gray-800 bg-surface/50 hover:shadow-lg hover:shadow-purple-500/10 transition-shadow">
-                    <CardHeader><CardTitle className="flex items-center gap-2"><Church className="h-5 w-5" /> Répartition par Dénomination</CardTitle></CardHeader>
-                    <CardContent className="h-80">
+                <Card>
+                    <CardHeader>
+                        <CardTitle style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Church size={20} /> Répartition par Dénomination
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent style={{ height: '320px' }}>
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie
@@ -234,10 +250,14 @@ export default function DashboardHome() {
             </div>
 
             {/* CHARTS ROW 2 - Distribution des églises par ville */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <Card className="border-gray-800 bg-surface/50 hover:shadow-lg hover:shadow-green-500/10 transition-shadow">
-                    <CardHeader><CardTitle className="flex items-center gap-2"><Church className="h-5 w-5" /> Distribution des Églises par Ville (Top 10)</CardTitle></CardHeader>
-                    <CardContent className="h-80">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
+                <Card>
+                    <CardHeader>
+                        <CardTitle style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Church size={20} /> Distribution des Églises par Ville (Top 10)
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent style={{ height: '320px' }}>
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={stats.charts.churches_by_city} layout="vertical">
                                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
@@ -253,9 +273,13 @@ export default function DashboardHome() {
                     </CardContent>
                 </Card>
 
-                <Card className="border-gray-800 bg-surface/50 hover:shadow-lg hover:shadow-yellow-500/10 transition-shadow">
-                    <CardHeader><CardTitle className="flex items-center gap-2"><Calendar className="h-5 w-5" /> État des Événements</CardTitle></CardHeader>
-                    <CardContent className="h-80">
+                <Card>
+                    <CardHeader>
+                        <CardTitle style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Calendar size={20} /> État des Événements
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent style={{ height: '320px' }}>
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie
