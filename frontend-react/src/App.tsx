@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider, CssBaseline } from '@mui/material';
 import { AuthProvider } from './context/AuthContext';
+import theme from './theme/theme';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import DashboardLayout from './components/Layout';
@@ -14,36 +16,41 @@ import AdminEvents from './pages/AdminEvents';
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
 
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-          <Route path="/dashboard" element={<ProtectedRoute />}>
-            <Route element={<DashboardLayout />}>
-              <Route index element={<DashboardHome />} />
+            <Route path="/dashboard" element={<ProtectedRoute />}>
+              <Route element={<DashboardLayout />}>
+                <Route index element={<DashboardHome />} />
 
-              {/* Pastor Routes */}
-              <Route element={<ProtectedRoute allowedRoles={['PASTOR', 'SUPER_ADMIN']} />}>
-                <Route path="my-church" element={<MyChurch />} />
-                <Route path="events" element={<MyEvents />} />
-              </Route>
+                {/* Pastor Routes */}
+                <Route element={<ProtectedRoute allowedRoles={['PASTOR', 'SUPER_ADMIN']} />}>
+                  <Route path="my-church" element={<MyChurch />} />
+                  <Route path="events" element={<MyEvents />} />
+                </Route>
 
-              {/* Admin Routes */}
-              <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']} />}>
-                <Route path="admin/users" element={<AdminUsers />} />
-                <Route path="admin/churches" element={<AdminChurches />} />
-                <Route path="admin/events" element={<AdminEvents />} />
-                <Route path="admin/settings" element={<AdminSettings />} />
+                {/* Admin Routes */}
+                <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']} />}>
+                  <Route path="admin/users" element={<AdminUsers />} />
+                  <Route path="admin/churches" element={<AdminChurches />} />
+                  <Route path="admin/churches/:churchId/edit" element={<MyChurch />} />
+                  <Route path="admin/events" element={<AdminEvents />} />
+                  <Route path="admin/events/:eventId/edit" element={<MyEvents />} />
+                  <Route path="admin/settings" element={<AdminSettings />} />
+                </Route>
               </Route>
             </Route>
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

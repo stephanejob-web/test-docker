@@ -1,4 +1,5 @@
-import { AlertCircle } from 'lucide-react';
+import { Box, Typography, Alert, AlertTitle } from '@mui/material';
+import { Error as ErrorIcon } from '@mui/icons-material';
 import type { FieldError } from 'react-hook-form';
 
 interface FormErrorProps {
@@ -9,10 +10,12 @@ export default function FormError({ error }: FormErrorProps) {
   if (!error || !error.message) return null;
 
   return (
-    <div className="flex items-center gap-1.5 text-sm text-red-400 mt-1">
-      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-      <span>{error.message}</span>
-    </div>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.5 }}>
+      <ErrorIcon sx={{ fontSize: 14, color: 'error.main' }} />
+      <Typography variant="caption" color="error.main">
+        {error.message}
+      </Typography>
+    </Box>
   );
 }
 
@@ -25,18 +28,17 @@ export function BackendErrors({ errors }: BackendErrorsProps) {
   if (!errors || errors.length === 0) return null;
 
   return (
-    <div className="p-3 bg-red-900/20 border border-red-800 rounded-md space-y-1">
-      <div className="flex items-center gap-2 text-sm font-medium text-red-400">
-        <AlertCircle className="w-4 h-4" />
-        <span>Erreurs de validation</span>
-      </div>
-      <ul className="ml-6 space-y-0.5 text-sm text-red-300">
+    <Alert severity="error" sx={{ mb: 2 }}>
+      <AlertTitle>Erreurs de validation</AlertTitle>
+      <Box component="ul" sx={{ pl: 2, m: 0 }}>
         {errors.map((error, index) => (
-          <li key={index} className="list-disc">
-            <span className="font-medium">{error.field}</span> : {error.message}
+          <li key={index}>
+            <Typography variant="body2">
+              <strong>{error.field}</strong> : {error.message}
+            </Typography>
           </li>
         ))}
-      </ul>
-    </div>
+      </Box>
+    </Alert>
   );
 }

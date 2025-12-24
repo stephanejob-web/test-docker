@@ -1,19 +1,81 @@
 import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import api from '../lib/axios';
-import { Button, Input, Card, CardHeader, CardTitle, CardContent, Label, Textarea, Checkbox } from '../components/ui';
-import { Plus, Save, Calendar, MapPin, Youtube, Image as ImageIcon, Sparkles, X, Church } from 'lucide-react';
+import {
+    Box,
+    Typography,
+    TextField,
+    Button,
+    Card,
+    CardContent,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem,
+    IconButton,
+    Alert,
+    Grid,
+    Checkbox,
+    FormControlLabel,
+    InputAdornment
+} from '@mui/material';
+import {
+    Add as AddIcon,
+    Save as SaveIcon,
+    Close as CloseIcon,
+    Event as EventIcon,
+    LocationOn as LocationOnIcon,
+    AutoAwesome as AutoAwesomeIcon,
+    Image as ImageIcon,
+    YouTube as YouTubeIcon,
+    Church as ChurchIcon,
+    ArrowBack as ArrowBackIcon
+} from '@mui/icons-material';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import DateTimeInput from '../components/DateTimeInput';
 
+interface EventFormData {
+    title: string;
+    start_datetime: string;
+    end_datetime: string;
+    description: string;
+    latitude: string;
+    longitude: string;
+    address: string;
+    street_number: string;
+    street_name: string;
+    postal_code: string;
+    city: string;
+    speaker_name: string;
+    max_seats: string;
+    image_url: string;
+    is_free: number;
+    registration_link: string;
+    has_parking: number;
+    parking_capacity: string;
+    is_parking_free: number;
+    parking_details: string;
+    youtube_live: string;
+    status: string;
+}
+
+interface EventData extends EventFormData {
+    id: number;
+}
+
 export default function MyEvents() {
-    const [events, setEvents] = useState<any[]>([]);
-    const [showForm, setShowForm] = useState(false);
+    const { eventId } = useParams<{ eventId: string }>();
+    const navigate = useNavigate();
+    const isAdminMode = !!eventId; // Mode admin si eventId existe
+
+    const [events, setEvents] = useState<EventData[]>([]);
+    const [showForm, setShowForm] = useState(isAdminMode); // Si mode admin, afficher le formulaire directement
     const [loading, setLoading] = useState(false);
-    const [editingId, setEditingId] = useState<number | null>(null);
-    const [activeTab, setActiveTab] = useState<'general' | 'location' | 'options'>('general');
+    const [editingId, setEditingId] = useState<number | null>(eventId ? parseInt(eventId) : null);
+    const [activeTab, setActiveTab] = useState(0);
 
     // Initial State
-    const initialFormState = {
+    const initialFormState: EventFormData = {
         title: '',
         start_datetime: '',
         end_datetime: '',
@@ -43,15 +105,45 @@ export default function MyEvents() {
         status: 'PUBLISHED' // Default status
     };
 
-    const [formData, setFormData] = useState(initialFormState);
+    const [formData, setFormData] = useState<EventFormData>(initialFormState);
     const [dateError, setDateError] = useState('');
 
     const [hasChurch, setHasChurch] = useState<boolean | null>(null);
     const [isChurchComplete, setIsChurchComplete] = useState<boolean>(false);
 
     useEffect(() => {
-        checkChurchAndEvents();
-    }, []);
+        if (isAdminMode && eventId) {
+            // In admin mode, load the specific event directly
+            loadEventForEdit(parseInt(eventId));
+        } else {
+            // In pastor mode, check church and load events
+            checkChurchAndEvents();
+        }
+    }, [isAdminMode, eventId]);
+
+    const loadEventForEdit = async (id: number) => {
+        setLoading(true);
+        try {
+            const { data } = await api.get(`/admin/events/${id}`);
+            // Normalize data for form
+            setFormData({
+                ...initialFormState,
+                ...data,
+                // Ensure dates are formatted for datetime-local input (YYYY-MM-DDTHH:mm)
+                start_datetime: data.start_datetime ? new Date(data.start_datetime).toISOString().slice(0, 16) : '',
+                end_datetime: data.end_datetime ? new Date(data.end_datetime).toISOString().slice(0, 16) : '',
+                // Ensure booleans/checkboxes are strictly 1 or 0
+                has_parking: data.has_parking ? 1 : 0,
+                is_parking_free: data.is_parking_free ? 1 : 0,
+                is_free: data.is_free ? 1 : 0
+            });
+            setLoading(false);
+        } catch (err) {
+            console.error(err);
+            alert("Impossible de charger l'événement");
+            setLoading(false);
+        }
+    };
 
     const checkChurchAndEvents = async () => {
         setLoading(true);
@@ -81,7 +173,8 @@ export default function MyEvents() {
                         address: data.details?.address || data.address
                     });
                 }
-            } catch (error: any) {
+            } catch (err: unknown) {
+                const error = err as { response?: { status?: number } };
                 if (error.response && error.response.status === 404) {
                     setHasChurch(false);
                     setIsChurchComplete(false);
@@ -93,8 +186,8 @@ export default function MyEvents() {
             // 2. Fetch Events if church exists
             const response = await api.get('/church/my-events');
             setEvents(response.data);
-        } catch (error) {
-            console.error(error);
+        } catch (err) {
+            console.error(err);
         } finally {
             setLoading(false);
         }
@@ -127,8 +220,8 @@ export default function MyEvents() {
             setEditingId(id);
             setShowForm(true);
             window.scrollTo({ top: 0, behavior: 'smooth' });
-        } catch (error) {
-            console.error(error);
+        } catch (err) {
+            console.error(err);
             alert("Impossible de charger l'événement");
         }
     };
@@ -138,19 +231,9 @@ export default function MyEvents() {
         e.preventDefault();
         setLoading(true);
         try {
-            const churchRes = await api.get('/church/my-church');
-            const churchId = churchRes.data.id;
-
-            if (!churchId) {
-                alert("Veuillez d'abord créer votre fiche église.");
-                setLoading(false);
-                return;
-            }
-
             // Préparer les données avec conversion des types
             const payload = {
                 ...formData,
-                church_id: churchId,
                 language_id: 10, // Français par défaut
                 // Convertir latitude/longitude en floats
                 latitude: parseFloat(formData.latitude) || 0,
@@ -164,25 +247,50 @@ export default function MyEvents() {
                 parking_capacity: formData.parking_capacity ? parseInt(formData.parking_capacity as string) : null,
                 // Convertir les URLs vides en undefined pour éviter les erreurs de validation
                 registration_link: formData.registration_link || undefined,
-                youtube_live: formData.youtube_live || undefined
+                youtube_live: formData.youtube_live || undefined,
+                // Ajouter les nouveaux champs d'adresse
+                street_number: formData.street_number || undefined,
+                street_name: formData.street_name || undefined,
+                postal_code: formData.postal_code || undefined,
+                city: formData.city || undefined
             };
 
-            if (editingId) {
-                await api.put(`/church/events/${editingId}`, payload);
+            if (isAdminMode) {
+                // Mode admin: utiliser l'endpoint admin
+                await api.put(`/admin/events/${editingId}`, payload);
                 alert('Événement mis à jour avec succès !');
+                setTimeout(() => navigate('/dashboard/admin/events'), 1500);
             } else {
-                await api.post('/church/events', payload);
-                alert('Événement créé avec succès !');
-            }
+                // Mode pastor: utiliser l'endpoint church
+                const churchRes = await api.get('/church/my-church');
+                const churchId = churchRes.data.id;
 
-            setShowForm(false);
-            setEditingId(null);
-            setFormData(initialFormState);
-            checkChurchAndEvents();
-        } catch (error: any) {
-            console.error('Erreur complète:', error);
+                if (!churchId) {
+                    alert("Veuillez d'abord créer votre fiche église.");
+                    setLoading(false);
+                    return;
+                }
+
+                const pastorPayload = { ...payload, church_id: churchId };
+
+                if (editingId) {
+                    await api.put(`/church/events/${editingId}`, pastorPayload);
+                    alert('Événement mis à jour avec succès !');
+                } else {
+                    await api.post('/church/events', pastorPayload);
+                    alert('Événement créé avec succès !');
+                }
+
+                setShowForm(false);
+                setEditingId(null);
+                setFormData(initialFormState);
+                checkChurchAndEvents();
+            }
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { errors?: Array<{ field: string; message: string }> } } };
+            console.error('Erreur complète:', err);
             if (error.response?.data?.errors) {
-                const errorMessages = error.response.data.errors.map((e: any) => `${e.field}: ${e.message}`).join('\n');
+                const errorMessages = error.response.data.errors.map((e) => `${e.field}: ${e.message}`).join('\n');
                 alert(`Erreurs de validation:\n${errorMessages}`);
             } else {
                 alert('Erreur lors de la création');
@@ -192,203 +300,298 @@ export default function MyEvents() {
         }
     };
 
-    const TabButton = ({ id, label, icon: Icon }: any) => (
-        <button
-            type="button"
-            onClick={() => setActiveTab(id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${activeTab === id
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
-                : 'text-gray-400 hover:text-white hover:bg-white/5'
-                }`}
-        >
-            <Icon className="h-4 w-4" /> {label}
-        </button>
-    );
-
-    if (loading) return <div className="p-8 text-white">Chargement...</div>;
+    if (loading) return <Box sx={{ p: 4 }}><Typography>Chargement...</Typography></Box>;
 
     if (hasChurch === false) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6 text-center animate-in fade-in zoom-in duration-500">
-                <div className="relative">
-                    <div className="absolute inset-0 bg-blue-500 blur-3xl opacity-20 rounded-full"></div>
-                    <Church className="relative h-24 w-24 text-white p-4 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl shadow-2xl" />
-                </div>
-                <div className="space-y-2 max-w-md">
-                    <h1 className="text-3xl font-bold text-white">Bienvenue !</h1>
-                    <p className="text-gray-400">
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 3, textAlign: 'center' }}>
+                <Box sx={{ position: 'relative' }}>
+                    <Box sx={{ position: 'absolute', inset: 0, bgcolor: 'primary.main', filter: 'blur(60px)', opacity: 0.2, borderRadius: '50%' }}></Box>
+                    <Box sx={{ position: 'relative', p: 2, bgcolor: 'linear-gradient(135deg, #1976d2 0%, #9c27b0 100%)', borderRadius: 4, boxShadow: 8 }}>
+                        <ChurchIcon sx={{ fontSize: 96, color: 'white' }} />
+                    </Box>
+                </Box>
+                <Box sx={{ maxWidth: 'md' }}>
+                    <Typography variant="h3" sx={{ fontWeight: 'bold', mb: 1 }}>
+                        Bienvenue !
+                    </Typography>
+                    <Typography color="text.secondary">
                         Pour commencer à publier des événements, vous devez d'abord créer la fiche de votre église.
-                    </p>
-                </div>
+                    </Typography>
+                </Box>
                 <Button
+                    variant="contained"
+                    size="large"
+                    startIcon={<AddIcon />}
                     onClick={() => window.location.href = '/dashboard/my-church'}
-                    className="bg-white text-blue-900 hover:bg-gray-100 font-bold px-8 py-6 text-lg rounded-full shadow-lg hover:scale-105 transition-transform"
+                    sx={{ px: 4, py: 1.5, fontSize: '1.1rem', fontWeight: 'bold', borderRadius: 8 }}
                 >
-                    <Plus className="mr-2 h-5 w-5" /> Créer mon Église
+                    Créer mon Église
                 </Button>
-            </div>
+            </Box>
         );
     }
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent">Mes Événements</h1>
-                    <p className="text-gray-400 mt-1">Gérez votre calendrier et vos publications.</p>
-                </div>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {/* Back Button (Admin Mode Only) */}
+            {isAdminMode && (
                 <Button
-                    onClick={() => {
-                        setShowForm(!showForm);
-                        if (showForm) {
-                            setEditingId(null);
-                            setFormData(initialFormState);
-                        }
-                    }}
-                    disabled={!isChurchComplete}
-                    className={showForm ? "bg-red-500/10 text-red-400 hover:bg-red-500/20" : "bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"}
+                    variant="text"
+                    startIcon={<ArrowBackIcon />}
+                    onClick={() => navigate('/dashboard/admin/events')}
+                    sx={{ alignSelf: 'flex-start' }}
                 >
-                    {showForm ? <><X className="mr-2 h-4 w-4" /> Annuler</> : <><Plus className="mr-2 h-4 w-4" /> Nouvel Événement</>}
+                    Retour à la liste
                 </Button>
-            </div>
+            )}
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box>
+                    <Typography variant="h3" sx={{ fontWeight: 'bold', background: 'linear-gradient(135deg, #1976d2 0%, #9c27b0 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                        {isAdminMode ? "Modifier l'Événement" : "Mes Événements"}
+                    </Typography>
+                    <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+                        {isAdminMode ? "Modifiez les informations de cet événement." : "Gérez votre calendrier et vos publications."}
+                    </Typography>
+                </Box>
+                {!isAdminMode && (
+                    <Button
+                        variant={showForm ? "outlined" : "contained"}
+                        color={showForm ? "error" : "primary"}
+                        startIcon={showForm ? <CloseIcon /> : <AddIcon />}
+                        onClick={() => {
+                            setShowForm(!showForm);
+                            if (showForm) {
+                                setEditingId(null);
+                                setFormData(initialFormState);
+                            }
+                        }}
+                        disabled={!isChurchComplete}
+                    >
+                        {showForm ? 'Annuler' : 'Nouvel Événement'}
+                    </Button>
+                )}
+            </Box>
 
             {/* Warning if church is incomplete */}
             {hasChurch && !isChurchComplete && (
-                <Card className="bg-yellow-500/10 border-yellow-500/50">
-                    <CardContent className="p-6">
-                        <div className="flex items-start gap-4">
-                            <Church className="h-6 w-6 text-yellow-400 flex-shrink-0 mt-1" />
-                            <div className="flex-1">
-                                <h3 className="font-bold text-yellow-400 mb-2">Informations de l'église incomplètes</h3>
-                                <p className="text-gray-300 text-sm mb-4">
-                                    Pour créer des événements, vous devez compléter les informations obligatoires de votre église : nom, dénomination, adresse complète et coordonnées GPS (utilisez la recherche d'adresse dans l'onglet "Mon Église").
-                                </p>
-                                <Button
-                                    onClick={() => window.location.href = '/dashboard/my-church'}
-                                    className="bg-yellow-600 hover:bg-yellow-700 text-white"
-                                >
-                                    <Church className="mr-2 h-4 w-4" /> Compléter mon Église
-                                </Button>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                <Alert severity="warning" icon={<ChurchIcon />}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+                        Informations de l'église incomplètes
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 2 }}>
+                        Pour créer des événements, vous devez compléter les informations obligatoires de votre église : nom, dénomination, adresse complète et coordonnées GPS (utilisez la recherche d'adresse dans l'onglet "Mon Église").
+                    </Typography>
+                    <Button
+                        variant="contained"
+                        color="warning"
+                        startIcon={<ChurchIcon />}
+                        onClick={() => window.location.href = '/dashboard/my-church'}
+                    >
+                        Compléter mon Église
+                    </Button>
+                </Alert>
             )}
 
             {showForm ? (
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                    {/* FORM SIDEBAR / STEPS */}
-                    <div className="hidden lg:block space-y-2">
-                        <div className="p-4 rounded-xl bg-surface border border-gray-800 sticky top-4">
-                            <h3 className="font-bold text-white mb-4">Étapes</h3>
-                            <div className="space-y-1">
-                                <TabButton id="general" label="Général" icon={Calendar} />
-                                <TabButton id="location" label="Lieu" icon={MapPin} />
-                                <TabButton id="options" label="Options" icon={Sparkles} />
-                            </div>
-                        </div>
-                    </div>
+                <Box component="form" onSubmit={handleSubmit}>
+                    <Grid container spacing={3}>
+                        {/* FORM SIDEBAR / STEPS */}
+                        <Grid size={{ xs: 0, lg: 3 }} sx={{ display: { xs: 'none', lg: 'block' } }}>
+                            <Card sx={{ position: 'sticky', top: 16 }}>
+                                <CardContent>
+                                    <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
+                                        Étapes
+                                    </Typography>
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                        <Button
+                                            fullWidth
+                                            variant={activeTab === 0 ? "contained" : "text"}
+                                            startIcon={<EventIcon />}
+                                            onClick={() => setActiveTab(0)}
+                                            sx={{ justifyContent: 'flex-start' }}
+                                        >
+                                            Général
+                                        </Button>
+                                        <Button
+                                            fullWidth
+                                            variant={activeTab === 1 ? "contained" : "text"}
+                                            startIcon={<LocationOnIcon />}
+                                            onClick={() => setActiveTab(1)}
+                                            sx={{ justifyContent: 'flex-start' }}
+                                        >
+                                            Lieu
+                                        </Button>
+                                        <Button
+                                            fullWidth
+                                            variant={activeTab === 2 ? "contained" : "text"}
+                                            startIcon={<AutoAwesomeIcon />}
+                                            onClick={() => setActiveTab(2)}
+                                            sx={{ justifyContent: 'flex-start' }}
+                                        >
+                                            Options
+                                        </Button>
+                                    </Box>
+                                </CardContent>
+                            </Card>
+                        </Grid>
 
-                    {/* FORM CONTENT */}
-                    <div className="lg:col-span-3">
-                        <Card className="bg-surface border-gray-800 shadow-xl">
-                            <CardHeader className="border-b border-gray-800 pb-4">
-                                <div className="flex items-center justify-between">
-                                    <CardTitle>{editingId ? "Modification" : "Création"} d'événement</CardTitle>
-                                    <div className="lg:hidden flex gap-2">
+                        {/* FORM CONTENT */}
+                        <Grid size={{ xs: 12, lg: 9 }}>
+                            <Card>
+                                <CardContent sx={{ p: 3 }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+                                        <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+                                            {editingId ? "Modification" : "Création"} d'événement
+                                        </Typography>
                                         {/* Mobile Tabs */}
-                                        <button onClick={() => setActiveTab('general')} className={`p-2 rounded ${activeTab === 'general' ? 'bg-blue-600' : 'bg-gray-800'}`}><Calendar className="h-4 w-4" /></button>
-                                        <button onClick={() => setActiveTab('location')} className={`p-2 rounded ${activeTab === 'location' ? 'bg-blue-600' : 'bg-gray-800'}`}><MapPin className="h-4 w-4" /></button>
-                                        <button onClick={() => setActiveTab('options')} className={`p-2 rounded ${activeTab === 'options' ? 'bg-blue-600' : 'bg-gray-800'}`}><Sparkles className="h-4 w-4" /></button>
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="p-6">
-                                <form onSubmit={handleSubmit} className="space-y-6">
+                                        <Box sx={{ display: { xs: 'flex', lg: 'none' }, gap: 1 }}>
+                                            <IconButton
+                                                onClick={() => setActiveTab(0)}
+                                                color={activeTab === 0 ? "primary" : "default"}
+                                                sx={{ bgcolor: activeTab === 0 ? 'primary.main' : 'action.hover', color: activeTab === 0 ? 'white' : 'text.primary' }}
+                                            >
+                                                <EventIcon />
+                                            </IconButton>
+                                            <IconButton
+                                                onClick={() => setActiveTab(1)}
+                                                color={activeTab === 1 ? "primary" : "default"}
+                                                sx={{ bgcolor: activeTab === 1 ? 'primary.main' : 'action.hover', color: activeTab === 1 ? 'white' : 'text.primary' }}
+                                            >
+                                                <LocationOnIcon />
+                                            </IconButton>
+                                            <IconButton
+                                                onClick={() => setActiveTab(2)}
+                                                color={activeTab === 2 ? "primary" : "default"}
+                                                sx={{ bgcolor: activeTab === 2 ? 'primary.main' : 'action.hover', color: activeTab === 2 ? 'white' : 'text.primary' }}
+                                            >
+                                                <AutoAwesomeIcon />
+                                            </IconButton>
+                                        </Box>
+                                    </Box>
 
                                     {/* TAB: GENERAL */}
-                                    {activeTab === 'general' && (
-                                        <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                <div className="space-y-2">
-                                                    <Label>Titre *</Label>
-                                                    <Input id="title" value={formData.title} onChange={handleChange} required placeholder="Ex: Culte de Louange" className="bg-background border-gray-700 focus:border-blue-500" />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label>Intervenant</Label>
-                                                    <Input id="speaker_name" value={formData.speaker_name} onChange={handleChange} placeholder="Ex: Pasteur John Doe" className="bg-background border-gray-700" />
-                                                </div>
-                                            </div>
+                                    {activeTab === 0 && (
+                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                            <Grid container spacing={2}>
+                                                <Grid size={{ xs: 12, md: 6 }}>
+                                                    <TextField
+                                                        id="title"
+                                                        fullWidth
+                                                        required
+                                                        label="Titre"
+                                                        value={formData.title}
+                                                        onChange={handleChange}
+                                                        placeholder="Ex: Culte de Louange"
+                                                    />
+                                                </Grid>
+                                                <Grid size={{ xs: 12, md: 6 }}>
+                                                    <TextField
+                                                        id="speaker_name"
+                                                        fullWidth
+                                                        label="Intervenant"
+                                                        value={formData.speaker_name}
+                                                        onChange={handleChange}
+                                                        placeholder="Ex: Pasteur John Doe"
+                                                    />
+                                                </Grid>
+                                            </Grid>
 
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                <DateTimeInput
-                                                    label="Date de début"
-                                                    value={formData.start_datetime}
-                                                    onChange={(value) => {
-                                                        setFormData(prev => ({ ...prev, start_datetime: value }));
-                                                        // Validate: check if end is before new start
-                                                        if (formData.end_datetime && value && new Date(value) >= new Date(formData.end_datetime)) {
-                                                            setDateError('La date de fin doit être après la date de début');
-                                                        } else {
-                                                            setDateError('');
-                                                        }
-                                                    }}
-                                                    required
-                                                />
+                                            <Grid container spacing={2}>
+                                                <Grid size={{ xs: 12, md: 6 }}>
+                                                    <DateTimeInput
+                                                        label="Date de début"
+                                                        value={formData.start_datetime}
+                                                        onChange={(value) => {
+                                                            setFormData(prev => ({ ...prev, start_datetime: value }));
+                                                            // Validate: check if end is before new start
+                                                            if (formData.end_datetime && value && new Date(value) >= new Date(formData.end_datetime)) {
+                                                                setDateError('La date de fin doit être après la date de début');
+                                                            } else {
+                                                                setDateError('');
+                                                            }
+                                                        }}
+                                                        required
+                                                    />
+                                                </Grid>
 
-                                                <DateTimeInput
-                                                    label="Date de fin"
-                                                    value={formData.end_datetime}
-                                                    onChange={(value) => {
-                                                        setFormData(prev => ({ ...prev, end_datetime: value }));
-                                                        // Validate: check if end is before start
-                                                        if (formData.start_datetime && value && new Date(value) <= new Date(formData.start_datetime)) {
-                                                            setDateError('La date de fin doit être après la date de début');
-                                                        } else {
-                                                            setDateError('');
-                                                        }
-                                                    }}
-                                                    required
-                                                    minDateTime={formData.start_datetime}
-                                                    error={dateError}
-                                                />
-                                            </div>
+                                                <Grid size={{ xs: 12, md: 6 }}>
+                                                    <DateTimeInput
+                                                        label="Date de fin"
+                                                        value={formData.end_datetime}
+                                                        onChange={(value) => {
+                                                            setFormData(prev => ({ ...prev, end_datetime: value }));
+                                                            // Validate: check if end is before start
+                                                            if (formData.start_datetime && value && new Date(value) <= new Date(formData.start_datetime)) {
+                                                                setDateError('La date de fin doit être après la date de début');
+                                                            } else {
+                                                                setDateError('');
+                                                            }
+                                                        }}
+                                                        required
+                                                        minDateTime={formData.start_datetime}
+                                                        error={dateError}
+                                                    />
+                                                </Grid>
+                                            </Grid>
 
-                                            <div className="space-y-2">
-                                                <Label>Statut</Label>
-                                                <select
+                                            <FormControl fullWidth>
+                                                <InputLabel>Statut</InputLabel>
+                                                <Select
                                                     id="status"
                                                     value={formData.status}
-                                                    onChange={handleChange}
-                                                    className="flex h-10 w-full rounded-md border border-gray-700 bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                    label="Statut"
+                                                    onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
                                                 >
-                                                    <option value="PUBLISHED">Publié</option>
-                                                    <option value="DRAFT">Brouillon</option>
-                                                    <option value="CANCELLED">Annulé</option>
-                                                    <option value="COMPLETED">Terminé</option>
-                                                </select>
-                                            </div>
+                                                    <MenuItem value="PUBLISHED">Publié</MenuItem>
+                                                    <MenuItem value="DRAFT">Brouillon</MenuItem>
+                                                    <MenuItem value="CANCELLED">Annulé</MenuItem>
+                                                    <MenuItem value="COMPLETED">Terminé</MenuItem>
+                                                </Select>
+                                            </FormControl>
 
-                                            <div className="space-y-2">
-                                                <Label>Description</Label>
-                                                <Textarea id="description" value={formData.description} onChange={handleChange} rows={5} placeholder="Détails de l'événement..." className="bg-background border-gray-700" />
-                                            </div>
+                                            <TextField
+                                                id="description"
+                                                fullWidth
+                                                multiline
+                                                rows={5}
+                                                label="Description"
+                                                value={formData.description}
+                                                onChange={handleChange}
+                                                placeholder="Détails de l'événement..."
+                                            />
 
-                                            <div className="space-y-2">
-                                                <Label>Image (URL)</Label>
-                                                <div className="flex gap-2">
-                                                    <Input id="image_url" value={formData.image_url} onChange={handleChange} placeholder="https://..." className="bg-background border-gray-700" />
-                                                    <div className="h-10 w-10 bg-gray-800 rounded flex items-center justify-center border border-gray-700 overflow-hidden">
-                                                        {formData.image_url ? <img src={formData.image_url} alt="Preview" className="h-full w-full object-cover" /> : <ImageIcon className="h-5 w-5 text-gray-500" />}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
+                                            <TextField
+                                                id="image_url"
+                                                fullWidth
+                                                label="Image (URL)"
+                                                value={formData.image_url}
+                                                onChange={handleChange}
+                                                placeholder="https://..."
+                                                InputProps={{
+                                                    endAdornment: (
+                                                        <InputAdornment position="end">
+                                                            {formData.image_url ? (
+                                                                <Box
+                                                                    component="img"
+                                                                    src={formData.image_url}
+                                                                    alt="Preview"
+                                                                    sx={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 1 }}
+                                                                />
+                                                            ) : (
+                                                                <ImageIcon sx={{ color: 'text.secondary' }} />
+                                                            )}
+                                                        </InputAdornment>
+                                                    ),
+                                                }}
+                                            />
+                                        </Box>
                                     )}
 
                                     {/* TAB: LOCATION */}
-                                    {activeTab === 'location' && (
-                                        <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                                    {activeTab === 1 && (
+                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                                             {/* AddressAutocomplete */}
                                             <AddressAutocomplete
                                                 defaultValue={formData.address || ''}
@@ -407,202 +610,387 @@ export default function MyEvents() {
                                             />
 
                                             {/* Champs d'adresse détaillés (lecture seule, auto-remplis) */}
-                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-white/5 rounded-lg">
-                                                <div className="space-y-1">
-                                                    <Label className="text-xs text-gray-500">N°</Label>
-                                                    <Input
-                                                        value={formData.street_number}
-                                                        readOnly
-                                                        className="bg-gray-800/50 text-gray-400 border-gray-700"
-                                                        placeholder="Auto"
-                                                    />
-                                                </div>
-                                                <div className="space-y-1 col-span-2 md:col-span-3">
-                                                    <Label className="text-xs text-gray-500">Rue</Label>
-                                                    <Input
-                                                        value={formData.street_name}
-                                                        readOnly
-                                                        className="bg-gray-800/50 text-gray-400 border-gray-700"
-                                                        placeholder="Auto-rempli"
-                                                    />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <Label className="text-xs text-gray-500">Code Postal</Label>
-                                                    <Input
-                                                        value={formData.postal_code}
-                                                        readOnly
-                                                        className="bg-gray-800/50 text-gray-400 border-gray-700"
-                                                        placeholder="Auto"
-                                                    />
-                                                </div>
-                                                <div className="space-y-1 col-span-2 md:col-span-3">
-                                                    <Label className="text-xs text-gray-500">Ville</Label>
-                                                    <Input
-                                                        value={formData.city}
-                                                        readOnly
-                                                        className="bg-gray-800/50 text-gray-400 border-gray-700"
-                                                        placeholder="Auto-remplie"
-                                                    />
-                                                </div>
-                                            </div>
+                                            <Box sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
+                                                <Grid container spacing={2}>
+                                                    <Grid size={{ xs: 12, md: 3 }}>
+                                                        <TextField
+                                                            fullWidth
+                                                            size="small"
+                                                            label="N°"
+                                                            value={formData.street_number}
+                                                            InputProps={{ readOnly: true }}
+                                                            placeholder="Auto"
+                                                        />
+                                                    </Grid>
+                                                    <Grid size={{ xs: 12, md: 9 }}>
+                                                        <TextField
+                                                            fullWidth
+                                                            size="small"
+                                                            label="Rue"
+                                                            value={formData.street_name}
+                                                            InputProps={{ readOnly: true }}
+                                                            placeholder="Auto-rempli"
+                                                        />
+                                                    </Grid>
+                                                    <Grid size={{ xs: 12, md: 3 }}>
+                                                        <TextField
+                                                            fullWidth
+                                                            size="small"
+                                                            label="Code Postal"
+                                                            value={formData.postal_code}
+                                                            InputProps={{ readOnly: true }}
+                                                            placeholder="Auto"
+                                                        />
+                                                    </Grid>
+                                                    <Grid size={{ xs: 12, md: 9 }}>
+                                                        <TextField
+                                                            fullWidth
+                                                            size="small"
+                                                            label="Ville"
+                                                            value={formData.city}
+                                                            InputProps={{ readOnly: true }}
+                                                            placeholder="Auto-remplie"
+                                                        />
+                                                    </Grid>
+                                                </Grid>
+                                            </Box>
 
                                             {/* Coordonnées GPS (lecture seule, auto-remplies) */}
-                                            <div className="grid grid-cols-2 gap-4 p-4 bg-blue-900/10 rounded-lg border border-blue-800/30">
-                                                <div className="space-y-1">
-                                                    <Label className="text-xs text-gray-500 flex items-center gap-1">
-                                                        <MapPin className="h-3 w-3" /> Latitude
-                                                    </Label>
-                                                    <Input
-                                                        value={formData.latitude}
-                                                        readOnly
-                                                        className="bg-gray-800/50 text-gray-400 font-mono text-sm border-gray-700"
-                                                        placeholder="Auto-calculé"
-                                                    />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <Label className="text-xs text-gray-500 flex items-center gap-1">
-                                                        <MapPin className="h-3 w-3" /> Longitude
-                                                    </Label>
-                                                    <Input
-                                                        value={formData.longitude}
-                                                        readOnly
-                                                        className="bg-gray-800/50 text-gray-400 font-mono text-sm border-gray-700"
-                                                        placeholder="Auto-calculé"
-                                                    />
-                                                </div>
-                                            </div>
+                                            <Box sx={{ p: 2, bgcolor: 'rgba(33, 150, 243, 0.1)', borderRadius: 1, border: 1, borderColor: 'info.light' }}>
+                                                <Grid container spacing={2}>
+                                                    <Grid size={{ xs: 12, md: 6 }}>
+                                                        <TextField
+                                                            fullWidth
+                                                            size="small"
+                                                            label="Latitude"
+                                                            value={formData.latitude}
+                                                            InputProps={{
+                                                                readOnly: true,
+                                                                startAdornment: (
+                                                                    <InputAdornment position="start">
+                                                                        <LocationOnIcon fontSize="small" />
+                                                                    </InputAdornment>
+                                                                ),
+                                                            }}
+                                                            placeholder="Auto-calculé"
+                                                        />
+                                                    </Grid>
+                                                    <Grid size={{ xs: 12, md: 6 }}>
+                                                        <TextField
+                                                            fullWidth
+                                                            size="small"
+                                                            label="Longitude"
+                                                            value={formData.longitude}
+                                                            InputProps={{
+                                                                readOnly: true,
+                                                                startAdornment: (
+                                                                    <InputAdornment position="start">
+                                                                        <LocationOnIcon fontSize="small" />
+                                                                    </InputAdornment>
+                                                                ),
+                                                            }}
+                                                            placeholder="Auto-calculé"
+                                                        />
+                                                    </Grid>
+                                                </Grid>
+                                            </Box>
 
-                                            <div className="p-4 rounded-lg bg-gray-900/50 border border-gray-800">
-                                                <div className="flex items-center gap-3 mb-4">
-                                                    <Checkbox id="has_parking" checked={formData.has_parking === 1} onCheckedChange={(c) => handleCheckboxChange('has_parking', c as boolean)} />
-                                                    <Label htmlFor="has_parking" className="cursor-pointer font-medium">Ce lieu dispose d'un parking</Label>
-                                                </div>
+                                            <Box sx={{ p: 2, borderRadius: 1, bgcolor: 'action.hover' }}>
+                                                <FormControlLabel
+                                                    control={
+                                                        <Checkbox
+                                                            checked={formData.has_parking === 1}
+                                                            onChange={(e) => handleCheckboxChange('has_parking', e.target.checked)}
+                                                        />
+                                                    }
+                                                    label="Ce lieu dispose d'un parking"
+                                                />
 
                                                 {formData.has_parking === 1 && (
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-7 animate-in slide-in-from-top-2">
-                                                        <div className="space-y-2">
-                                                            <Label>Capacité</Label>
-                                                            <Input id="parking_capacity" type="number" value={formData.parking_capacity} onChange={handleChange} className="bg-background border-gray-700" />
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label>Info Accès</Label>
-                                                            <Input id="parking_details" value={formData.parking_details} onChange={handleChange} placeholder="Code, entrée..." className="bg-background border-gray-700" />
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <Checkbox id="is_parking_free" checked={formData.is_parking_free === 1} onCheckedChange={(c) => handleCheckboxChange('is_parking_free', c as boolean)} />
-                                                            <Label htmlFor="is_parking_free">Parking Gratuit</Label>
-                                                        </div>
-                                                    </div>
+                                                    <Box sx={{ pl: 4, pt: 2 }}>
+                                                        <Grid container spacing={2}>
+                                                            <Grid size={{ xs: 12, md: 6 }}>
+                                                                <TextField
+                                                                    id="parking_capacity"
+                                                                    fullWidth
+                                                                    type="number"
+                                                                    label="Capacité"
+                                                                    value={formData.parking_capacity}
+                                                                    onChange={handleChange}
+                                                                />
+                                                            </Grid>
+                                                            <Grid size={{ xs: 12, md: 6 }}>
+                                                                <TextField
+                                                                    id="parking_details"
+                                                                    fullWidth
+                                                                    label="Info Accès"
+                                                                    value={formData.parking_details}
+                                                                    onChange={handleChange}
+                                                                    placeholder="Code, entrée..."
+                                                                />
+                                                            </Grid>
+                                                            <Grid size={{ xs: 12 }}>
+                                                                <FormControlLabel
+                                                                    control={
+                                                                        <Checkbox
+                                                                            checked={formData.is_parking_free === 1}
+                                                                            onChange={(e) => handleCheckboxChange('is_parking_free', e.target.checked)}
+                                                                        />
+                                                                    }
+                                                                    label="Parking Gratuit"
+                                                                />
+                                                            </Grid>
+                                                        </Grid>
+                                                    </Box>
                                                 )}
-                                            </div>
-                                        </div>
+                                            </Box>
+                                        </Box>
                                     )}
 
                                     {/* TAB: OPTIONS */}
-                                    {activeTab === 'options' && (
-                                        <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                <div className="space-y-2">
-                                                    <Label>Places Max</Label>
-                                                    <Input id="max_seats" type="number" value={formData.max_seats} onChange={handleChange} className="bg-background border-gray-700" />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label>YouTube Live</Label>
-                                                    <div className="relative">
-                                                        <Youtube className="absolute left-3 top-2.5 h-4 w-4 text-red-500" />
-                                                        <Input id="youtube_live" value={formData.youtube_live} onChange={handleChange} placeholder="URL du live..." className="pl-9 bg-background border-gray-700" />
-                                                    </div>
-                                                </div>
-                                            </div>
+                                    {activeTab === 2 && (
+                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                            <Grid container spacing={2}>
+                                                <Grid size={{ xs: 12, md: 6 }}>
+                                                    <TextField
+                                                        id="max_seats"
+                                                        fullWidth
+                                                        type="number"
+                                                        label="Places Max"
+                                                        value={formData.max_seats}
+                                                        onChange={handleChange}
+                                                    />
+                                                </Grid>
+                                                <Grid size={{ xs: 12, md: 6 }}>
+                                                    <TextField
+                                                        id="youtube_live"
+                                                        fullWidth
+                                                        label="YouTube Live"
+                                                        value={formData.youtube_live}
+                                                        onChange={handleChange}
+                                                        placeholder="URL du live..."
+                                                        InputProps={{
+                                                            startAdornment: (
+                                                                <InputAdornment position="start">
+                                                                    <YouTubeIcon sx={{ color: 'error.main' }} />
+                                                                </InputAdornment>
+                                                            ),
+                                                        }}
+                                                    />
+                                                </Grid>
+                                            </Grid>
 
-                                            <div className="p-4 rounded-lg bg-gray-900/50 border border-gray-800">
-                                                <div className="flex items-center gap-3 mb-4">
-                                                    <Checkbox id="is_free" checked={formData.is_free === 1} onCheckedChange={(c) => handleCheckboxChange('is_free', c as boolean)} />
-                                                    <Label htmlFor="is_free" className="font-medium">Entrée Gratuite</Label>
-                                                </div>
+                                            <Box sx={{ p: 2, borderRadius: 1, bgcolor: 'action.hover' }}>
+                                                <FormControlLabel
+                                                    control={
+                                                        <Checkbox
+                                                            checked={formData.is_free === 1}
+                                                            onChange={(e) => handleCheckboxChange('is_free', e.target.checked)}
+                                                        />
+                                                    }
+                                                    label="Entrée Gratuite"
+                                                />
                                                 {formData.is_free === 0 && (
-                                                    <div className="pl-7 animate-in slide-in-from-top-2">
-                                                        <Label>Lien Billetterie</Label>
-                                                        <Input id="registration_link" value={formData.registration_link} onChange={handleChange} placeholder="https://..." className="bg-background border-gray-700 mt-1" />
-                                                    </div>
+                                                    <Box sx={{ pl: 4, pt: 2 }}>
+                                                        <TextField
+                                                            id="registration_link"
+                                                            fullWidth
+                                                            label="Lien Billetterie"
+                                                            value={formData.registration_link}
+                                                            onChange={handleChange}
+                                                            placeholder="https://..."
+                                                        />
+                                                    </Box>
                                                 )}
-                                            </div>
+                                            </Box>
 
-                                            <div className="pt-6 border-t border-gray-800 flex justify-end gap-3">
-                                                <Button type="submit" disabled={loading} className="px-8 bg-green-600 hover:bg-green-700">
-                                                    <Save className="mr-2 h-4 w-4" /> {loading ? 'Enregistrement...' : "Publier l'événement"}
+                                            <Box sx={{ pt: 3, borderTop: 1, borderColor: 'divider', display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                                                <Button
+                                                    type="submit"
+                                                    variant="contained"
+                                                    color="success"
+                                                    size="large"
+                                                    startIcon={<SaveIcon />}
+                                                    disabled={loading}
+                                                    sx={{ px: 4 }}
+                                                >
+                                                    {loading ? 'Enregistrement...' : "Publier l'événement"}
                                                 </Button>
-                                            </div>
-                                        </div>
+                                            </Box>
+                                        </Box>
                                     )}
 
                                     {/* Navigation Buttons for Form */}
-                                    <div className="flex justify-between pt-4">
-                                        {activeTab !== 'general' && <Button type="button" variant="ghost" onClick={() => setActiveTab(activeTab === 'options' ? 'location' : 'general')}>Précédent</Button>}
-                                        {activeTab !== 'options' && <div className="ml-auto"><Button type="button" onClick={() => setActiveTab(activeTab === 'general' ? 'location' : 'options')}>Suivant</Button></div>}
-                                    </div>
-
-                                </form>
-                            </CardContent>
-                        </Card>
-                    </div>
-                </div>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 3, borderTop: 1, borderColor: 'divider' }}>
+                                        {activeTab !== 0 && (
+                                            <Button variant="outlined" onClick={() => setActiveTab(activeTab === 2 ? 1 : 0)}>
+                                                Précédent
+                                            </Button>
+                                        )}
+                                        {activeTab !== 2 && (
+                                            <Button variant="outlined" onClick={() => setActiveTab(activeTab === 0 ? 1 : 2)} sx={{ ml: 'auto' }}>
+                                                Suivant
+                                            </Button>
+                                        )}
+                                    </Box>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                    </Grid>
+                </Box>
             ) : (
                 /* EVENT LIST GRID */
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <Grid container spacing={3}>
                     {events.map((event) => (
-                        <Card key={event.id} className="group overflow-hidden bg-surface border-gray-800 hover:border-blue-500/50 transition-all duration-300 hover:shadow-xl">
-                            {/* Image Placeholder or Actual Image */}
-                            <div className="h-48 w-full bg-gray-900 relative">
-                                {event.image_url ? (
-                                    <img src={event.image_url} alt={event.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                                ) : (
-                                    <div className="w-full h-full bg-gradient-to-br from-blue-900/50 to-purple-900/50 flex items-center justify-center">
-                                        <Calendar className="h-12 w-12 text-white/20" />
-                                    </div>
-                                )}
-                                <div className="absolute top-3 right-3">
-                                    <span className={`px-2 py-1 rounded-full text-xs font-bold shadow-lg backdrop-blur-md ${event.status === 'PUBLISHED' ? 'bg-green-500/80 text-white' :
-                                        event.status === 'DRAFT' ? 'bg-yellow-500/80 text-white' :
-                                            event.status === 'COMPLETED' ? 'bg-gray-500/80 text-white' : 'bg-red-500/80 text-white'
-                                        }`}>
-                                        {event.status === 'PUBLISHED' ? 'Publié' : event.status === 'DRAFT' ? 'Brouillon' : event.status === 'COMPLETED' ? 'Terminé' : 'Annulé'}
-                                    </span>
-                                </div>
-                            </div>
+                        <Grid size={{ xs: 12, md: 6, lg: 4 }} key={event.id}>
+                            <Card sx={{
+                                overflow: 'hidden',
+                                transition: 'all 0.3s',
+                                '&:hover': {
+                                    transform: 'translateY(-4px)',
+                                    boxShadow: 6,
+                                    borderColor: 'primary.main'
+                                }
+                            }}>
+                                {/* Image Placeholder or Actual Image */}
+                                <Box sx={{ height: 192, width: '100%', bgcolor: 'grey.900', position: 'relative' }}>
+                                    {event.image_url ? (
+                                        <Box
+                                            component="img"
+                                            src={event.image_url}
+                                            alt={event.title}
+                                            sx={{
+                                                width: '100%',
+                                                height: '100%',
+                                                objectFit: 'cover',
+                                                transition: 'transform 0.5s',
+                                                '&:hover': {
+                                                    transform: 'scale(1.05)'
+                                                }
+                                            }}
+                                        />
+                                    ) : (
+                                        <Box sx={{
+                                            width: '100%',
+                                            height: '100%',
+                                            background: 'linear-gradient(135deg, rgba(25, 118, 210, 0.5) 0%, rgba(156, 39, 176, 0.5) 100%)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center'
+                                        }}>
+                                            <EventIcon sx={{ fontSize: 64, color: 'rgba(255, 255, 255, 0.2)' }} />
+                                        </Box>
+                                    )}
+                                    <Box sx={{ position: 'absolute', top: 12, right: 12 }}>
+                                        {event.status === 'PUBLISHED' && (
+                                            <Box sx={{ px: 1, py: 0.5, borderRadius: 8, fontSize: '0.75rem', fontWeight: 'bold', bgcolor: 'rgba(76, 175, 80, 0.8)', color: 'white', backdropFilter: 'blur(8px)' }}>
+                                                Publié
+                                            </Box>
+                                        )}
+                                        {event.status === 'DRAFT' && (
+                                            <Box sx={{ px: 1, py: 0.5, borderRadius: 8, fontSize: '0.75rem', fontWeight: 'bold', bgcolor: 'rgba(255, 193, 7, 0.8)', color: 'white', backdropFilter: 'blur(8px)' }}>
+                                                Brouillon
+                                            </Box>
+                                        )}
+                                        {event.status === 'COMPLETED' && (
+                                            <Box sx={{ px: 1, py: 0.5, borderRadius: 8, fontSize: '0.75rem', fontWeight: 'bold', bgcolor: 'rgba(158, 158, 158, 0.8)', color: 'white', backdropFilter: 'blur(8px)' }}>
+                                                Terminé
+                                            </Box>
+                                        )}
+                                        {event.status === 'CANCELLED' && (
+                                            <Box sx={{ px: 1, py: 0.5, borderRadius: 8, fontSize: '0.75rem', fontWeight: 'bold', bgcolor: 'rgba(244, 67, 54, 0.8)', color: 'white', backdropFilter: 'blur(8px)' }}>
+                                                Annulé
+                                            </Box>
+                                        )}
+                                    </Box>
+                                </Box>
 
-                            <CardContent className="p-5">
-                                <h3 className="text-xl font-bold text-white mb-2 line-clamp-1 group-hover:text-blue-400 transition-colors">{event.title}</h3>
-                                <div className="space-y-1 mb-4">
-                                    <p className="text-sm text-gray-400 flex items-center gap-2">
-                                        <Calendar className="h-4 w-4 text-blue-500" />
-                                        {new Date(event.start_datetime).toLocaleDateString()} à {new Date(event.start_datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </p>
-                                    <p className="text-sm text-gray-400 flex items-center gap-2">
-                                        <MapPin className="h-4 w-4 text-purple-500" />
-                                        {event.address || "Lieu non précisé"}
-                                    </p>
-                                </div>
-                                <Button className="w-full bg-white/5 hover:bg-white/10 text-white border border-gray-700" onClick={() => handleEdit(event.id)}>
-                                    Modifier
-                                </Button>
-                            </CardContent>
-                        </Card>
+                                <CardContent sx={{ p: 2.5 }}>
+                                    <Typography variant="h6" sx={{
+                                        fontWeight: 'bold',
+                                        mb: 1,
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                        '&:hover': { color: 'primary.main' },
+                                        transition: 'color 0.3s'
+                                    }}>
+                                        {event.title}
+                                    </Typography>
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mb: 2 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <EventIcon sx={{ fontSize: 16, color: 'primary.main' }} />
+                                            <Typography variant="body2" color="text.secondary">
+                                                {new Date(event.start_datetime).toLocaleDateString()} à {new Date(event.start_datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </Typography>
+                                        </Box>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <LocationOnIcon sx={{ fontSize: 16, color: 'secondary.main' }} />
+                                            <Typography variant="body2" color="text.secondary">
+                                                {event.address || "Lieu non précisé"}
+                                            </Typography>
+                                        </Box>
+                                    </Box>
+                                    <Button
+                                        fullWidth
+                                        variant="outlined"
+                                        onClick={() => handleEdit(event.id)}
+                                    >
+                                        Modifier
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        </Grid>
                     ))}
 
                     {/* Add New Card (Empty State) */}
-                    <button
-                        onClick={() => { setShowForm(true); setEditingId(null); setFormData(initialFormState); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                        className="h-full min-h-[300px] border-2 border-dashed border-gray-800 rounded-xl flex flex-col items-center justify-center p-6 text-gray-500 hover:text-blue-400 hover:border-blue-500/50 hover:bg-white/5 transition-all text-center"
-                    >
-                        <div className="h-16 w-16 rounded-full bg-gray-900 flex items-center justify-center mb-4">
-                            <Plus className="h-8 w-8" />
-                        </div>
-                        <span className="font-bold">Créer un nouvel événement</span>
-                        <span className="text-sm opacity-60 mt-1">Planifiez votre prochain culte</span>
-                    </button>
-                </div>
+                    <Grid size={{ xs: 12, md: 6, lg: 4 }}>
+                        <Box
+                            onClick={() => { setShowForm(true); setEditingId(null); setFormData(initialFormState); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                            sx={{
+                                height: '100%',
+                                minHeight: 300,
+                                border: 2,
+                                borderStyle: 'dashed',
+                                borderColor: 'divider',
+                                borderRadius: 2,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                p: 3,
+                                textAlign: 'center',
+                                cursor: 'pointer',
+                                transition: 'all 0.3s',
+                                '&:hover': {
+                                    borderColor: 'primary.main',
+                                    bgcolor: 'action.hover',
+                                    color: 'primary.main'
+                                }
+                            }}
+                        >
+                            <Box sx={{
+                                width: 64,
+                                height: 64,
+                                borderRadius: '50%',
+                                bgcolor: 'action.hover',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                mb: 2
+                            }}>
+                                <AddIcon sx={{ fontSize: 32 }} />
+                            </Box>
+                            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                                Créer un nouvel événement
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, opacity: 0.6 }}>
+                                Planifiez votre prochain culte
+                            </Typography>
+                        </Box>
+                    </Grid>
+                </Grid>
             )}
-        </div>
+        </Box>
     );
 }

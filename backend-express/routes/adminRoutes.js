@@ -235,12 +235,21 @@ router.get('/churches/:id', async (req, res) => {
         const [details] = await db.query('SELECT * FROM church_details WHERE church_id = ?', [church.id]);
         const [socials] = await db.query('SELECT * FROM church_socials WHERE church_id = ?', [church.id]);
         const [schedules] = await db.query('SELECT * FROM church_schedules WHERE church_id = ?', [church.id]);
+        const [events] = await db.query(
+            `SELECT e.id, e.title, e.start_datetime, e.end_datetime, e.status, ed.description
+             FROM events e
+             LEFT JOIN event_details ed ON e.id = ed.event_id
+             WHERE e.church_id = ?
+             ORDER BY e.start_datetime DESC`,
+            [church.id]
+        );
 
         res.json({
             ...church,
             details: details[0] || {},
             socials: socials || [],
-            schedules: schedules || []
+            schedules: schedules || [],
+            events: events || []
         });
     } catch (error) {
         console.error(error);
@@ -253,7 +262,8 @@ router.put('/churches/:id', async (req, res) => {
     const churchId = req.params.id;
     const {
         church_name, latitude, longitude, denomination_id,
-        description, address, phone, website, pastor_name, has_parking, parking_capacity, is_parking_free,
+        description, address, street_number, street_name, postal_code, city,
+        phone, website, pastor_name, has_parking, parking_capacity, is_parking_free, logo_url,
         socials, schedules
     } = req.body;
 
@@ -263,33 +273,45 @@ router.put('/churches/:id', async (req, res) => {
 
         // 1. Update Church Basic Info
         await connection.query(
-            `UPDATE churches 
-             SET church_name = ?, location = ST_GeomFromText(?), denomination_id = ? 
+            `UPDATE churches
+             SET church_name = ?, location = ST_GeomFromText(?), denomination_id = ?
              WHERE id = ?`,
             [church_name, `POINT(${longitude} ${latitude})`, denomination_id, churchId]
         );
 
-        // 2. Update Details
+        // 2. Update Details (avec les nouveaux champs d'adresse)
         const [existingDetails] = await connection.query('SELECT church_id FROM church_details WHERE church_id = ?', [churchId]);
         const langId = 10; // Default to French
         const detailParams = [
-            description || null, address || null, phone || null, website || null,
-            pastor_name || null, has_parking ? 1 : 0, parking_capacity || null, is_parking_free ? 1 : 0,
+            description || null,
+            address || null,
+            street_number || null,
+            street_name || null,
+            postal_code || null,
+            city || null,
+            phone || null,
+            website || null,
+            pastor_name || null,
+            has_parking ? 1 : 0,
+            parking_capacity || null,
+            is_parking_free ? 1 : 0,
+            logo_url || null,
             langId
         ];
 
         if (existingDetails.length > 0) {
             await connection.query(
-                `UPDATE church_details 
-                 SET description=?, address=?, phone=?, website=?, pastor_name=?, has_parking=?, parking_capacity=?, is_parking_free=?, language_id=?
+                `UPDATE church_details
+                 SET description=?, address=?, street_number=?, street_name=?, postal_code=?, city=?,
+                     phone=?, website=?, pastor_name=?, has_parking=?, parking_capacity=?, is_parking_free=?, logo_url=?, language_id=?
                  WHERE church_id=?`,
                 [...detailParams, churchId]
             );
         } else {
             await connection.query(
-                `INSERT INTO church_details 
-                 (description, address, phone, website, pastor_name, has_parking, parking_capacity, is_parking_free, language_id, church_id)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                `INSERT INTO church_details
+                 (description, address, street_number, street_name, postal_code, city, phone, website, pastor_name, has_parking, parking_capacity, is_parking_free, logo_url, language_id, church_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [...detailParams, churchId]
             );
         }
@@ -389,7 +411,8 @@ router.get('/events', async (req, res) => {
 router.get('/events/:id', async (req, res) => {
     try {
         const [events] = await db.query(
-            `SELECT id, title, start_datetime, end_datetime, ST_X(event_location) as longitude, ST_Y(event_location) as latitude 
+            `SELECT id, title, start_datetime, end_datetime, status, church_id,
+                    ST_X(event_location) as longitude, ST_Y(event_location) as latitude
              FROM events WHERE id = ?`,
             [req.params.id]
         );
@@ -397,7 +420,13 @@ router.get('/events/:id', async (req, res) => {
 
         const [details] = await db.query('SELECT * FROM event_details WHERE event_id = ?', [req.params.id]);
 
-        res.json({ ...events[0], details: details[0] || {} });
+        // Flatten details into the main object for easier consumption
+        const eventData = { ...events[0] };
+        if (details[0]) {
+            Object.assign(eventData, details[0]);
+        }
+
+        res.json(eventData);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Erreur serveur' });
@@ -406,37 +435,91 @@ router.get('/events/:id', async (req, res) => {
 
 // Modifier un événement (Admin)
 router.put('/events/:id', async (req, res) => {
-    const { title, start_datetime, end_datetime, latitude, longitude, description, status } = req.body;
+    const {
+        title, start_datetime, end_datetime, latitude, longitude, status,
+        description, address, street_number, street_name, postal_code, city,
+        speaker_name, max_seats, image_url, is_free, registration_link,
+        youtube_live, has_parking, parking_capacity, is_parking_free, parking_details
+    } = req.body;
+
+    const connection = await db.getConnection();
     try {
+        await connection.beginTransaction();
+
+        // Update events table
         let updateQuery = 'UPDATE events SET ';
         const updateParams = [];
 
-        if (title) { updateQuery += 'title = ?, '; updateParams.push(title); }
-        if (start_datetime) { updateQuery += 'start_datetime = ?, '; updateParams.push(start_datetime); }
-        if (end_datetime) { updateQuery += 'end_datetime = ?, '; updateParams.push(end_datetime); }
-        if (latitude && longitude) { updateQuery += 'event_location = ST_GeomFromText(?), '; updateParams.push(`POINT(${longitude} ${latitude})`); }
-        if (status) { updateQuery += 'status = ?, '; updateParams.push(status); }
+        if (title !== undefined) { updateQuery += 'title = ?, '; updateParams.push(title); }
+        if (start_datetime !== undefined) { updateQuery += 'start_datetime = ?, '; updateParams.push(start_datetime); }
+        if (end_datetime !== undefined) { updateQuery += 'end_datetime = ?, '; updateParams.push(end_datetime); }
+        if (latitude !== undefined && longitude !== undefined) {
+            updateQuery += 'event_location = ST_GeomFromText(?), ';
+            updateParams.push(`POINT(${longitude} ${latitude})`);
+        }
+        if (status !== undefined) { updateQuery += 'status = ?, '; updateParams.push(status); }
 
-        updateQuery = updateQuery.slice(0, -2); // Remove trailing comma
-        updateQuery += ' WHERE id = ?';
-        updateParams.push(req.params.id);
-
-        if (updateParams.length > 1) { // At least one field + ID
-            await db.query(updateQuery, updateParams);
+        if (updateParams.length > 0) {
+            updateQuery = updateQuery.slice(0, -2); // Remove trailing comma
+            updateQuery += ' WHERE id = ?';
+            updateParams.push(req.params.id);
+            await connection.query(updateQuery, updateParams);
         }
 
-        // Upsert details
-        const [existing] = await db.query('SELECT event_id FROM event_details WHERE event_id = ?', [req.params.id]);
+        // Upsert event_details
+        const [existing] = await connection.query('SELECT event_id FROM event_details WHERE event_id = ?', [req.params.id]);
+
+        const detailParams = [
+            description || null,
+            address || null,
+            street_number || null,
+            street_name || null,
+            postal_code || null,
+            city || null,
+            speaker_name || null,
+            max_seats || null,
+            image_url || null,
+            is_free !== undefined ? (is_free ? 1 : 0) : null,
+            registration_link || null,
+            youtube_live || null,
+            has_parking !== undefined ? (has_parking ? 1 : 0) : null,
+            parking_capacity || null,
+            is_parking_free !== undefined ? (is_parking_free ? 1 : 0) : null,
+            parking_details || null
+        ];
+
         if (existing.length > 0) {
-            await db.query('UPDATE event_details SET description=? WHERE event_id=?', [description, req.params.id]);
+            // Update existing details
+            await connection.query(
+                `UPDATE event_details SET
+                    description = ?, address = ?, street_number = ?, street_name = ?,
+                    postal_code = ?, city = ?, speaker_name = ?, max_seats = ?,
+                    image_url = ?, is_free = ?, registration_link = ?, youtube_live = ?,
+                    has_parking = ?, parking_capacity = ?, is_parking_free = ?, parking_details = ?
+                WHERE event_id = ?`,
+                [...detailParams, req.params.id]
+            );
         } else {
-            await db.query('INSERT INTO event_details (event_id, description) VALUES (?,?)', [req.params.id, description]);
+            // Insert new details
+            await connection.query(
+                `INSERT INTO event_details (
+                    event_id, description, address, street_number, street_name,
+                    postal_code, city, speaker_name, max_seats, image_url, is_free,
+                    registration_link, youtube_live, has_parking, parking_capacity,
+                    is_parking_free, parking_details
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [req.params.id, ...detailParams]
+            );
         }
 
+        await connection.commit();
         res.json({ message: 'Événement mis à jour' });
     } catch (error) {
+        await connection.rollback();
         console.error(error);
         res.status(500).json({ message: 'Erreur serveur' });
+    } finally {
+        connection.release();
     }
 });
 
@@ -445,6 +528,31 @@ router.delete('/events/:id', async (req, res) => {
     try {
         await db.query('DELETE FROM events WHERE id = ?', [req.params.id]);
         res.json({ message: 'Événement supprimé' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erreur serveur' });
+    }
+});
+
+// Activité événementielle mensuelle (passé + futur)
+router.get('/stats/events-monthly', async (req, res) => {
+    try {
+        const [events] = await db.query(
+            `SELECT
+                DATE_FORMAT(start_datetime, '%Y-%m') as month,
+                COUNT(*) as count,
+                CASE
+                    WHEN start_datetime >= NOW() THEN 'future'
+                    ELSE 'past'
+                END as period
+             FROM events
+             WHERE start_datetime >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+               AND start_datetime <= DATE_ADD(NOW(), INTERVAL 3 MONTH)
+             GROUP BY month, period
+             ORDER BY month ASC`
+        );
+
+        res.json(events);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Erreur serveur' });

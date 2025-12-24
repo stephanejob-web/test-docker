@@ -1,6 +1,17 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Clock } from 'lucide-react';
-import { Input, Label } from './ui';
+import {
+    Box,
+    TextField,
+    Typography,
+    Button,
+    Grid,
+    Paper,
+    InputAdornment
+} from '@mui/material';
+import {
+    CalendarToday as CalendarIcon,
+    AccessTime as ClockIcon
+} from '@mui/icons-material';
 
 interface DateTimeInputProps {
     label: string;
@@ -36,7 +47,6 @@ export default function DateTimeInput({
         if (date && time) {
             onChange(`${date}T${time}`);
         } else if (date || time) {
-            // If only one is set, still update (for partial input)
             onChange(date && time ? `${date}T${time}` : '');
         }
     }, [date, time]);
@@ -77,84 +87,138 @@ export default function DateTimeInput({
     };
 
     return (
-        <div className="space-y-3">
-            <Label className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-blue-400" />
-                {label} {required && <span className="text-red-400">*</span>}
-            </Label>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontWeight: 500 }}>
+                <CalendarIcon sx={{ fontSize: 16, color: 'primary.main' }} />
+                {label}
+                {required && <Typography component="span" sx={{ color: 'error.main' }}>*</Typography>}
+            </Typography>
 
             {/* Quick Actions */}
-            <div className="flex gap-2 flex-wrap">
-                <button
-                    type="button"
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                <Button
+                    size="small"
+                    variant="outlined"
                     onClick={() => handleQuickAction('today')}
-                    className="px-3 py-1.5 text-xs font-medium bg-blue-500/10 text-blue-400 rounded-md hover:bg-blue-500/20 transition-colors border border-blue-500/20"
+                    sx={{
+                        fontSize: '0.75rem',
+                        borderColor: 'primary.main',
+                        color: 'primary.main',
+                        bgcolor: 'rgba(33, 150, 243, 0.1)',
+                        '&:hover': {
+                            bgcolor: 'rgba(33, 150, 243, 0.2)',
+                            borderColor: 'primary.main'
+                        }
+                    }}
                 >
                     Aujourd'hui
-                </button>
-                <button
-                    type="button"
+                </Button>
+                <Button
+                    size="small"
+                    variant="outlined"
                     onClick={() => handleQuickAction('tomorrow')}
-                    className="px-3 py-1.5 text-xs font-medium bg-purple-500/10 text-purple-400 rounded-md hover:bg-purple-500/20 transition-colors border border-purple-500/20"
+                    sx={{
+                        fontSize: '0.75rem',
+                        borderColor: 'secondary.main',
+                        color: 'secondary.main',
+                        bgcolor: 'rgba(156, 39, 176, 0.1)',
+                        '&:hover': {
+                            bgcolor: 'rgba(156, 39, 176, 0.2)',
+                            borderColor: 'secondary.main'
+                        }
+                    }}
                 >
                     Demain
-                </button>
-                <button
-                    type="button"
+                </Button>
+                <Button
+                    size="small"
+                    variant="outlined"
                     onClick={() => handleQuickAction('next-week')}
-                    className="px-3 py-1.5 text-xs font-medium bg-green-500/10 text-green-400 rounded-md hover:bg-green-500/20 transition-colors border border-green-500/20"
+                    sx={{
+                        fontSize: '0.75rem',
+                        borderColor: 'success.main',
+                        color: 'success.main',
+                        bgcolor: 'rgba(76, 175, 80, 0.1)',
+                        '&:hover': {
+                            bgcolor: 'rgba(76, 175, 80, 0.2)',
+                            borderColor: 'success.main'
+                        }
+                    }}
                 >
                     Dans 7 jours
-                </button>
-            </div>
+                </Button>
+            </Box>
 
             {/* Date and Time Inputs */}
-            <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                    <div className="relative">
-                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-                        <Input
-                            type="date"
-                            value={date}
-                            onChange={(e) => setDate(e.target.value)}
-                            required={required}
-                            min={minDateTime ? minDateTime.split('T')[0] : undefined}
-                            className={`pl-10 bg-background border-gray-700 focus:border-blue-500 ${error ? 'border-red-500' : ''
-                                }`}
-                        />
-                    </div>
-                </div>
-
-                <div className="space-y-2">
-                    <div className="relative">
-                        <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-                        <Input
-                            type="time"
-                            value={time}
-                            onChange={(e) => setTime(e.target.value)}
-                            required={required}
-                            className={`pl-10 bg-background border-gray-700 focus:border-blue-500 ${error ? 'border-red-500' : ''
-                                }`}
-                        />
-                    </div>
-                </div>
-            </div>
+            <Grid container spacing={1.5}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                    <TextField
+                        fullWidth
+                        type="date"
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
+                        required={required}
+                        inputProps={{
+                            min: minDateTime ? minDateTime.split('T')[0] : undefined
+                        }}
+                        error={!!error}
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <CalendarIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                                </InputAdornment>
+                            ),
+                        }}
+                    />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                    <TextField
+                        fullWidth
+                        type="time"
+                        value={time}
+                        onChange={(e) => setTime(e.target.value)}
+                        required={required}
+                        error={!!error}
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <ClockIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                                </InputAdornment>
+                            ),
+                        }}
+                    />
+                </Grid>
+            </Grid>
 
             {/* Display Formatted Date */}
             {date && time && (
-                <div className="p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg">
-                    <p className="text-sm text-blue-400 font-medium capitalize">
+                <Paper
+                    sx={{
+                        p: 1.5,
+                        bgcolor: 'rgba(33, 150, 243, 0.05)',
+                        border: 1,
+                        borderColor: 'rgba(33, 150, 243, 0.2)'
+                    }}
+                >
+                    <Typography
+                        variant="body2"
+                        sx={{
+                            color: 'primary.main',
+                            fontWeight: 500,
+                            textTransform: 'capitalize'
+                        }}
+                    >
                         {formatDisplayDate()} à {time}
-                    </p>
-                </div>
+                    </Typography>
+                </Paper>
             )}
 
             {/* Error Message */}
             {error && (
-                <p className="text-sm text-red-400 flex items-center gap-1.5">
+                <Typography variant="caption" color="error" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                     {error}
-                </p>
+                </Typography>
             )}
-        </div>
+        </Box>
     );
 }

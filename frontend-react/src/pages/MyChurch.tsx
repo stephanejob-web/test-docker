@@ -1,9 +1,32 @@
 import { useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useParams, useNavigate } from 'react-router-dom';
 import api from '../lib/axios';
-import { Button, Input, Card, CardContent, Label } from '../components/ui';
-import { Save, Plus, Trash2, MapPin } from 'lucide-react';
+import {
+    Box,
+    Typography,
+    TextField,
+    Button,
+    Card,
+    CardContent,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem,
+    Tabs,
+    Tab,
+    IconButton,
+    Alert,
+    Grid
+} from '@mui/material';
+import {
+    Save as SaveIcon,
+    Add as AddIcon,
+    Delete as DeleteIcon,
+    LocationOn as LocationOnIcon,
+    ArrowBack as ArrowBackIcon
+} from '@mui/icons-material';
 import { ImageUpload } from '../components/ImageUpload';
 import { churchSchema, type ChurchFormData } from '../lib/validationSchemas';
 import FormError, { BackendErrors } from '../components/FormError';
@@ -14,7 +37,10 @@ interface Denomination { id: number; name: string; }
 interface ActivityType { id: number; label_fr: string; }
 
 export default function MyChurch() {
-    const [activeTab, setActiveTab] = useState('general');
+    const { churchId } = useParams<{ churchId: string }>();
+    const navigate = useNavigate();
+    const isAdminMode = !!churchId; // Mode admin si churchId existe
+    const [activeTab, setActiveTab] = useState(0);
     const [success, setSuccess] = useState('');
     const [backendErrors, setBackendErrors] = useState<Array<{ field: string; message: string }>>([]);
 
@@ -66,12 +92,20 @@ export default function MyChurch() {
             ]);
             setDenominations(denoms.data);
             setActivityTypes(types.data);
-        } catch (error) { console.error('Error fetching refs', error); }
+        } catch (err) {
+            console.error('Error fetching refs', err);
+        }
     };
 
     const fetchChurchData = async () => {
         try {
-            const { data } = await api.get('/church/my-church');
+            // Mode admin: charger une église spécifique par ID
+            // Mode pastor: charger l'église du pasteur connecté
+            const endpoint = isAdminMode
+                ? `/admin/churches/${churchId}`
+                : '/church/my-church';
+
+            const { data } = await api.get(endpoint);
             if (data && data.id) {
                 // Reset form with fetched data
                 reset({
@@ -96,8 +130,8 @@ export default function MyChurch() {
                     schedules: data.schedules || [],
                 });
             }
-        } catch (error) {
-            console.error('Error fetching church:', error);
+        } catch (err) {
+            console.error('Error fetching church:', err);
         }
     };
 
@@ -106,14 +140,26 @@ export default function MyChurch() {
         setSuccess('');
 
         try {
-            await api.post('/church/my-church', formData);
-            setSuccess('Sauvegardé avec succès !');
-        } catch (err: any) {
-            // Handle structured backend errors
-            if (err.response?.data?.errors) {
-                setBackendErrors(err.response.data.errors);
+            // Mode admin: modifier une église spécifique
+            // Mode pastor: modifier son église
+            if (isAdminMode) {
+                await api.put(`/admin/churches/${churchId}`, formData);
             } else {
-                setBackendErrors([{ field: 'général', message: err.response?.data?.message || 'Une erreur est survenue' }]);
+                await api.post('/church/my-church', formData);
+            }
+            setSuccess('Sauvegardé avec succès !');
+
+            // En mode admin, retourner à la liste après sauvegarde
+            if (isAdminMode) {
+                setTimeout(() => navigate('/dashboard/admin/churches'), 1500);
+            }
+        } catch (err: unknown) {
+            // Handle structured backend errors
+            const error = err as { response?: { data?: { errors?: Array<{ field: string; message: string }>; message?: string } } };
+            if (error.response?.data?.errors) {
+                setBackendErrors(error.response.data.errors);
+            } else {
+                setBackendErrors([{ field: 'général', message: error.response?.data?.message || 'Une erreur est survenue' }]);
             }
         }
     };
@@ -133,378 +179,403 @@ export default function MyChurch() {
     };
 
     return (
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 max-w-5xl mx-auto pb-8">
-            <div className="flex justify-between items-center">
-                <h1 className="text-4xl font-bold">Mon Église</h1>
-                <Button type="submit" disabled={isSubmitting} className="bg-green-600 hover:bg-green-700 h-12 px-6 text-base">
-                    <Save className="mr-2 h-5 w-5" /> {isSubmitting ? 'Sauvegarde...' : 'Tout Sauvegarder'}
+        <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: '1200px', mx: 'auto', pb: 4 }}>
+            {/* Bouton Retour en mode admin */}
+            {isAdminMode && (
+                <Button
+                    variant="text"
+                    startIcon={<ArrowBackIcon />}
+                    onClick={() => navigate('/dashboard/admin/churches')}
+                    sx={{ alignSelf: 'flex-start' }}
+                >
+                    Retour à la liste
                 </Button>
-            </div>
+            )}
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
+                    {isAdminMode ? "Modifier l'Église" : "Mon Église"}
+                </Typography>
+                <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    variant="contained"
+                    color="success"
+                    size="large"
+                    startIcon={<SaveIcon />}
+                    sx={{ px: 4 }}
+                >
+                    {isSubmitting ? 'Sauvegarde...' : 'Tout Sauvegarder'}
+                </Button>
+            </Box>
 
             {/* Backend Errors */}
             <BackendErrors errors={backendErrors} />
 
             {/* Success Message */}
             {success && (
-                <div className="p-3 text-sm text-green-400 bg-green-900/20 rounded-md border border-green-800">
-                    {success}
-                </div>
+                <Alert severity="success">{success}</Alert>
             )}
 
             {/* Tabs Header */}
-            <div className="flex border-b border-gray-700 space-x-4">
-                {['general', 'details', 'socials', 'schedules'].map(tab => (
-                    <button
-                        key={tab}
-                        onClick={() => setActiveTab(tab)}
-                        className={`pb-2 px-4 text-sm font-medium capitalize transition-colors ${activeTab === tab ? 'border-b-2 border-primary text-primary' : 'text-gray-400 hover:text-white'}`}
-                    >
-                        {tab === 'general' ? 'Général' : tab === 'details' ? 'Détails & Infos' : tab === 'socials' ? 'Réseaux Sociaux' : 'Horaires'}
-                    </button>
-                ))}
-            </div>
+            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+                <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)}>
+                    <Tab label="Général" />
+                    <Tab label="Détails & Infos" />
+                    <Tab label="Réseaux Sociaux" />
+                    <Tab label="Horaires" />
+                </Tabs>
+            </Box>
 
-            <div className="mt-6">
+            <Box sx={{ mt: 2 }}>
                 {/* GENERAL TAB */}
-                {activeTab === 'general' && (
+                {activeTab === 0 && (
                     <Card>
-                        <CardContent className="space-y-8 pt-8 px-8">
-                            {/* SECTION 1: ADRESSE (PRIORITAIRE) */}
-                            <div className="pb-8 border-b border-gray-800">
-                                <h2 className="text-2xl font-semibold mb-6 text-primary">📍 Localisation de l'Église</h2>
-                                <div className="space-y-4">
-                                    {/* Autocomplete d'adresse */}
-                                    <AddressAutocomplete
-                                        defaultValue={watch('address') || ''}
-                                        onAddressSelect={(addressData) => {
-                                            setValue('address', addressData.full_address);
-                                            setValue('street_number', addressData.street_number);
-                                            setValue('street_name', addressData.street_name);
-                                            setValue('postal_code', addressData.postal_code);
-                                            setValue('city', addressData.city);
-                                            setValue('latitude', addressData.latitude);
-                                            setValue('longitude', addressData.longitude);
-                                        }}
-                                        error={errors.address?.message}
-                                    />
+                        <CardContent sx={{ p: 4 }}>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                {/* SECTION 1: ADRESSE (PRIORITAIRE) */}
+                                <Box sx={{ pb: 4, borderBottom: 1, borderColor: 'divider' }}>
+                                    <Typography variant="h5" sx={{ mb: 3, color: 'primary.main', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <LocationOnIcon /> Localisation de l'Église
+                                    </Typography>
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                        {/* Autocomplete d'adresse */}
+                                        <AddressAutocomplete
+                                            defaultValue={watch('address') || ''}
+                                            onAddressSelect={(addressData) => {
+                                                setValue('address', addressData.full_address);
+                                                setValue('street_number', addressData.street_number);
+                                                setValue('street_name', addressData.street_name);
+                                                setValue('postal_code', addressData.postal_code);
+                                                setValue('city', addressData.city);
+                                                setValue('latitude', addressData.latitude);
+                                                setValue('longitude', addressData.longitude);
+                                            }}
+                                            error={errors.address?.message}
+                                        />
 
-                                    {/* Champs d'adresse détaillés (lecture seule, auto-remplis) */}
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-white/5 rounded-lg">
-                                        <div className="space-y-1">
-                                            <Label className="text-xs text-gray-500">N°</Label>
-                                            <Input
-                                                {...register('street_number')}
-                                                readOnly
-                                                className="bg-gray-800/50 text-gray-400"
-                                                placeholder="Auto"
-                                            />
-                                        </div>
-                                        <div className="space-y-1 col-span-2 md:col-span-3">
-                                            <Label className="text-xs text-gray-500">Rue</Label>
-                                            <Input
-                                                {...register('street_name')}
-                                                readOnly
-                                                className="bg-gray-800/50 text-gray-400"
-                                                placeholder="Auto-rempli"
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <Label className="text-xs text-gray-500">Code Postal</Label>
-                                            <Input
-                                                {...register('postal_code')}
-                                                readOnly
-                                                className="bg-gray-800/50 text-gray-400"
-                                                placeholder="Auto"
-                                            />
-                                        </div>
-                                        <div className="space-y-1 col-span-2 md:col-span-3">
-                                            <Label className="text-xs text-gray-500">Ville</Label>
-                                            <Input
-                                                {...register('city')}
-                                                readOnly
-                                                className="bg-gray-800/50 text-gray-400"
-                                                placeholder="Auto-remplie"
-                                            />
-                                        </div>
-                                    </div>
+                                        {/* Champs d'adresse détaillés (lecture seule, auto-remplis) */}
+                                        <Box sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
+                                            <Grid container spacing={2}>
+                                                <Grid size={{ xs: 12, md: 3 }}>
+                                                    <TextField
+                                                        {...register('street_number')}
+                                                        fullWidth
+                                                        size="small"
+                                                        label="N°"
+                                                        InputProps={{ readOnly: true }}
+                                                        placeholder="Auto"
+                                                    />
+                                                </Grid>
+                                                <Grid size={{ xs: 12, md: 9 }}>
+                                                    <TextField
+                                                        {...register('street_name')}
+                                                        fullWidth
+                                                        size="small"
+                                                        label="Rue"
+                                                        InputProps={{ readOnly: true }}
+                                                        placeholder="Auto-rempli"
+                                                    />
+                                                </Grid>
+                                                <Grid size={{ xs: 12, md: 3 }}>
+                                                    <TextField
+                                                        {...register('postal_code')}
+                                                        fullWidth
+                                                        size="small"
+                                                        label="Code Postal"
+                                                        InputProps={{ readOnly: true }}
+                                                        placeholder="Auto"
+                                                    />
+                                                </Grid>
+                                                <Grid size={{ xs: 12, md: 9 }}>
+                                                    <TextField
+                                                        {...register('city')}
+                                                        fullWidth
+                                                        size="small"
+                                                        label="Ville"
+                                                        InputProps={{ readOnly: true }}
+                                                        placeholder="Auto-remplie"
+                                                    />
+                                                </Grid>
+                                            </Grid>
+                                        </Box>
 
-                                    {/* Coordonnées GPS (lecture seule, auto-remplies) */}
-                                    <div className="grid grid-cols-2 gap-4 p-4 bg-blue-900/10 rounded-lg border border-blue-800/30">
-                                        <div className="space-y-1">
-                                            <Label className="text-xs text-gray-500 flex items-center gap-1">
-                                                <MapPin className="h-3 w-3" /> Latitude
-                                            </Label>
-                                            <Input
-                                                {...register('latitude', { valueAsNumber: true })}
-                                                readOnly
-                                                className="bg-gray-800/50 text-gray-400 font-mono text-sm"
-                                                placeholder="Auto-calculé"
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <Label className="text-xs text-gray-500 flex items-center gap-1">
-                                                <MapPin className="h-3 w-3" /> Longitude
-                                            </Label>
-                                            <Input
-                                                {...register('longitude', { valueAsNumber: true })}
-                                                readOnly
-                                                className="bg-gray-800/50 text-gray-400 font-mono text-sm"
-                                                placeholder="Auto-calculé"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                                        {/* Coordonnées GPS (lecture seule, auto-remplies) */}
+                                        <Box sx={{ p: 2, bgcolor: 'rgba(33, 150, 243, 0.1)', borderRadius: 1, border: 1, borderColor: 'info.light' }}>
+                                            <Grid container spacing={2}>
+                                                <Grid size={{ xs: 12, md: 6 }}>
+                                                    <TextField
+                                                        {...register('latitude', { valueAsNumber: true })}
+                                                        fullWidth
+                                                        size="small"
+                                                        label="Latitude"
+                                                        InputProps={{ readOnly: true }}
+                                                        placeholder="Auto-calculé"
+                                                    />
+                                                </Grid>
+                                                <Grid size={{ xs: 12, md: 6 }}>
+                                                    <TextField
+                                                        {...register('longitude', { valueAsNumber: true })}
+                                                        fullWidth
+                                                        size="small"
+                                                        label="Longitude"
+                                                        InputProps={{ readOnly: true }}
+                                                        placeholder="Auto-calculé"
+                                                    />
+                                                </Grid>
+                                            </Grid>
+                                        </Box>
+                                    </Box>
+                                </Box>
 
-                            {/* SECTION 2: INFORMATIONS DE BASE */}
-                            <div className="space-y-6">
-                                <h2 className="text-2xl font-semibold text-white">⛪ Informations Générales</h2>
+                                {/* SECTION 2: INFORMATIONS DE BASE */}
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                    <Typography variant="h5" sx={{ color: 'text.primary' }}>
+                                        Informations Générales
+                                    </Typography>
 
-                                <div className="space-y-3">
-                                    <Label htmlFor="church_name" className="text-base">
-                                        Nom de l'église <span className="text-red-400">*</span>
-                                    </Label>
-                                    <Input
-                                        id="church_name"
+                                    <TextField
                                         {...register('church_name')}
-                                        className={`h-12 text-base ${errors.church_name ? 'border-red-500' : ''}`}
+                                        fullWidth
+                                        label="Nom de l'église *"
+                                        error={!!errors.church_name}
+                                        helperText={errors.church_name?.message}
                                     />
                                     <FormError error={errors.church_name} />
-                                </div>
 
-                                <div className="space-y-3">
-                                    <Label htmlFor="denomination_id" className="text-base">
-                                        Dénomination <span className="text-red-400">*</span>
-                                    </Label>
-                                    <select
-                                        id="denomination_id"
-                                        {...register('denomination_id', { valueAsNumber: true })}
-                                        className={`w-full h-12 rounded-md border ${errors.denomination_id ? 'border-red-500' : 'border-input'} bg-background px-4 py-2 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2`}
-                                    >
-                                        <option value="">Choisir...</option>
-                                        {denominations.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                    </select>
-                                    <FormError error={errors.denomination_id} />
-                                </div>
+                                    <FormControl fullWidth error={!!errors.denomination_id}>
+                                        <InputLabel>Dénomination *</InputLabel>
+                                        <Select
+                                            {...register('denomination_id', { valueAsNumber: true })}
+                                            label="Dénomination *"
+                                            defaultValue=""
+                                        >
+                                            <MenuItem value="">Choisir...</MenuItem>
+                                            {denominations.map(d => <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>)}
+                                        </Select>
+                                        <FormError error={errors.denomination_id} />
+                                    </FormControl>
 
-                                <div className="space-y-3">
-                                    <Label htmlFor="description" className="text-base">Description Courte</Label>
-                                    <Input
-                                        id="description"
+                                    <TextField
                                         {...register('description')}
-                                        className={`h-12 text-base ${errors.description ? 'border-red-500' : ''}`}
+                                        fullWidth
+                                        label="Description Courte"
                                         placeholder="Présentez votre église en quelques mots..."
+                                        error={!!errors.description}
+                                        helperText={errors.description?.message}
                                     />
                                     <FormError error={errors.description} />
-                                </div>
 
-                                <div className="space-y-2">
-                                    <Label>Logo de l'Église</Label>
-                                    <ImageUpload
-                                        value={watch('logo_url') || ''}
-                                        onChange={(url) => setValue('logo_url', url)}
-                                    />
-                                    <FormError error={errors.logo_url} />
-                                </div>
-                            </div>
+                                    <Box>
+                                        <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
+                                            Logo de l'Église
+                                        </Typography>
+                                        <ImageUpload
+                                            value={watch('logo_url') || ''}
+                                            onChange={(url) => setValue('logo_url', url)}
+                                        />
+                                        <FormError error={errors.logo_url} />
+                                    </Box>
+                                </Box>
+                            </Box>
                         </CardContent>
                     </Card>
                 )}
 
                 {/* DETAILS TAB */}
-                {activeTab === 'details' && (
+                {activeTab === 1 && (
                     <Card>
-                        <CardContent className="space-y-6 pt-8 px-8">
-                            <div className="space-y-3">
-                                <Label htmlFor="pastor_name" className="text-base">Nom du Pasteur Principal</Label>
-                                <Input
-                                    id="pastor_name"
+                        <CardContent sx={{ p: 4 }}>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                <TextField
                                     {...register('pastor_name')}
-                                    className={`h-12 text-base ${errors.pastor_name ? 'border-red-500' : ''}`}
+                                    fullWidth
+                                    label="Nom du Pasteur Principal"
+                                    error={!!errors.pastor_name}
+                                    helperText={errors.pastor_name?.message}
                                 />
-                                <FormError error={errors.pastor_name} />
-                            </div>
 
-                            <div className="space-y-3">
-                                <Label htmlFor="address" className="text-base">Adresse Complète</Label>
-                                <Input
-                                    id="address"
+                                <TextField
                                     {...register('address')}
-                                    className={`h-12 text-base ${errors.address ? 'border-red-500' : ''}`}
+                                    fullWidth
+                                    label="Adresse Complète"
+                                    error={!!errors.address}
+                                    helperText={errors.address?.message}
                                 />
-                                <FormError error={errors.address} />
-                            </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-3">
-                                    <Label htmlFor="phone" className="text-base">Téléphone</Label>
-                                    <Input
-                                        id="phone"
-                                        {...register('phone')}
-                                        placeholder="+33 1 23 45 67 89"
-                                        className={`h-12 text-base ${errors.phone ? 'border-red-500' : ''}`}
-                                    />
-                                    <FormError error={errors.phone} />
-                                </div>
-                                <div className="space-y-3">
-                                    <Label htmlFor="website" className="text-base">Site Web</Label>
-                                    <Input
-                                        id="website"
-                                        {...register('website')}
-                                        placeholder="https://..."
-                                        className={`h-12 text-base ${errors.website ? 'border-red-500' : ''}`}
-                                    />
-                                    <FormError error={errors.website} />
-                                </div>
-                            </div>
+                                <Grid container spacing={2}>
+                                    <Grid size={{ xs: 12, md: 6 }}>
+                                        <TextField
+                                            {...register('phone')}
+                                            fullWidth
+                                            label="Téléphone"
+                                            placeholder="+33 1 23 45 67 89"
+                                            error={!!errors.phone}
+                                            helperText={errors.phone?.message}
+                                        />
+                                    </Grid>
+                                    <Grid size={{ xs: 12, md: 6 }}>
+                                        <TextField
+                                            {...register('website')}
+                                            fullWidth
+                                            label="Site Web"
+                                            placeholder="https://..."
+                                            error={!!errors.website}
+                                            helperText={errors.website?.message}
+                                        />
+                                    </Grid>
+                                </Grid>
 
-                            <div className="border-t border-gray-800 pt-6 mt-6 space-y-5">
-                                <h3 className="text-lg font-semibold text-white">🚗 Parking</h3>
-                                <div className="flex items-center space-x-3">
-                                    <input
-                                        type="checkbox"
-                                        {...register('has_parking')}
-                                        className="h-5 w-5 rounded border-gray-300"
-                                    />
-                                    <Label className="text-base">Dispose d'un parking ?</Label>
-                                </div>
-                                {has_parking && (
-                                    <div className="grid grid-cols-2 gap-6 pl-8">
-                                        <div className="space-y-3">
-                                            <Label htmlFor="parking_capacity" className="text-base">Capacité (places)</Label>
-                                            <Input
-                                                id="parking_capacity"
-                                                type="number"
-                                                {...register('parking_capacity', { valueAsNumber: true })}
-                                                className={`h-12 text-base ${errors.parking_capacity ? 'border-red-500' : ''}`}
-                                            />
-                                            <FormError error={errors.parking_capacity} />
-                                        </div>
-                                        <div className="flex items-center space-x-3 pt-10">
+                                <Box sx={{ pt: 3, borderTop: 1, borderColor: 'divider' }}>
+                                    <Typography variant="h6" sx={{ mb: 2 }}>
+                                        Parking
+                                    </Typography>
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                             <input
                                                 type="checkbox"
-                                                {...register('is_parking_free')}
-                                                className="h-5 w-5"
+                                                {...register('has_parking')}
+                                                style={{ width: 20, height: 20, marginRight: 8 }}
                                             />
-                                            <Label className="text-base">Gratuit ?</Label>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
+                                            <Typography>Dispose d'un parking ?</Typography>
+                                        </Box>
+                                        {has_parking && (
+                                            <Box sx={{ pl: 4 }}>
+                                                <Grid container spacing={2}>
+                                                    <Grid size={{ xs: 12, md: 6 }}>
+                                                        <TextField
+                                                            {...register('parking_capacity', { valueAsNumber: true })}
+                                                            fullWidth
+                                                            type="number"
+                                                            label="Capacité (places)"
+                                                            error={!!errors.parking_capacity}
+                                                            helperText={errors.parking_capacity?.message}
+                                                        />
+                                                    </Grid>
+                                                    <Grid size={{ xs: 12, md: 6 }} sx={{ display: 'flex', alignItems: 'center' }}>
+                                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                            <input
+                                                                type="checkbox"
+                                                                {...register('is_parking_free')}
+                                                                style={{ width: 20, height: 20, marginRight: 8 }}
+                                                            />
+                                                            <Typography>Gratuit ?</Typography>
+                                                        </Box>
+                                                    </Grid>
+                                                </Grid>
+                                            </Box>
+                                        )}
+                                    </Box>
+                                </Box>
+                            </Box>
                         </CardContent>
                     </Card>
                 )}
 
                 {/* SOCIALS TAB */}
-                {activeTab === 'socials' && (
+                {activeTab === 2 && (
                     <Card>
-                        <CardContent className="pt-8 px-8">
-                            <div className="space-y-5">
+                        <CardContent sx={{ p: 4 }}>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                 {socialFields.map((field, idx) => (
-                                    <div key={field.id} className="flex flex-col gap-3 p-6 bg-white/5 rounded-lg">
-                                        <div className="flex gap-4 items-start">
-                                            <div className="w-48">
-                                                <Label className="text-sm text-gray-400 mb-2 block">Plateforme</Label>
-                                                <select
-                                                    {...register(`socials.${idx}.platform` as const)}
-                                                    className={`h-12 rounded-md border ${errors.socials?.[idx]?.platform ? 'border-red-500' : 'border-input'} bg-background px-4 py-2 text-base focus:outline-none w-full`}
-                                                >
-                                                    {platforms.map(p => <option key={p} value={p}>{p}</option>)}
-                                                </select>
-                                                <FormError error={errors.socials?.[idx]?.platform} />
-                                            </div>
-                                            <div className="flex-1">
-                                                <Label className="text-sm text-gray-400 mb-2 block">URL</Label>
-                                                <Input
-                                                    {...register(`socials.${idx}.url` as const)}
-                                                    placeholder="https://..."
-                                                    className={`h-12 text-base ${errors.socials?.[idx]?.url ? 'border-red-500' : ''}`}
-                                                />
-                                                <FormError error={errors.socials?.[idx]?.url} />
-                                            </div>
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                className="text-red-400 mt-7"
-                                                onClick={() => removeSocial(idx)}
+                                    <Box key={field.id} sx={{ display: 'flex', gap: 2, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
+                                        <FormControl sx={{ minWidth: 200 }}>
+                                            <InputLabel>Plateforme</InputLabel>
+                                            <Select
+                                                {...register(`socials.${idx}.platform` as const)}
+                                                label="Plateforme"
+                                                defaultValue="FACEBOOK"
                                             >
-                                                <Trash2 className="h-5 w-5" />
-                                            </Button>
-                                        </div>
-                                    </div>
+                                                {platforms.map(p => <MenuItem key={p} value={p}>{p}</MenuItem>)}
+                                            </Select>
+                                        </FormControl>
+                                        <TextField
+                                            {...register(`socials.${idx}.url` as const)}
+                                            fullWidth
+                                            label="URL"
+                                            placeholder="https://..."
+                                            error={!!errors.socials?.[idx]?.url}
+                                            helperText={errors.socials?.[idx]?.url?.message}
+                                        />
+                                        <IconButton
+                                            color="error"
+                                            onClick={() => removeSocial(idx)}
+                                        >
+                                            <DeleteIcon />
+                                        </IconButton>
+                                    </Box>
                                 ))}
-                            </div>
+                            </Box>
                             <Button
-                                type="button"
-                                variant="outline"
-                                className="mt-6 w-full border-dashed h-12 text-base"
+                                variant="outlined"
+                                fullWidth
+                                startIcon={<AddIcon />}
                                 onClick={() => appendSocial({ platform: 'FACEBOOK', url: '' })}
+                                sx={{ mt: 3, borderStyle: 'dashed' }}
                             >
-                                <Plus className="mr-2 h-5 w-5" /> Ajouter un réseau
+                                Ajouter un réseau
                             </Button>
                         </CardContent>
                     </Card>
                 )}
 
                 {/* SCHEDULES TAB */}
-                {activeTab === 'schedules' && (
+                {activeTab === 3 && (
                     <Card>
-                        <CardContent className="pt-8 px-8">
-                            <div className="space-y-5">
+                        <CardContent sx={{ p: 4 }}>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                 {scheduleFields.map((field, idx) => (
-                                    <div key={field.id} className="flex flex-col md:flex-row gap-4 items-start md:items-center p-6 bg-white/5 rounded-lg">
-                                        <div className="flex-1 w-full md:w-auto">
-                                            <Label className="text-sm text-gray-400 mb-2 block">Jour <span className="text-red-400">*</span></Label>
-                                            <select
+                                    <Box key={field.id} sx={{ display: 'flex', gap: 2, p: 2, bgcolor: 'action.hover', borderRadius: 1, flexWrap: 'wrap' }}>
+                                        <FormControl sx={{ minWidth: 150 }}>
+                                            <InputLabel>Jour *</InputLabel>
+                                            <Select
                                                 {...register(`schedules.${idx}.day_of_week` as const)}
-                                                className={`w-full h-12 rounded-md border ${errors.schedules?.[idx]?.day_of_week ? 'border-red-500' : 'border-input'} bg-background px-4 py-2 text-base`}
+                                                label="Jour *"
+                                                defaultValue="SUNDAY"
                                             >
-                                                {days.map(d => <option key={d} value={d}>{daysTranslation[d]}</option>)}
-                                            </select>
-                                            <FormError error={errors.schedules?.[idx]?.day_of_week} />
-                                        </div>
-                                        <div className="w-full md:w-40">
-                                            <Label className="text-sm text-gray-400 mb-2 block">Heure <span className="text-red-400">*</span></Label>
-                                            <Input
-                                                type="time"
-                                                {...register(`schedules.${idx}.start_time` as const)}
-                                                className={`h-12 text-base ${errors.schedules?.[idx]?.start_time ? 'border-red-500' : ''}`}
-                                            />
-                                            <FormError error={errors.schedules?.[idx]?.start_time} />
-                                        </div>
-                                        <div className="flex-1 w-full md:w-auto">
-                                            <Label className="text-sm text-gray-400 mb-2 block">Type d'activité <span className="text-red-400">*</span></Label>
-                                            <select
+                                                {days.map(d => <MenuItem key={d} value={d}>{daysTranslation[d]}</MenuItem>)}
+                                            </Select>
+                                        </FormControl>
+                                        <TextField
+                                            {...register(`schedules.${idx}.start_time` as const)}
+                                            type="time"
+                                            label="Heure *"
+                                            sx={{ width: 150 }}
+                                            error={!!errors.schedules?.[idx]?.start_time}
+                                            helperText={errors.schedules?.[idx]?.start_time?.message}
+                                        />
+                                        <FormControl sx={{ minWidth: 200, flex: 1 }}>
+                                            <InputLabel>Type d'activité *</InputLabel>
+                                            <Select
                                                 {...register(`schedules.${idx}.activity_type_id` as const, { valueAsNumber: true })}
-                                                className={`w-full h-12 rounded-md border ${errors.schedules?.[idx]?.activity_type_id ? 'border-red-500' : 'border-input'} bg-background px-4 py-2 text-base`}
+                                                label="Type d'activité *"
+                                                defaultValue={activityTypes[0]?.id || 1}
                                             >
-                                                {activityTypes.map(t => <option key={t.id} value={t.id}>{t.label_fr}</option>)}
-                                            </select>
-                                            <FormError error={errors.schedules?.[idx]?.activity_type_id} />
-                                        </div>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            className="text-red-400 mt-6 md:mt-8"
+                                                {activityTypes.map(t => <MenuItem key={t.id} value={t.id}>{t.label_fr}</MenuItem>)}
+                                            </Select>
+                                        </FormControl>
+                                        <IconButton
+                                            color="error"
                                             onClick={() => removeSchedule(idx)}
                                         >
-                                            <Trash2 className="h-5 w-5" />
-                                        </Button>
-                                    </div>
+                                            <DeleteIcon />
+                                        </IconButton>
+                                    </Box>
                                 ))}
-                            </div>
+                            </Box>
                             <Button
-                                type="button"
-                                variant="outline"
-                                className="mt-6 w-full border-dashed h-12 text-base"
+                                variant="outlined"
+                                fullWidth
+                                startIcon={<AddIcon />}
                                 onClick={() => appendSchedule({ day_of_week: 'SUNDAY', start_time: '10:00', activity_type_id: activityTypes[0]?.id || 1 })}
+                                sx={{ mt: 3, borderStyle: 'dashed' }}
                             >
-                                <Plus className="mr-2 h-5 w-5" /> Ajouter un horaire
+                                Ajouter un horaire
                             </Button>
                         </CardContent>
                     </Card>
                 )}
-            </div>
-        </form>
+            </Box>
+        </Box>
     );
 }
