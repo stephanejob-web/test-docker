@@ -185,7 +185,7 @@ export default function DashboardHome() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <Card className="border-gray-800 bg-surface/50 hover:shadow-lg hover:shadow-blue-500/10 transition-shadow">
                     <CardHeader><CardTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5" /> Croissance Mensuelle</CardTitle></CardHeader>
-                    <CardContent className="h-80">
+                    <CardContent>
                         <BarChart
                             xAxis={[{
                                 scaleType: 'band',
@@ -212,7 +212,7 @@ export default function DashboardHome() {
 
                 <Card className="border-gray-800 bg-surface/50 hover:shadow-lg hover:shadow-purple-500/10 transition-shadow">
                     <CardHeader><CardTitle className="flex items-center gap-2"><Church className="h-5 w-5" /> Répartition par Dénomination</CardTitle></CardHeader>
-                    <CardContent className="h-80 flex justify-center items-center">
+                    <CardContent>
                         <PieChart
                             series={[{
                                 data: stats.charts.by_denomination.map((item: any, index: number) => ({
@@ -237,7 +237,7 @@ export default function DashboardHome() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <Card className="border-gray-800 bg-surface/50 hover:shadow-lg hover:shadow-green-500/10 transition-shadow">
                     <CardHeader><CardTitle className="flex items-center gap-2"><Church className="h-5 w-5" /> Distribution des Églises par Ville (Top 10)</CardTitle></CardHeader>
-                    <CardContent className="h-80">
+                    <CardContent>
                         <BarChart
                             dataset={stats.charts.churches_by_city}
                             yAxis={[{
@@ -265,7 +265,7 @@ export default function DashboardHome() {
 
                 <Card className="border-gray-800 bg-surface/50 hover:shadow-lg hover:shadow-yellow-500/10 transition-shadow">
                     <CardHeader><CardTitle className="flex items-center gap-2"><Calendar className="h-5 w-5" /> État des Événements</CardTitle></CardHeader>
-                    <CardContent className="h-80 flex justify-center items-center">
+                    <CardContent>
                         <PieChart
                             series={[{
                                 data: stats.charts.events_status.map((item: any, index: number) => ({
