@@ -20,7 +20,6 @@ import {
 } from '@mui/material';
 import {
   Menu as MenuIcon,
-  ChevronLeft as ChevronLeftIcon,
   Dashboard,
   Church as ChurchIcon,
   Event,
@@ -45,7 +44,6 @@ export default function DashboardLayout() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('lg'));
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [desktopOpen, setDesktopOpen] = useState(true); // Desktop drawer state
 
   const navigation: NavigationItem[] = [
     {
@@ -97,11 +95,7 @@ export default function DashboardLayout() {
   );
 
   const handleDrawerToggle = () => {
-    if (isMobile) {
-      setMobileOpen(!mobileOpen);
-    } else {
-      setDesktopOpen(!desktopOpen);
-    }
+    setMobileOpen(!mobileOpen);
   };
 
   const handleNavigate = (href: string) => {
@@ -267,44 +261,35 @@ export default function DashboardLayout() {
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-      {/* AppBar */}
-      <AppBar
-        position="fixed"
-        sx={{
-          width: {
-            xs: '100%',
-            lg: desktopOpen ? `calc(100% - ${drawerWidth}px)` : '100%'
-          },
-          ml: {
-            xs: 0,
-            lg: desktopOpen ? `${drawerWidth}px` : 0
-          },
-          backgroundColor: 'background.paper',
-          transition: theme.transitions.create(['width', 'margin'], {
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.leavingScreen,
-          }),
-        }}
-      >
-        <Toolbar>
-          <IconButton
-            color="inherit"
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ mr: 2 }}
-          >
-            {(!isMobile && desktopOpen) ? <ChevronLeftIcon /> : <MenuIcon />}
-          </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            Light Church
-          </Typography>
-        </Toolbar>
-      </AppBar>
+      {/* AppBar (Mobile only) */}
+      {isMobile && (
+        <AppBar
+          position="fixed"
+          sx={{
+            width: '100%',
+            backgroundColor: 'background.paper',
+          }}
+        >
+          <Toolbar>
+            <IconButton
+              color="inherit"
+              edge="start"
+              onClick={handleDrawerToggle}
+              sx={{ mr: 2 }}
+            >
+              <MenuIcon />
+            </IconButton>
+            <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
+              Light Church
+            </Typography>
+          </Toolbar>
+        </AppBar>
+      )}
 
       {/* Drawer */}
       <Box
         component="nav"
-        sx={{ width: { lg: desktopOpen ? drawerWidth : 0 }, flexShrink: { lg: 0 } }}
+        sx={{ width: { lg: drawerWidth }, flexShrink: { lg: 0 } }}
       >
         {/* Mobile drawer */}
         <Drawer
@@ -325,21 +310,17 @@ export default function DashboardLayout() {
           {drawer}
         </Drawer>
 
-        {/* Desktop drawer - Persistent variant */}
+        {/* Desktop drawer */}
         <Drawer
-          variant="persistent"
-          open={desktopOpen}
+          variant="permanent"
           sx={{
             display: { xs: 'none', lg: 'block' },
             '& .MuiDrawer-paper': {
               boxSizing: 'border-box',
               width: drawerWidth,
-              transition: theme.transitions.create('width', {
-                easing: theme.transitions.easing.sharp,
-                duration: theme.transitions.duration.enteringScreen,
-              }),
             },
           }}
+          open
         >
           {drawer}
         </Drawer>
@@ -351,21 +332,10 @@ export default function DashboardLayout() {
         sx={{
           flexGrow: 1,
           p: { xs: 2, sm: 3, md: 4 },
-          width: {
-            xs: '100%',
-            lg: desktopOpen ? `calc(100% - ${drawerWidth}px)` : '100%'
-          },
-          ml: {
-            xs: 0,
-            lg: desktopOpen ? `${drawerWidth}px` : 0
-          },
-          mt: 8, // Account for AppBar in all modes
+          width: { lg: `calc(100% - ${drawerWidth}px)` },
+          mt: { xs: 8, lg: 0 }, // Account for mobile AppBar
           minHeight: '100vh',
           backgroundColor: 'background.default',
-          transition: theme.transitions.create(['margin', 'width'], {
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.leavingScreen,
-          }),
         }}
       >
         <Outlet />

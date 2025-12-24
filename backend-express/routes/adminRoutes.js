@@ -534,6 +534,31 @@ router.delete('/events/:id', async (req, res) => {
     }
 });
 
+// Activité événementielle mensuelle (passé + futur)
+router.get('/stats/events-monthly', async (req, res) => {
+    try {
+        const [events] = await db.query(
+            `SELECT
+                DATE_FORMAT(start_datetime, '%Y-%m') as month,
+                COUNT(*) as count,
+                CASE
+                    WHEN start_datetime >= NOW() THEN 'future'
+                    ELSE 'past'
+                END as period
+             FROM events
+             WHERE start_datetime >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+               AND start_datetime <= DATE_ADD(NOW(), INTERVAL 3 MONTH)
+             GROUP BY month, period
+             ORDER BY month ASC`
+        );
+
+        res.json(events);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erreur serveur' });
+    }
+});
+
 // Stats complètes pour Dashboard Analytics
 router.get('/stats', async (req, res) => {
     try {
