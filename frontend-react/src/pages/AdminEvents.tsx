@@ -1,15 +1,95 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '../lib/axios';
-import { Button, Card, CardHeader, CardTitle, CardContent, Input, Label, Textarea, Checkbox } from '../components/ui';
-import { Trash2, Edit, Save, X, Search, ChevronLeft, ChevronRight, Calendar, MapPin, Sparkles, Play, CheckCircle } from 'lucide-react';
+import {
+    Box,
+    Typography,
+    Card,
+    CardContent,
+    TextField,
+    Button,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Paper,
+    IconButton,
+    Chip,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Select,
+    MenuItem,
+    FormControl,
+    InputLabel,
+    InputAdornment,
+    Grid,
+    Tabs,
+    Tab,
+    FormControlLabel,
+    Checkbox
+} from '@mui/material';
+import {
+    Delete as DeleteIcon,
+    Edit as EditIcon,
+    Save as SaveIcon,
+    Close as CloseIcon,
+    Search as SearchIcon,
+    PlayArrow as PlayArrowIcon,
+    CheckCircle as CheckCircleIcon
+} from '@mui/icons-material';
+import Pagination from '../components/Pagination';
 import { TableSkeleton } from '../components/Loader';
 
+interface Event {
+    id: number;
+    title: string;
+    start_datetime: string;
+    end_datetime: string;
+    status: string;
+    church_name: string;
+    first_name: string;
+    last_name: string;
+    latitude: number;
+    longitude: number;
+    church_id: number;
+}
+
+
+interface EventFormData {
+    title: string;
+    start_datetime: string;
+    end_datetime: string;
+    latitude: string;
+    longitude: string;
+    status: string;
+    church_id: string;
+    description: string;
+    address: string;
+    street_number: string;
+    street_name: string;
+    postal_code: string;
+    city: string;
+    speaker_name: string;
+    max_seats: string;
+    image_url: string;
+    is_free: number;
+    registration_link: string;
+    youtube_live: string;
+    has_parking: number;
+    parking_capacity: string;
+    is_parking_free: number;
+    parking_details: string;
+}
+
 export default function AdminEvents() {
-    const [events, setEvents] = useState<any[]>([]);
+    const [events, setEvents] = useState<Event[]>([]);
     const [loading, setLoading] = useState(true);
     const [editingId, setEditingId] = useState<number | null>(null);
-    const [formData, setFormData] = useState<any>(null);
-    const [activeTab, setActiveTab] = useState<'general' | 'location' | 'options'>('general');
+    const [formData, setFormData] = useState<EventFormData | null>(null);
+    const [activeTab, setActiveTab] = useState(0);
 
     // Filter & Pagination State
     const [search, setSearch] = useState('');
@@ -17,21 +97,15 @@ export default function AdminEvents() {
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [totalEvents, setTotalEvents] = useState(0);
+    const itemsPerPage = 10;
 
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            fetchEvents();
-        }, 300); // Simple debounce for search
-        return () => clearTimeout(timer);
-    }, [search, statusFilter, page]);
-
-    const fetchEvents = async () => {
+    const fetchEvents = useCallback(async () => {
         setLoading(true);
         try {
             const { data } = await api.get('/admin/events', {
                 params: {
                     page,
-                    limit: 10,
+                    limit: itemsPerPage,
                     search,
                     status: statusFilter
                 }
@@ -44,23 +118,35 @@ export default function AdminEvents() {
                 setTotalPages(data.meta.totalPages);
                 setTotalEvents(data.meta.total);
             }
-        } catch (e) { console.error(e); }
-        finally { setLoading(false); }
-    };
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    }, [page, search, statusFilter]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            fetchEvents();
+        }, 300); // Simple debounce for search
+        return () => clearTimeout(timer);
+    }, [fetchEvents]);
 
     const deleteEvent = async (id: number) => {
         if (!confirm('Supprimer cet événement ?')) return;
         try {
             await api.delete(`/admin/events/${id}`);
             fetchEvents();
-        } catch (e) { alert('Erreur suppression'); }
+        } catch (err) {
+            alert('Erreur suppression');
+        }
     };
 
     const updateEventStatus = async (id: number, newStatus: string) => {
         try {
             await api.put(`/admin/events/${id}`, { status: newStatus });
             fetchEvents();
-        } catch (e) {
+        } catch (err) {
             alert('Erreur lors de la mise à jour du statut');
         }
     };
@@ -96,348 +182,461 @@ export default function AdminEvents() {
                 parking_details: data.details?.parking_details || ''
             });
             setEditingId(id);
-            setActiveTab('general');
-        } catch (e) { alert('Erreur chargement'); }
+            setActiveTab(0);
+        } catch (err) {
+            alert('Erreur chargement');
+        }
     };
 
     const handleSave = async () => {
-        if (!editingId) return;
+        if (!editingId || !formData) return;
         try {
             await api.put(`/admin/events/${editingId}`, formData);
             alert('Sauvegardé !');
             setEditingId(null);
             fetchEvents();
-        } catch (e) { alert('Erreur sauvegarde'); }
+        } catch (err) {
+            alert('Erreur sauvegarde');
+        }
     };
 
-    const updateField = (field: string, value: any) => setFormData({ ...formData, [field]: value });
+    const updateField = (field: string, value: string | number) => {
+        if (!formData) return;
+        setFormData({ ...formData, [field]: value });
+    };
 
     const handleCheckboxChange = (id: string, checked: boolean) => {
-        setFormData((prev: any) => ({ ...prev, [id]: checked ? 1 : 0 }));
+        if (!formData) return;
+        setFormData({ ...formData, [id]: checked ? 1 : 0 });
+    };
+
+    const getStatusChip = (status: string) => {
+        switch (status) {
+            case 'PUBLISHED':
+                return <Chip label="À venir" color="info" size="small" sx={{ fontWeight: 'bold' }} />;
+            case 'ONGOING':
+                return <Chip label="En cours" sx={{ bgcolor: 'orange', color: 'white', fontWeight: 'bold' }} size="small" />;
+            case 'COMPLETED':
+                return <Chip label="Terminé" color="success" size="small" sx={{ fontWeight: 'bold' }} />;
+            case 'DRAFT':
+                return <Chip label="Brouillon" color="warning" size="small" sx={{ fontWeight: 'bold' }} />;
+            case 'CANCELLED':
+                return <Chip label="Annulé" color="error" size="small" sx={{ fontWeight: 'bold' }} />;
+            default:
+                return <Chip label={status} size="small" />;
+        }
     };
 
     return (
-        <div className="space-y-6">
-            <h1 className="text-3xl font-bold">Modération Événements</h1>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
+                Modération Événements
+            </Typography>
 
             {/* MODAL D'ÉDITION COMPLET */}
-            {editingId && formData && (
-                <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 overflow-y-auto">
-                    <Card className="w-full max-w-4xl bg-surface border-gray-700 my-8 max-h-[90vh] overflow-y-auto">
-                        <CardHeader className="flex flex-row justify-between sticky top-0 bg-surface z-10 border-b border-gray-700">
-                            <CardTitle>Édition Événement #{editingId}</CardTitle>
-                            <Button variant="ghost" size="sm" onClick={() => setEditingId(null)}><X className="h-6 w-6" /></Button>
-                        </CardHeader>
-                        <CardContent className="space-y-6 pt-6">
-                            {/* TABS */}
-                            <div className="flex border-b border-gray-700 gap-4">
-                                <button
-                                    onClick={() => setActiveTab('general')}
-                                    className={`pb-2 px-4 flex items-center gap-2 transition-colors ${activeTab === 'general' ? 'border-b-2 border-primary text-primary' : 'text-gray-400 hover:text-gray-300'}`}
+            <Dialog
+                open={!!editingId && !!formData}
+                onClose={() => setEditingId(null)}
+                maxWidth="lg"
+                fullWidth
+                PaperProps={{
+                    sx: { maxHeight: '90vh' }
+                }}
+            >
+                <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="h6">Édition Événement #{editingId}</Typography>
+                    <IconButton onClick={() => setEditingId(null)} size="small">
+                        <CloseIcon />
+                    </IconButton>
+                </DialogTitle>
+                <DialogContent dividers>
+                    <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+                        <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)}>
+                            <Tab label="Général" />
+                            <Tab label="Lieu" />
+                            <Tab label="Options" />
+                        </Tabs>
+                    </Box>
+
+                    {/* TAB: GÉNÉRAL */}
+                    {activeTab === 0 && formData && (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            <TextField
+                                fullWidth
+                                label="Titre"
+                                value={formData.title}
+                                onChange={e => updateField('title', e.target.value)}
+                            />
+
+                            <Grid container spacing={2}>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        type="datetime-local"
+                                        label="Date de début"
+                                        value={formData.start_datetime}
+                                        onChange={e => updateField('start_datetime', e.target.value)}
+                                        InputLabelProps={{ shrink: true }}
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        type="datetime-local"
+                                        label="Date de fin"
+                                        value={formData.end_datetime}
+                                        onChange={e => updateField('end_datetime', e.target.value)}
+                                        InputLabelProps={{ shrink: true }}
+                                    />
+                                </Grid>
+                            </Grid>
+
+                            <TextField
+                                fullWidth
+                                label="Intervenant"
+                                value={formData.speaker_name}
+                                onChange={e => updateField('speaker_name', e.target.value)}
+                                placeholder="Ex: Pasteur John Doe"
+                            />
+
+                            <FormControl fullWidth>
+                                <InputLabel>Statut</InputLabel>
+                                <Select
+                                    value={formData.status || 'DRAFT'}
+                                    label="Statut"
+                                    onChange={e => updateField('status', e.target.value)}
                                 >
-                                    <Calendar className="h-4 w-4" /> Général
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab('location')}
-                                    className={`pb-2 px-4 flex items-center gap-2 transition-colors ${activeTab === 'location' ? 'border-b-2 border-primary text-primary' : 'text-gray-400 hover:text-gray-300'}`}
-                                >
-                                    <MapPin className="h-4 w-4" /> Lieu
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab('options')}
-                                    className={`pb-2 px-4 flex items-center gap-2 transition-colors ${activeTab === 'options' ? 'border-b-2 border-primary text-primary' : 'text-gray-400 hover:text-gray-300'}`}
-                                >
-                                    <Sparkles className="h-4 w-4" /> Options
-                                </button>
-                            </div>
+                                    <MenuItem value="DRAFT">Brouillon</MenuItem>
+                                    <MenuItem value="PUBLISHED">À venir</MenuItem>
+                                    <MenuItem value="ONGOING">En cours</MenuItem>
+                                    <MenuItem value="COMPLETED">Terminé</MenuItem>
+                                    <MenuItem value="CANCELLED">Annulé</MenuItem>
+                                </Select>
+                            </FormControl>
 
-                            {/* TAB: GÉNÉRAL */}
-                            {activeTab === 'general' && (
-                                <div className="space-y-4">
-                                    <div>
-                                        <Label>Titre *</Label>
-                                        <Input value={formData.title} onChange={e => updateField('title', e.target.value)} />
-                                    </div>
+                            <TextField
+                                fullWidth
+                                multiline
+                                rows={4}
+                                label="Description"
+                                value={formData.description}
+                                onChange={e => updateField('description', e.target.value)}
+                            />
 
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <Label>Date de début *</Label>
-                                            <Input type="datetime-local" value={formData.start_datetime} onChange={e => updateField('start_datetime', e.target.value)} />
-                                        </div>
-                                        <div>
-                                            <Label>Date de fin *</Label>
-                                            <Input type="datetime-local" value={formData.end_datetime} onChange={e => updateField('end_datetime', e.target.value)} />
-                                        </div>
-                                    </div>
+                            <TextField
+                                fullWidth
+                                label="Image (URL)"
+                                value={formData.image_url}
+                                onChange={e => updateField('image_url', e.target.value)}
+                                placeholder="https://..."
+                            />
 
-                                    <div>
-                                        <Label>Intervenant</Label>
-                                        <Input value={formData.speaker_name} onChange={e => updateField('speaker_name', e.target.value)} placeholder="Ex: Pasteur John Doe" />
-                                    </div>
+                            <Grid container spacing={2}>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        type="number"
+                                        label="Places disponibles"
+                                        value={formData.max_seats}
+                                        onChange={e => updateField('max_seats', e.target.value)}
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 6 }} sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <FormControlLabel
+                                        control={
+                                            <Checkbox
+                                                checked={formData.is_free === 1}
+                                                onChange={(e) => handleCheckboxChange('is_free', e.target.checked)}
+                                            />
+                                        }
+                                        label="Événement gratuit"
+                                    />
+                                </Grid>
+                            </Grid>
+                        </Box>
+                    )}
 
-                                    <div>
-                                        <Label>Statut</Label>
-                                        <select
-                                            className="flex h-10 w-full rounded-md border border-gray-700 bg-background px-3 py-2 text-sm"
-                                            value={formData.status || 'DRAFT'}
-                                            onChange={e => updateField('status', e.target.value)}
-                                        >
-                                            <option value="DRAFT">Brouillon</option>
-                                            <option value="PUBLISHED">À venir</option>
-                                            <option value="ONGOING">En cours</option>
-                                            <option value="COMPLETED">Terminé</option>
-                                            <option value="CANCELLED">Annulé</option>
-                                        </select>
-                                    </div>
+                    {/* TAB: LIEU */}
+                    {activeTab === 1 && formData && (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            <TextField
+                                fullWidth
+                                label="Adresse complète"
+                                value={formData.address}
+                                onChange={e => updateField('address', e.target.value)}
+                            />
 
-                                    <div>
-                                        <Label>Description</Label>
-                                        <Textarea value={formData.description} onChange={e => updateField('description', e.target.value)} className="h-32" />
-                                    </div>
+                            <Grid container spacing={2}>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        label="Numéro de rue"
+                                        value={formData.street_number}
+                                        onChange={e => updateField('street_number', e.target.value)}
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        label="Nom de rue"
+                                        value={formData.street_name}
+                                        onChange={e => updateField('street_name', e.target.value)}
+                                    />
+                                </Grid>
+                            </Grid>
 
-                                    <div>
-                                        <Label>Image (URL)</Label>
-                                        <Input value={formData.image_url} onChange={e => updateField('image_url', e.target.value)} placeholder="https://..." />
-                                    </div>
+                            <Grid container spacing={2}>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        label="Code postal"
+                                        value={formData.postal_code}
+                                        onChange={e => updateField('postal_code', e.target.value)}
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        label="Ville"
+                                        value={formData.city}
+                                        onChange={e => updateField('city', e.target.value)}
+                                    />
+                                </Grid>
+                            </Grid>
 
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <Label>Places disponibles</Label>
-                                            <Input type="number" value={formData.max_seats} onChange={e => updateField('max_seats', e.target.value)} />
-                                        </div>
-                                        <div className="flex items-center gap-2 mt-8">
-                                            <Checkbox id="is_free" checked={formData.is_free === 1} onCheckedChange={(checked) => handleCheckboxChange('is_free', checked as boolean)} />
-                                            <Label htmlFor="is_free" className="cursor-pointer">Événement gratuit</Label>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
+                            <Grid container spacing={2}>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        label="Latitude"
+                                        value={formData.latitude}
+                                        onChange={e => updateField('latitude', e.target.value)}
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        label="Longitude"
+                                        value={formData.longitude}
+                                        onChange={e => updateField('longitude', e.target.value)}
+                                    />
+                                </Grid>
+                            </Grid>
 
-                            {/* TAB: LIEU */}
-                            {activeTab === 'location' && (
-                                <div className="space-y-4">
-                                    <div>
-                                        <Label>Adresse complète</Label>
-                                        <Input value={formData.address} onChange={e => updateField('address', e.target.value)} />
-                                    </div>
+                            <Box sx={{ pt: 2, borderTop: 1, borderColor: 'divider' }}>
+                                <FormControlLabel
+                                    control={
+                                        <Checkbox
+                                            checked={formData.has_parking === 1}
+                                            onChange={(e) => handleCheckboxChange('has_parking', e.target.checked)}
+                                        />
+                                    }
+                                    label="Parking disponible"
+                                />
 
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <Label>Numéro de rue</Label>
-                                            <Input value={formData.street_number} onChange={e => updateField('street_number', e.target.value)} />
-                                        </div>
-                                        <div>
-                                            <Label>Nom de rue</Label>
-                                            <Input value={formData.street_name} onChange={e => updateField('street_name', e.target.value)} />
-                                        </div>
-                                    </div>
+                                {formData.has_parking === 1 && (
+                                    <Box sx={{ pl: 4, pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                        <Grid container spacing={2}>
+                                            <Grid size={{ xs: 12, md: 6 }}>
+                                                <TextField
+                                                    fullWidth
+                                                    type="number"
+                                                    label="Capacité du parking"
+                                                    value={formData.parking_capacity}
+                                                    onChange={e => updateField('parking_capacity', e.target.value)}
+                                                />
+                                            </Grid>
+                                            <Grid size={{ xs: 12, md: 6 }} sx={{ display: 'flex', alignItems: 'center' }}>
+                                                <FormControlLabel
+                                                    control={
+                                                        <Checkbox
+                                                            checked={formData.is_parking_free === 1}
+                                                            onChange={(e) => handleCheckboxChange('is_parking_free', e.target.checked)}
+                                                        />
+                                                    }
+                                                    label="Parking gratuit"
+                                                />
+                                            </Grid>
+                                        </Grid>
+                                        <TextField
+                                            fullWidth
+                                            multiline
+                                            rows={2}
+                                            label="Détails du parking"
+                                            value={formData.parking_details}
+                                            onChange={e => updateField('parking_details', e.target.value)}
+                                        />
+                                    </Box>
+                                )}
+                            </Box>
+                        </Box>
+                    )}
 
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <Label>Code postal</Label>
-                                            <Input value={formData.postal_code} onChange={e => updateField('postal_code', e.target.value)} />
-                                        </div>
-                                        <div>
-                                            <Label>Ville</Label>
-                                            <Input value={formData.city} onChange={e => updateField('city', e.target.value)} />
-                                        </div>
-                                    </div>
+                    {/* TAB: OPTIONS */}
+                    {activeTab === 2 && formData && (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            <TextField
+                                fullWidth
+                                label="Lien d'inscription"
+                                value={formData.registration_link}
+                                onChange={e => updateField('registration_link', e.target.value)}
+                                placeholder="https://..."
+                            />
 
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <Label>Latitude</Label>
-                                            <Input value={formData.latitude} onChange={e => updateField('latitude', e.target.value)} />
-                                        </div>
-                                        <div>
-                                            <Label>Longitude</Label>
-                                            <Input value={formData.longitude} onChange={e => updateField('longitude', e.target.value)} />
-                                        </div>
-                                    </div>
+                            <TextField
+                                fullWidth
+                                label="Lien YouTube Live"
+                                value={formData.youtube_live}
+                                onChange={e => updateField('youtube_live', e.target.value)}
+                                placeholder="https://youtube.com/..."
+                            />
+                        </Box>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setEditingId(null)}>Annuler</Button>
+                    <Button
+                        variant="contained"
+                        color="success"
+                        startIcon={<SaveIcon />}
+                        onClick={handleSave}
+                    >
+                        Sauvegarder les modifications
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
-                                    <div className="border-t border-gray-700 pt-4 mt-4">
-                                        <div className="flex items-center gap-2 mb-4">
-                                            <Checkbox id="has_parking" checked={formData.has_parking === 1} onCheckedChange={(checked) => handleCheckboxChange('has_parking', checked as boolean)} />
-                                            <Label htmlFor="has_parking" className="cursor-pointer">Parking disponible</Label>
-                                        </div>
-
-                                        {formData.has_parking === 1 && (
-                                            <div className="space-y-4 ml-6 border-l-2 border-blue-500 pl-4">
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div>
-                                                        <Label>Capacité du parking</Label>
-                                                        <Input type="number" value={formData.parking_capacity} onChange={e => updateField('parking_capacity', e.target.value)} />
-                                                    </div>
-                                                    <div className="flex items-center gap-2 mt-8">
-                                                        <Checkbox id="is_parking_free" checked={formData.is_parking_free === 1} onCheckedChange={(checked) => handleCheckboxChange('is_parking_free', checked as boolean)} />
-                                                        <Label htmlFor="is_parking_free" className="cursor-pointer">Parking gratuit</Label>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <Label>Détails du parking</Label>
-                                                    <Textarea value={formData.parking_details} onChange={e => updateField('parking_details', e.target.value)} />
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* TAB: OPTIONS */}
-                            {activeTab === 'options' && (
-                                <div className="space-y-4">
-                                    <div>
-                                        <Label>Lien d'inscription</Label>
-                                        <Input value={formData.registration_link} onChange={e => updateField('registration_link', e.target.value)} placeholder="https://..." />
-                                    </div>
-
-                                    <div>
-                                        <Label>Lien YouTube Live</Label>
-                                        <Input value={formData.youtube_live} onChange={e => updateField('youtube_live', e.target.value)} placeholder="https://youtube.com/..." />
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className="flex justify-end pt-4 border-t border-gray-700">
-                                <Button onClick={handleSave} className="bg-green-600 hover:bg-green-700">
-                                    <Save className="mr-2 h-4 w-4" /> Sauvegarder les modifications
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            )}
-
-            <Card>
-                <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <CardTitle>Tous les événements <span className="text-sm font-normal text-gray-500">({totalEvents})</span></CardTitle>
-                    <div className="flex gap-2">
-                        <div className="relative">
-                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
-                            <Input
+            {/* Filters and Search */}
+            <Card sx={{ bgcolor: 'background.paper' }}>
+                <CardContent sx={{ pt: 3 }}>
+                    <Grid container spacing={2} alignItems="center">
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <TextField
+                                fullWidth
                                 placeholder="Rechercher..."
-                                className="pl-9 w-[200px] md:w-[300px]"
                                 value={search}
                                 onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                                InputProps={{
+                                    startAdornment: (
+                                        <InputAdornment position="start">
+                                            <SearchIcon sx={{ color: 'text.secondary' }} />
+                                        </InputAdornment>
+                                    ),
+                                }}
+                                label="Rechercher"
                             />
-                        </div>
-                        <select
-                            className="h-10 px-3 rounded-md border border-gray-700 bg-background text-sm"
-                            value={statusFilter}
-                            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-                        >
-                            <option value="ALL">Tous les statuts</option>
-                            <option value="DRAFT">Brouillon</option>
-                            <option value="PUBLISHED">À venir</option>
-                            <option value="ONGOING">En cours</option>
-                            <option value="COMPLETED">Terminé</option>
-                            <option value="CANCELLED">Annulé</option>
-                        </select>
-                    </div>
-                </CardHeader>
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <FormControl fullWidth>
+                                <InputLabel>Statut</InputLabel>
+                                <Select
+                                    value={statusFilter}
+                                    label="Statut"
+                                    onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+                                >
+                                    <MenuItem value="ALL">Tous les statuts</MenuItem>
+                                    <MenuItem value="DRAFT">Brouillon</MenuItem>
+                                    <MenuItem value="PUBLISHED">À venir</MenuItem>
+                                    <MenuItem value="ONGOING">En cours</MenuItem>
+                                    <MenuItem value="COMPLETED">Terminé</MenuItem>
+                                    <MenuItem value="CANCELLED">Annulé</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Grid>
+                    </Grid>
+                </CardContent>
+            </Card>
+
+            <Card>
                 <CardContent>
+                    <Typography variant="h6" sx={{ mb: 2 }}>
+                        Tous les événements ({totalEvents})
+                    </Typography>
                     {loading ? (
-                        <TableSkeleton rows={10} />
+                        <TableSkeleton rows={itemsPerPage} />
                     ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
-                                <thead>
-                                    <tr className="border-b border-gray-800 text-gray-400">
-                                        <th className="py-3 px-4">Titre</th>
-                                        <th className="py-3 px-4">Date</th>
-                                        <th className="py-3 px-4">Statut</th>
-                                        <th className="py-3 px-4">Église</th>
-                                        <th className="py-3 px-4">Créé par</th>
-                                        <th className="py-3 px-4 text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                        <TableContainer component={Paper} sx={{ bgcolor: 'transparent' }}>
+                            <Table>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell sx={{ color: 'text.secondary' }}>Titre</TableCell>
+                                        <TableCell sx={{ color: 'text.secondary' }}>Date</TableCell>
+                                        <TableCell sx={{ color: 'text.secondary' }}>Statut</TableCell>
+                                        <TableCell sx={{ color: 'text.secondary' }}>Église</TableCell>
+                                        <TableCell sx={{ color: 'text.secondary' }}>Créé par</TableCell>
+                                        <TableCell align="right" sx={{ color: 'text.secondary' }}>Actions</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
                                     {events.map(ev => (
-                                    <tr key={ev.id} className="border-b border-gray-800 hover:bg-white/5">
-                                        <td className="py-3 px-4 font-bold">{ev.title}</td>
-                                        <td className="py-3 px-4 text-gray-300">{new Date(ev.start_datetime).toLocaleDateString()} {new Date(ev.start_datetime).toLocaleTimeString()}</td>
-                                        <td className="py-3 px-4">
-                                            <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                                                ev.status === 'PUBLISHED' ? 'bg-blue-900/50 text-blue-400 border border-blue-900' :
-                                                ev.status === 'ONGOING' ? 'bg-orange-900/50 text-orange-400 border border-orange-900' :
-                                                ev.status === 'COMPLETED' ? 'bg-green-900/50 text-green-400 border border-green-900' :
-                                                ev.status === 'DRAFT' ? 'bg-yellow-900/50 text-yellow-500 border border-yellow-900' :
-                                                'bg-red-900/50 text-red-500 border border-red-900' // CANCELLED
-                                                }`}>
-                                                {
-                                                    ev.status === 'PUBLISHED' ? 'À venir' :
-                                                    ev.status === 'ONGOING' ? 'En cours' :
-                                                    ev.status === 'COMPLETED' ? 'Terminé' :
-                                                    ev.status === 'DRAFT' ? 'Brouillon' :
-                                                    'Annulé'
-                                                }
-                                            </span>
-                                        </td>
-                                        <td className="py-3 px-4 text-blue-400">{ev.church_name || 'N/A'}</td>
-                                        <td className="py-3 px-4 text-gray-500">{ev.first_name} {ev.last_name}</td>
-                                        <td className="py-3 px-4 text-right space-x-1">
-                                            {/* Workflow buttons */}
-                                            {ev.status === 'PUBLISHED' && (
-                                                <Button
-                                                    size="sm"
-                                                    className="bg-orange-600 hover:bg-orange-700"
-                                                    onClick={() => updateEventStatus(ev.id, 'ONGOING')}
-                                                    title="Marquer comme En cours"
-                                                >
-                                                    <Play className="h-4 w-4" />
-                                                </Button>
-                                            )}
-                                            {ev.status === 'ONGOING' && (
-                                                <Button
-                                                    size="sm"
-                                                    className="bg-green-600 hover:bg-green-700"
-                                                    onClick={() => updateEventStatus(ev.id, 'COMPLETED')}
-                                                    title="Marquer comme Terminé"
-                                                >
-                                                    <CheckCircle className="h-4 w-4" />
-                                                </Button>
-                                            )}
-                                            <Button size="sm" className="bg-blue-600 hover:bg-blue-500" onClick={() => handleEdit(ev.id)}>
-                                                <Edit className="h-4 w-4" />
-                                            </Button>
-                                            <Button size="sm" variant="danger" onClick={() => deleteEvent(ev.id)}>
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </td>
-                                    </tr>
+                                        <TableRow
+                                            key={ev.id}
+                                            sx={{ '&:hover': { bgcolor: 'action.hover' } }}
+                                        >
+                                            <TableCell sx={{ fontWeight: 'bold' }}>{ev.title}</TableCell>
+                                            <TableCell sx={{ color: 'text.secondary' }}>
+                                                {new Date(ev.start_datetime).toLocaleDateString()} {new Date(ev.start_datetime).toLocaleTimeString()}
+                                            </TableCell>
+                                            <TableCell>{getStatusChip(ev.status)}</TableCell>
+                                            <TableCell sx={{ color: 'info.main' }}>{ev.church_name || 'N/A'}</TableCell>
+                                            <TableCell sx={{ color: 'text.secondary' }}>{ev.first_name} {ev.last_name}</TableCell>
+                                            <TableCell align="right">
+                                                <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
+                                                    {ev.status === 'PUBLISHED' && (
+                                                        <IconButton
+                                                            size="small"
+                                                            sx={{ bgcolor: 'orange', color: 'white', '&:hover': { bgcolor: 'darkorange' } }}
+                                                            onClick={() => updateEventStatus(ev.id, 'ONGOING')}
+                                                            title="Marquer comme En cours"
+                                                        >
+                                                            <PlayArrowIcon fontSize="small" />
+                                                        </IconButton>
+                                                    )}
+                                                    {ev.status === 'ONGOING' && (
+                                                        <IconButton
+                                                            size="small"
+                                                            sx={{ bgcolor: 'success.main', color: 'white', '&:hover': { bgcolor: 'success.dark' } }}
+                                                            onClick={() => updateEventStatus(ev.id, 'COMPLETED')}
+                                                            title="Marquer comme Terminé"
+                                                        >
+                                                            <CheckCircleIcon fontSize="small" />
+                                                        </IconButton>
+                                                    )}
+                                                    <IconButton
+                                                        size="small"
+                                                        sx={{ bgcolor: 'primary.main', color: 'white', '&:hover': { bgcolor: 'primary.dark' } }}
+                                                        onClick={() => handleEdit(ev.id)}
+                                                    >
+                                                        <EditIcon fontSize="small" />
+                                                    </IconButton>
+                                                    <IconButton
+                                                        size="small"
+                                                        color="error"
+                                                        onClick={() => deleteEvent(ev.id)}
+                                                    >
+                                                        <DeleteIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Box>
+                                            </TableCell>
+                                        </TableRow>
                                     ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
                     )}
 
                     {/* Pagination Controls */}
                     {!loading && (
-                        <div className="flex items-center justify-between mt-4">
-                        <div className="text-sm text-gray-400">
-                            Page {page} sur {totalPages}
-                        </div>
-                        <div className="flex gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setPage(p => Math.max(1, p - 1))}
-                                disabled={page === 1}
-                            >
-                                <ChevronLeft className="h-4 w-4" /> Précédent
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                                disabled={page === totalPages}
-                            >
-                                Suivant <ChevronRight className="h-4 w-4" />
-                            </Button>
-                        </div>
-                        </div>
+                        <Pagination
+                            currentPage={page}
+                            totalPages={totalPages}
+                            total={totalEvents}
+                            itemsPerPage={itemsPerPage}
+                            onPageChange={(newPage) => setPage(newPage)}
+                        />
                     )}
                 </CardContent>
             </Card>
-        </div >
+        </Box>
     );
 }
