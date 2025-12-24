@@ -3,8 +3,7 @@ import api from '../lib/axios';
 import { useAuth } from '../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui';
 import { Users, Church, Calendar, UserPlus, TrendingUp, ArrowRight, CalendarClock } from 'lucide-react';
-import { BarChart } from '@mui/x-charts/BarChart';
-import { PieChart } from '@mui/x-charts/PieChart';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Link } from 'react-router-dom';
 
 export default function DashboardHome() {
@@ -148,11 +147,8 @@ export default function DashboardHome() {
     // Trouver le nombre d'événements en cours
     const ongoingEvents = stats.charts.events_status.find((s: any) => s.name === 'En cours')?.count || 0;
 
-    // Transform Growth Data for MUI X Charts
-    const growthMonths: string[] = [];
-    const growthUsers: number[] = [];
-    const growthChurches: number[] = [];
-
+    // Transform Growth Data for Recharts
+    const growthData: any[] = [];
     const months = new Set([
         ...stats.charts.growth.users.map((u: any) => u.month),
         ...stats.charts.growth.churches.map((c: any) => c.month)
@@ -161,10 +157,14 @@ export default function DashboardHome() {
     months.forEach(m => {
         const u = stats.charts.growth.users.find((x: any) => x.month === m);
         const c = stats.charts.growth.churches.find((x: any) => x.month === m);
-        growthMonths.push(m);
-        growthUsers.push(u ? u.count : 0);
-        growthChurches.push(c ? c.count : 0);
+        growthData.push({
+            name: m,
+            Utilisateurs: u ? u.count : 0,
+            Églises: c ? c.count : 0
+        });
     });
+
+    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
     return (
         <div className="space-y-8">
@@ -185,50 +185,50 @@ export default function DashboardHome() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <Card className="border-gray-800 bg-surface/50 hover:shadow-lg hover:shadow-blue-500/10 transition-shadow">
                     <CardHeader><CardTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5" /> Croissance Mensuelle</CardTitle></CardHeader>
-                    <CardContent>
-                        <BarChart
-                            xAxis={[{
-                                scaleType: 'band',
-                                data: growthMonths,
-                                tickLabelStyle: { fill: '#9CA3AF', fontSize: 12 }
-                            }]}
-                            yAxis={[{
-                                tickLabelStyle: { fill: '#9CA3AF', fontSize: 12 }
-                            }]}
-                            series={[
-                                { data: growthUsers, label: 'Utilisateurs', color: '#3B82F6' },
-                                { data: growthChurches, label: 'Églises', color: '#8B5CF6' }
-                            ]}
-                            height={280}
-                            margin={{ top: 10, right: 10, bottom: 30, left: 40 }}
-                            sx={{
-                                '& .MuiChartsAxis-line': { stroke: '#374151' },
-                                '& .MuiChartsAxis-tick': { stroke: '#374151' },
-                                '& .MuiChartsGrid-line': { stroke: '#374151', strokeDasharray: '3 3' }
-                            }}
-                        />
+                    <CardContent className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={growthData}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                                <XAxis dataKey="name" stroke="#9CA3AF" style={{ fontSize: '12px' }} />
+                                <YAxis stroke="#9CA3AF" style={{ fontSize: '12px' }} />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px', color: '#E5E7EB' }}
+                                    itemStyle={{ color: '#E5E7EB' }}
+                                />
+                                <Legend wrapperStyle={{ color: '#E5E7EB' }} />
+                                <Bar dataKey="Utilisateurs" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="Églises" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
                     </CardContent>
                 </Card>
 
                 <Card className="border-gray-800 bg-surface/50 hover:shadow-lg hover:shadow-purple-500/10 transition-shadow">
                     <CardHeader><CardTitle className="flex items-center gap-2"><Church className="h-5 w-5" /> Répartition par Dénomination</CardTitle></CardHeader>
-                    <CardContent>
-                        <PieChart
-                            series={[{
-                                data: stats.charts.by_denomination.map((item: any, index: number) => ({
-                                    id: index,
-                                    value: item.count,
-                                    label: item.name,
-                                    color: ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'][index % 6]
-                                })),
-                                innerRadius: 60,
-                                outerRadius: 100,
-                                paddingAngle: 2,
-                                cornerRadius: 4,
-                            }]}
-                            height={280}
-                            margin={{ top: 10, right: 150, bottom: 10, left: 10 }}
-                        />
+                    <CardContent className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={stats.charts.by_denomination}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={60}
+                                    outerRadius={100}
+                                    fill="#8884d8"
+                                    paddingAngle={5}
+                                    dataKey="count"
+                                >
+                                    {stats.charts.by_denomination.map((_: any, index: number) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px' }}
+                                    itemStyle={{ color: '#E5E7EB' }}
+                                />
+                                <Legend wrapperStyle={{ color: '#E5E7EB' }} />
+                            </PieChart>
+                        </ResponsiveContainer>
                     </CardContent>
                 </Card>
             </div>
@@ -237,49 +237,48 @@ export default function DashboardHome() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <Card className="border-gray-800 bg-surface/50 hover:shadow-lg hover:shadow-green-500/10 transition-shadow">
                     <CardHeader><CardTitle className="flex items-center gap-2"><Church className="h-5 w-5" /> Distribution des Églises par Ville (Top 10)</CardTitle></CardHeader>
-                    <CardContent>
-                        <BarChart
-                            dataset={stats.charts.churches_by_city}
-                            yAxis={[{
-                                scaleType: 'band',
-                                dataKey: 'name',
-                                tickLabelStyle: { fill: '#9CA3AF', fontSize: 11 }
-                            }]}
-                            xAxis={[{
-                                tickLabelStyle: { fill: '#9CA3AF', fontSize: 12 }
-                            }]}
-                            series={[
-                                { dataKey: 'count', label: 'Nombre d\'églises', color: '#10B981' }
-                            ]}
-                            layout="horizontal"
-                            height={280}
-                            margin={{ top: 10, right: 30, bottom: 30, left: 100 }}
-                            sx={{
-                                '& .MuiChartsAxis-line': { stroke: '#374151' },
-                                '& .MuiChartsAxis-tick': { stroke: '#374151' },
-                                '& .MuiChartsGrid-line': { stroke: '#374151', strokeDasharray: '3 3' }
-                            }}
-                        />
+                    <CardContent className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={stats.charts.churches_by_city} layout="vertical">
+                                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                                <XAxis type="number" stroke="#9CA3AF" style={{ fontSize: '12px' }} />
+                                <YAxis dataKey="name" type="category" stroke="#9CA3AF" width={100} style={{ fontSize: '11px' }} />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px' }}
+                                    itemStyle={{ color: '#E5E7EB' }}
+                                />
+                                <Bar dataKey="count" fill="#10B981" radius={[0, 4, 4, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
                     </CardContent>
                 </Card>
 
                 <Card className="border-gray-800 bg-surface/50 hover:shadow-lg hover:shadow-yellow-500/10 transition-shadow">
                     <CardHeader><CardTitle className="flex items-center gap-2"><Calendar className="h-5 w-5" /> État des Événements</CardTitle></CardHeader>
-                    <CardContent>
-                        <PieChart
-                            series={[{
-                                data: stats.charts.events_status.map((item: any, index: number) => ({
-                                    id: index,
-                                    value: item.count,
-                                    label: item.name,
-                                    color: item.name === 'À venir' ? '#3B82F6' : item.name === 'En cours' ? '#F59E0B' : '#10B981'
-                                })),
-                                arcLabel: (item) => `${((item.value / stats.charts.events_status.reduce((sum: number, s: any) => sum + s.count, 0)) * 100).toFixed(0)}%`,
-                                arcLabelMinAngle: 35,
-                            }]}
-                            height={280}
-                            margin={{ top: 10, right: 120, bottom: 10, left: 10 }}
-                        />
+                    <CardContent className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={stats.charts.events_status}
+                                    cx="50%"
+                                    cy="50%"
+                                    labelLine={false}
+                                    label={({ name, percent }: any) => `${name}: ${((percent || 0) * 100).toFixed(0)}%`}
+                                    outerRadius={100}
+                                    fill="#8884d8"
+                                    dataKey="count"
+                                >
+                                    <Cell fill="#3B82F6" /> {/* À venir - Bleu */}
+                                    <Cell fill="#F59E0B" /> {/* En cours - Orange */}
+                                    <Cell fill="#10B981" /> {/* Terminés - Vert */}
+                                </Pie>
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px' }}
+                                    itemStyle={{ color: '#E5E7EB' }}
+                                />
+                                <Legend wrapperStyle={{ color: '#E5E7EB' }} />
+                            </PieChart>
+                        </ResponsiveContainer>
                     </CardContent>
                 </Card>
             </div>
