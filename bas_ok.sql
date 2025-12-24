@@ -82,6 +82,10 @@ CREATE TABLE church_details (
   pastor_name varchar(100) DEFAULT NULL,
   logo_url varchar(512) DEFAULT NULL,
   address text,
+  street_number varchar(10) DEFAULT NULL,
+  street_name varchar(255) DEFAULT NULL,
+  postal_code varchar(10) DEFAULT NULL,
+  city varchar(100) DEFAULT NULL,
   phone varchar(20) DEFAULT NULL,
   description text,
   website varchar(255) DEFAULT NULL,
@@ -89,6 +93,7 @@ CREATE TABLE church_details (
   parking_capacity int DEFAULT NULL,
   is_parking_free tinyint(1) DEFAULT '1',
   PRIMARY KEY (church_id),
+  KEY idx_church_city (city),
   FULLTEXT KEY idx_church_desc_search (description),
   CONSTRAINT fk_det_church FOREIGN KEY (church_id) REFERENCES churches (id) ON DELETE CASCADE,
   CONSTRAINT fk_det_lang FOREIGN KEY (language_id) REFERENCES languages (id)
