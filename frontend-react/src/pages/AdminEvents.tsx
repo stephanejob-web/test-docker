@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../lib/axios';
 import {
     Box,
@@ -85,6 +86,7 @@ interface EventFormData {
 }
 
 export default function AdminEvents() {
+    const navigate = useNavigate();
     const [events, setEvents] = useState<Event[]>([]);
     const [loading, setLoading] = useState(true);
     const [editingId, setEditingId] = useState<number | null>(null);
@@ -151,41 +153,8 @@ export default function AdminEvents() {
         }
     };
 
-    const handleEdit = async (id: number) => {
-        try {
-            const { data } = await api.get(`/admin/events/${id}`);
-            setFormData({
-                // Events table
-                title: data.title || '',
-                start_datetime: data.start_datetime ? new Date(data.start_datetime).toISOString().slice(0, 16) : '',
-                end_datetime: data.end_datetime ? new Date(data.end_datetime).toISOString().slice(0, 16) : '',
-                latitude: data.latitude || '',
-                longitude: data.longitude || '',
-                status: data.status || 'DRAFT',
-                church_id: data.church_id || '',
-                // Event_details table
-                description: data.details?.description || '',
-                address: data.details?.address || '',
-                street_number: data.details?.street_number || '',
-                street_name: data.details?.street_name || '',
-                postal_code: data.details?.postal_code || '',
-                city: data.details?.city || '',
-                speaker_name: data.details?.speaker_name || '',
-                max_seats: data.details?.max_seats || '',
-                image_url: data.details?.image_url || '',
-                is_free: data.details?.is_free ? 1 : 0,
-                registration_link: data.details?.registration_link || '',
-                youtube_live: data.details?.youtube_live || '',
-                has_parking: data.details?.has_parking ? 1 : 0,
-                parking_capacity: data.details?.parking_capacity || '',
-                is_parking_free: data.details?.is_parking_free ? 1 : 0,
-                parking_details: data.details?.parking_details || ''
-            });
-            setEditingId(id);
-            setActiveTab(0);
-        } catch (err) {
-            alert('Erreur chargement');
-        }
+    const handleEdit = (id: number) => {
+        navigate(`/dashboard/admin/events/${id}/edit`);
     };
 
     const handleSave = async () => {
