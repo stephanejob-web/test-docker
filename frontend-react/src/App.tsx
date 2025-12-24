@@ -40,7 +40,9 @@ function App() {
                 <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']} />}>
                   <Route path="admin/users" element={<AdminUsers />} />
                   <Route path="admin/churches" element={<AdminChurches />} />
+                  <Route path="admin/churches/:churchId/edit" element={<MyChurch />} />
                   <Route path="admin/events" element={<AdminEvents />} />
+                  <Route path="admin/events/:eventId/edit" element={<MyEvents />} />
                   <Route path="admin/settings" element={<AdminSettings />} />
                 </Route>
               </Route>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import api from '../lib/axios';
 import {
     Box,
@@ -27,7 +28,8 @@ import {
     AutoAwesome as AutoAwesomeIcon,
     Image as ImageIcon,
     YouTube as YouTubeIcon,
-    Church as ChurchIcon
+    Church as ChurchIcon,
+    ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import DateTimeInput from '../components/DateTimeInput';
@@ -62,10 +64,14 @@ interface EventData extends EventFormData {
 }
 
 export default function MyEvents() {
+    const { eventId } = useParams<{ eventId: string }>();
+    const navigate = useNavigate();
+    const isAdminMode = !!eventId; // Mode admin si eventId existe
+
     const [events, setEvents] = useState<EventData[]>([]);
-    const [showForm, setShowForm] = useState(false);
+    const [showForm, setShowForm] = useState(isAdminMode); // Si mode admin, afficher le formulaire directement
     const [loading, setLoading] = useState(false);
-    const [editingId, setEditingId] = useState<number | null>(null);
+    const [editingId, setEditingId] = useState<number | null>(eventId ? parseInt(eventId) : null);
     const [activeTab, setActiveTab] = useState(0);
 
     // Initial State
@@ -106,8 +112,38 @@ export default function MyEvents() {
     const [isChurchComplete, setIsChurchComplete] = useState<boolean>(false);
 
     useEffect(() => {
-        checkChurchAndEvents();
-    }, []);
+        if (isAdminMode && eventId) {
+            // In admin mode, load the specific event directly
+            loadEventForEdit(parseInt(eventId));
+        } else {
+            // In pastor mode, check church and load events
+            checkChurchAndEvents();
+        }
+    }, [isAdminMode, eventId]);
+
+    const loadEventForEdit = async (id: number) => {
+        setLoading(true);
+        try {
+            const { data } = await api.get(`/admin/events/${id}`);
+            // Normalize data for form
+            setFormData({
+                ...initialFormState,
+                ...data,
+                // Ensure dates are formatted for datetime-local input (YYYY-MM-DDTHH:mm)
+                start_datetime: data.start_datetime ? new Date(data.start_datetime).toISOString().slice(0, 16) : '',
+                end_datetime: data.end_datetime ? new Date(data.end_datetime).toISOString().slice(0, 16) : '',
+                // Ensure booleans/checkboxes are strictly 1 or 0
+                has_parking: data.has_parking ? 1 : 0,
+                is_parking_free: data.is_parking_free ? 1 : 0,
+                is_free: data.is_free ? 1 : 0
+            });
+            setLoading(false);
+        } catch (err) {
+            console.error(err);
+            alert("Impossible de charger l'événement");
+            setLoading(false);
+        }
+    };
 
     const checkChurchAndEvents = async () => {
         setLoading(true);
@@ -195,19 +231,9 @@ export default function MyEvents() {
         e.preventDefault();
         setLoading(true);
         try {
-            const churchRes = await api.get('/church/my-church');
-            const churchId = churchRes.data.id;
-
-            if (!churchId) {
-                alert("Veuillez d'abord créer votre fiche église.");
-                setLoading(false);
-                return;
-            }
-
             // Préparer les données avec conversion des types
             const payload = {
                 ...formData,
-                church_id: churchId,
                 language_id: 10, // Français par défaut
                 // Convertir latitude/longitude en floats
                 latitude: parseFloat(formData.latitude) || 0,
@@ -221,21 +247,45 @@ export default function MyEvents() {
                 parking_capacity: formData.parking_capacity ? parseInt(formData.parking_capacity as string) : null,
                 // Convertir les URLs vides en undefined pour éviter les erreurs de validation
                 registration_link: formData.registration_link || undefined,
-                youtube_live: formData.youtube_live || undefined
+                youtube_live: formData.youtube_live || undefined,
+                // Ajouter les nouveaux champs d'adresse
+                street_number: formData.street_number || undefined,
+                street_name: formData.street_name || undefined,
+                postal_code: formData.postal_code || undefined,
+                city: formData.city || undefined
             };
 
-            if (editingId) {
-                await api.put(`/church/events/${editingId}`, payload);
+            if (isAdminMode) {
+                // Mode admin: utiliser l'endpoint admin
+                await api.put(`/admin/events/${editingId}`, payload);
                 alert('Événement mis à jour avec succès !');
+                setTimeout(() => navigate('/dashboard/admin/events'), 1500);
             } else {
-                await api.post('/church/events', payload);
-                alert('Événement créé avec succès !');
-            }
+                // Mode pastor: utiliser l'endpoint church
+                const churchRes = await api.get('/church/my-church');
+                const churchId = churchRes.data.id;
 
-            setShowForm(false);
-            setEditingId(null);
-            setFormData(initialFormState);
-            checkChurchAndEvents();
+                if (!churchId) {
+                    alert("Veuillez d'abord créer votre fiche église.");
+                    setLoading(false);
+                    return;
+                }
+
+                const pastorPayload = { ...payload, church_id: churchId };
+
+                if (editingId) {
+                    await api.put(`/church/events/${editingId}`, pastorPayload);
+                    alert('Événement mis à jour avec succès !');
+                } else {
+                    await api.post('/church/events', pastorPayload);
+                    alert('Événement créé avec succès !');
+                }
+
+                setShowForm(false);
+                setEditingId(null);
+                setFormData(initialFormState);
+                checkChurchAndEvents();
+            }
         } catch (err: unknown) {
             const error = err as { response?: { data?: { errors?: Array<{ field: string; message: string }> } } };
             console.error('Erreur complète:', err);
@@ -284,30 +334,44 @@ export default function MyEvents() {
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {/* Back Button (Admin Mode Only) */}
+            {isAdminMode && (
+                <Button
+                    variant="text"
+                    startIcon={<ArrowBackIcon />}
+                    onClick={() => navigate('/dashboard/admin/events')}
+                    sx={{ alignSelf: 'flex-start' }}
+                >
+                    Retour à la liste
+                </Button>
+            )}
+
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Box>
                     <Typography variant="h3" sx={{ fontWeight: 'bold', background: 'linear-gradient(135deg, #1976d2 0%, #9c27b0 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                        Mes Événements
+                        {isAdminMode ? "Modifier l'Événement" : "Mes Événements"}
                     </Typography>
                     <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-                        Gérez votre calendrier et vos publications.
+                        {isAdminMode ? "Modifiez les informations de cet événement." : "Gérez votre calendrier et vos publications."}
                     </Typography>
                 </Box>
-                <Button
-                    variant={showForm ? "outlined" : "contained"}
-                    color={showForm ? "error" : "primary"}
-                    startIcon={showForm ? <CloseIcon /> : <AddIcon />}
-                    onClick={() => {
-                        setShowForm(!showForm);
-                        if (showForm) {
-                            setEditingId(null);
-                            setFormData(initialFormState);
-                        }
-                    }}
-                    disabled={!isChurchComplete}
-                >
-                    {showForm ? 'Annuler' : 'Nouvel Événement'}
-                </Button>
+                {!isAdminMode && (
+                    <Button
+                        variant={showForm ? "outlined" : "contained"}
+                        color={showForm ? "error" : "primary"}
+                        startIcon={showForm ? <CloseIcon /> : <AddIcon />}
+                        onClick={() => {
+                            setShowForm(!showForm);
+                            if (showForm) {
+                                setEditingId(null);
+                                setFormData(initialFormState);
+                            }
+                        }}
+                        disabled={!isChurchComplete}
+                    >
+                        {showForm ? 'Annuler' : 'Nouvel Événement'}
+                    </Button>
+                )}
             </Box>
 
             {/* Warning if church is incomplete */}

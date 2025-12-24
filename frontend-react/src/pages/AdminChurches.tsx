@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../lib/axios';
 import {
     Box,
@@ -38,6 +39,7 @@ import Pagination from '../components/Pagination';
 import { TableSkeleton } from '../components/Loader';
 
 export default function AdminChurches() {
+    const navigate = useNavigate();
     const [churches, setChurches] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [editingId, setEditingId] = useState<number | null>(null);
@@ -99,23 +101,9 @@ export default function AdminChurches() {
         } catch (e) { console.error(e); }
     };
 
-    const handleEdit = async (id: number) => {
-        try {
-            const { data } = await api.get(`/admin/churches/${id}`);
-            setFormData({
-                ...data,
-                description: data.details.description || '',
-                address: data.details.address || '',
-                phone: data.details.phone || '',
-                website: data.details.website || '',
-                pastor_name: data.details.pastor_name || '',
-                has_parking: !!data.details.has_parking,
-                socials: data.socials || [],
-                schedules: data.schedules || [],
-                events: data.events || []
-            });
-            setEditingId(id);
-        } catch (e) { alert('Erreur chargement'); }
+    const handleEdit = (id: number) => {
+        // Rediriger vers la page d'édition (même interface que les pasteurs)
+        navigate(`/dashboard/admin/churches/${id}/edit`);
     };
 
     const handleSave = async () => {

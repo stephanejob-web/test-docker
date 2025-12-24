@@ -20,6 +20,7 @@ import {
 import { BarChart } from '@mui/x-charts/BarChart';
 import { PieChart } from '@mui/x-charts/PieChart';
 import { Link } from 'react-router-dom';
+import EventsActivityChart from '../components/EventsActivityChart';
 
 export default function DashboardHome() {
     const { user } = useAuth();
@@ -415,6 +416,11 @@ export default function DashboardHome() {
                         />
                     </CardContent>
                 </Card>
+            </Box>
+
+            {/* CHARTS ROW 3 - Events Activity */}
+            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: 3 }}>
+                <EventsActivityChart />
             </Box>
         </Box>
     );
