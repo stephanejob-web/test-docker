@@ -1,9 +1,24 @@
 import { useState, useEffect } from 'react';
 import api from '../lib/axios';
 import { useAuth } from '../context/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui';
-import { Users, Church, Calendar, UserPlus, TrendingUp, ArrowRight, CalendarClock } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import {
+    Box,
+    Card,
+    CardContent,
+    Typography,
+    Chip
+} from '@mui/material';
+import {
+    People as UsersIcon,
+    Church as ChurchIcon,
+    Event as CalendarIcon,
+    PersonAdd as UserPlusIcon,
+    TrendingUp as TrendingUpIcon,
+    ArrowForward as ArrowRightIcon,
+    Schedule as CalendarClockIcon
+} from '@mui/icons-material';
+import { BarChart } from '@mui/x-charts/BarChart';
+import { PieChart } from '@mui/x-charts/PieChart';
 import { Link } from 'react-router-dom';
 
 export default function DashboardHome() {
@@ -38,111 +53,186 @@ export default function DashboardHome() {
 
     // --- PASTOR DASHBOARD ---
     if (user?.role !== 'SUPER_ADMIN') {
-
         return (
-            <div className="space-y-8 animate-in fade-in duration-500">
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {/* HERO SECTION */}
-                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 to-purple-700 p-8 shadow-2xl">
-                    <div className="relative z-10">
-                        <h1 className="text-4xl font-extrabold text-white mb-2">
+                <Card
+                    sx={{
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        borderRadius: 3,
+                        position: 'relative',
+                        overflow: 'hidden'
+                    }}
+                >
+                    <CardContent sx={{ p: 4, position: 'relative', zIndex: 1 }}>
+                        <Typography variant="h3" sx={{ fontWeight: 800, color: 'white', mb: 1 }}>
                             Bonjour, {user?.first_name}
-                        </h1>
-                        <p className="text-blue-100 text-lg">
+                        </Typography>
+                        <Typography variant="h6" sx={{ color: 'rgba(255,255,255,0.9)' }}>
                             Heureux de vous revoir. Voici ce qui se passe dans votre église aujourd'hui.
-                        </p>
-                    </div>
-                    {/* Decorative Circles */}
-                    <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-white/10 blur-3xl"></div>
-                    <div className="absolute bottom-0 left-0 -mb-10 -ml-10 h-40 w-40 rounded-full bg-black/10 blur-2xl"></div>
-                </div>
+                        </Typography>
+                    </CardContent>
+                </Card>
 
                 {/* STATS ROW */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <Card className="bg-surface border-gray-800 hover:border-gray-700 transition-colors">
-                        <CardContent className="p-6 flex items-center gap-4">
-                            <div className="p-3 rounded-full bg-blue-500/10 text-blue-400">
-                                <Calendar className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-400">Prochain Événement</p>
-                                <p className="text-lg font-bold text-white truncate max-w-[150px]">
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 3 }}>
+                    <Card sx={{ height: '100%' }}>
+                        <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Box
+                                sx={{
+                                    p: 1.5,
+                                    borderRadius: '50%',
+                                    bgcolor: 'primary.main',
+                                    color: 'white',
+                                    display: 'flex'
+                                }}
+                            >
+                                <CalendarIcon />
+                            </Box>
+                            <Box>
+                                <Typography variant="body2" color="text.secondary">
+                                    Prochain Événement
+                                </Typography>
+                                <Typography variant="h6" sx={{ fontWeight: 700 }}>
                                     {nextEvent ? nextEvent.title : 'Aucun'}
-                                </p>
-                                {nextEvent && <p className="text-xs text-gray-500">{new Date(nextEvent.start_datetime).toLocaleDateString()}</p>}
-                            </div>
+                                </Typography>
+                                {nextEvent && (
+                                    <Typography variant="caption" color="text.secondary">
+                                        {new Date(nextEvent.start_datetime).toLocaleDateString()}
+                                    </Typography>
+                                )}
+                            </Box>
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-surface border-gray-800 hover:border-gray-700 transition-colors">
-                        <CardContent className="p-6 flex items-center gap-4">
-                            <div className="p-3 rounded-full bg-purple-500/10 text-purple-400">
-                                <TrendingUp className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-400">Total Événements</p>
-                                <p className="text-2xl font-bold text-white">{myEvents.length}</p>
-                            </div>
+                    <Card sx={{ height: '100%' }}>
+                        <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Box
+                                sx={{
+                                    p: 1.5,
+                                    borderRadius: '50%',
+                                    bgcolor: 'secondary.main',
+                                    color: 'white',
+                                    display: 'flex'
+                                }}
+                            >
+                                <TrendingUpIcon />
+                            </Box>
+                            <Box>
+                                <Typography variant="body2" color="text.secondary">
+                                    Total Événements
+                                </Typography>
+                                <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                                    {myEvents.length}
+                                </Typography>
+                            </Box>
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-surface border-gray-800 hover:border-gray-700 transition-colors">
-                        <CardContent className="p-6 flex items-center gap-4">
-                            <div className="p-3 rounded-full bg-green-500/10 text-green-400">
-                                <Users className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-400">Membres (Est.)</p>
-                                <p className="text-2xl font-bold text-white">-</p>
-                            </div>
+                    <Card sx={{ height: '100%' }}>
+                        <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Box
+                                sx={{
+                                    p: 1.5,
+                                    borderRadius: '50%',
+                                    bgcolor: 'success.main',
+                                    color: 'white',
+                                    display: 'flex'
+                                }}
+                            >
+                                <UsersIcon />
+                            </Box>
+                            <Box>
+                                <Typography variant="body2" color="text.secondary">
+                                    Membres (Est.)
+                                </Typography>
+                                <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                                    -
+                                </Typography>
+                            </Box>
                         </CardContent>
                     </Card>
-                </div>
+                </Box>
 
                 {/* MAIN ACTIONS */}
-                <h2 className="text-xl font-bold text-white mt-8">Accès Rapide</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Link to="/dashboard/my-church" className="group">
-                        <Card className="h-full bg-surface border-gray-800 group-hover:border-blue-500/50 transition-all duration-300 group-hover:shadow-[0_0_20px_rgba(59,130,246,0.15)]">
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-3 text-white group-hover:text-blue-400 transition-colors">
-                                    <Church className="h-6 w-6" /> Mon Église
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-gray-400 mb-6">
-                                    Gérez les informations générales, les horaires de culte et les liens sociaux de votre église.
-                                </p>
-                                <div className="flex items-center text-blue-400 text-sm font-medium group-hover:translate-x-1 transition-transform">
-                                    Gérer mon église <ArrowRight className="ml-2 h-4 w-4" />
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </Link>
+                <Typography variant="h5" sx={{ fontWeight: 700, mt: 2 }}>
+                    Accès Rapide
+                </Typography>
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 3 }}>
+                    <Card
+                        component={Link}
+                        to="/dashboard/my-church"
+                        sx={{
+                            textDecoration: 'none',
+                            height: '100%',
+                            transition: 'all 0.3s',
+                            '&:hover': {
+                                transform: 'translateY(-4px)',
+                                boxShadow: 6
+                            }
+                        }}
+                    >
+                        <CardContent>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                                <ChurchIcon color="primary" />
+                                <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                                    Mon Église
+                                </Typography>
+                            </Box>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                Gérez les informations générales, les horaires de culte et les liens sociaux de votre église.
+                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'primary.main' }}>
+                                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                    Gérer mon église
+                                </Typography>
+                                <ArrowRightIcon fontSize="small" />
+                            </Box>
+                        </CardContent>
+                    </Card>
 
-                    <Link to="/dashboard/events" className="group">
-                        <Card className="h-full bg-surface border-gray-800 group-hover:border-purple-500/50 transition-all duration-300 group-hover:shadow-[0_0_20px_rgba(168,85,247,0.15)]">
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-3 text-white group-hover:text-purple-400 transition-colors">
-                                    <Calendar className="h-6 w-6" /> Mes Événements
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-gray-400 mb-6">
-                                    Planifiez vos prochains cultes, concerts ou réunions. Suivez leur statut de publication.
-                                </p>
-                                <div className="flex items-center text-purple-400 text-sm font-medium group-hover:translate-x-1 transition-transform">
-                                    Voir le calendrier <ArrowRight className="ml-2 h-4 w-4" />
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </Link>
-                </div>
-            </div>
+                    <Card
+                        component={Link}
+                        to="/dashboard/events"
+                        sx={{
+                            textDecoration: 'none',
+                            height: '100%',
+                            transition: 'all 0.3s',
+                            '&:hover': {
+                                transform: 'translateY(-4px)',
+                                boxShadow: 6
+                            }
+                        }}
+                    >
+                        <CardContent>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                                <CalendarIcon color="secondary" />
+                                <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                                    Mes Événements
+                                </Typography>
+                            </Box>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                Planifiez vos prochains cultes, concerts ou réunions. Suivez leur statut de publication.
+                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'secondary.main' }}>
+                                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                    Voir le calendrier
+                                </Typography>
+                                <ArrowRightIcon fontSize="small" />
+                            </Box>
+                        </CardContent>
+                    </Card>
+                </Box>
+            </Box>
         );
     }
 
     // --- ADMIN DASHBOARD ---
-    if (!stats) return <div className="p-8 text-white">Impossible de charger les statistiques.</div>;
+    if (!stats) return (
+        <Box sx={{ p: 4 }}>
+            <Typography>Impossible de charger les statistiques.</Typography>
+        </Box>
+    );
 
     console.log('📊 Stats reçues:', stats);
     console.log('📈 Graphiques:', stats.charts);
@@ -150,178 +240,225 @@ export default function DashboardHome() {
     // Trouver le nombre d'événements en cours
     const ongoingEvents = stats.charts.events_status.find((s: any) => s.name === 'En cours')?.count || 0;
 
-    // Transform Growth Data for Recharts
-    const growthData: any[] = [];
-    const months = new Set([
+    // Transform Growth Data for MUI X Charts
+    const growthMonths = Array.from(new Set([
         ...stats.charts.growth.users.map((u: any) => u.month),
         ...stats.charts.growth.churches.map((c: any) => c.month)
-    ].sort());
+    ])).sort();
 
-    months.forEach(m => {
-        const u = stats.charts.growth.users.find((x: any) => x.month === m);
-        const c = stats.charts.growth.churches.find((x: any) => x.month === m);
-        growthData.push({
-            name: m,
-            Utilisateurs: u ? u.count : 0,
-            Églises: c ? c.count : 0
-        });
+    const usersData = growthMonths.map(month => {
+        const u = stats.charts.growth.users.find((x: any) => x.month === month);
+        return u ? u.count : 0;
     });
 
-    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
+    const churchesData = growthMonths.map(month => {
+        const c = stats.charts.growth.churches.find((x: any) => x.month === month);
+        return c ? c.count : 0;
+    });
 
-    console.log('📊 Growth Data:', growthData);
+    console.log('📊 Growth Months:', growthMonths);
+    console.log('📊 Users Data:', usersData);
+    console.log('📊 Churches Data:', churchesData);
     console.log('📊 Denominations:', stats.charts.by_denomination);
     console.log('📊 Cities:', stats.charts.churches_by_city);
     console.log('📊 Events Status:', stats.charts.events_status);
 
     return (
-        <div className="space-y-8">
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent">
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <Typography
+                variant="h3"
+                sx={{
+                    fontWeight: 800,
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent'
+                }}
+            >
                 Super Admin Dashboard
-            </h1>
+            </Typography>
 
             {/* KPI CARDS */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                <KpiCard icon={Users} title="Total Utilisateurs" value={stats.kpi.total_users} trend="+12%" color="bg-blue-500/20 text-blue-400" />
-                <KpiCard icon={UserPlus} title="En Attente" value={stats.kpi.pending_users} trend={stats.kpi.pending_users > 0 ? "Action requise" : "À jour"} color="bg-yellow-500/20 text-yellow-400" />
-                <KpiCard icon={Church} title="Total Églises" value={stats.kpi.total_churches} trend="+5%" color="bg-purple-500/20 text-purple-400" />
-                <KpiCard icon={CalendarClock} title="En Cours" value={ongoingEvents} trend="Événements" color="bg-orange-500/20 text-orange-400" />
-                <KpiCard icon={Calendar} title="À Venir" value={stats.kpi.upcoming_events} trend="Événements" color="bg-green-500/20 text-green-400" />
-            </div>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(5, 1fr)' }, gap: 2 }}>
+                <KpiCard
+                    icon={UsersIcon}
+                    title="Total Utilisateurs"
+                    value={stats.kpi.total_users}
+                    trend="+12%"
+                    color="primary"
+                />
+                <KpiCard
+                    icon={UserPlusIcon}
+                    title="En Attente"
+                    value={stats.kpi.pending_users}
+                    trend={stats.kpi.pending_users > 0 ? "Action requise" : "À jour"}
+                    color="warning"
+                />
+                <KpiCard
+                    icon={ChurchIcon}
+                    title="Total Églises"
+                    value={stats.kpi.total_churches}
+                    trend="+5%"
+                    color="secondary"
+                />
+                <KpiCard
+                    icon={CalendarClockIcon}
+                    title="En Cours"
+                    value={ongoingEvents}
+                    trend="Événements"
+                    color="info"
+                />
+                <KpiCard
+                    icon={CalendarIcon}
+                    title="À Venir"
+                    value={stats.kpi.upcoming_events}
+                    trend="Événements"
+                    color="success"
+                />
+            </Box>
 
             {/* CHARTS ROW 1 */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'repeat(2, 1fr)' }, gap: 3 }}>
                 <Card>
-                    <CardHeader>
-                        <CardTitle style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <TrendingUp size={20} /> Croissance Mensuelle
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent style={{ height: '320px' }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={growthData}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                                <XAxis dataKey="name" stroke="#9CA3AF" style={{ fontSize: '12px' }} />
-                                <YAxis stroke="#9CA3AF" style={{ fontSize: '12px' }} />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px', color: '#E5E7EB' }}
-                                    itemStyle={{ color: '#E5E7EB' }}
-                                />
-                                <Legend wrapperStyle={{ color: '#E5E7EB' }} />
-                                <Bar dataKey="Utilisateurs" fill="#3B82F6" radius={[4, 4, 0, 0]} />
-                                <Bar dataKey="Églises" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
+                    <CardContent>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                            <TrendingUpIcon color="primary" />
+                            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                                Croissance Mensuelle
+                            </Typography>
+                        </Box>
+                        <BarChart
+                            xAxis={[{ scaleType: 'band', data: growthMonths }]}
+                            series={[
+                                { data: usersData, label: 'Utilisateurs', color: '#3B82F6' },
+                                { data: churchesData, label: 'Églises', color: '#8B5CF6' }
+                            ]}
+                            height={320}
+                        />
                     </CardContent>
                 </Card>
 
                 <Card>
-                    <CardHeader>
-                        <CardTitle style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <Church size={20} /> Répartition par Dénomination
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent style={{ height: '320px' }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={stats.charts.by_denomination}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={60}
-                                    outerRadius={100}
-                                    fill="#8884d8"
-                                    paddingAngle={5}
-                                    dataKey="count"
-                                >
-                                    {stats.charts.by_denomination.map((_: any, index: number) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Pie>
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px' }}
-                                    itemStyle={{ color: '#E5E7EB' }}
-                                />
-                                <Legend wrapperStyle={{ color: '#E5E7EB' }} />
-                            </PieChart>
-                        </ResponsiveContainer>
+                    <CardContent>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                            <ChurchIcon color="secondary" />
+                            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                                Répartition par Dénomination
+                            </Typography>
+                        </Box>
+                        <PieChart
+                            series={[
+                                {
+                                    data: stats.charts.by_denomination.map((d: any) => ({
+                                        id: d.name,
+                                        value: d.count,
+                                        label: d.name
+                                    })),
+                                    innerRadius: 60,
+                                    outerRadius: 100,
+                                    paddingAngle: 2,
+                                    cornerRadius: 4
+                                }
+                            ]}
+                            height={320}
+                        />
                     </CardContent>
                 </Card>
-            </div>
+            </Box>
 
-            {/* CHARTS ROW 2 - Distribution des églises par ville */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
+            {/* CHARTS ROW 2 */}
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'repeat(2, 1fr)' }, gap: 3 }}>
                 <Card>
-                    <CardHeader>
-                        <CardTitle style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <Church size={20} /> Distribution des Églises par Ville (Top 10)
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent style={{ height: '320px' }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={stats.charts.churches_by_city} layout="vertical">
-                                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                                <XAxis type="number" stroke="#9CA3AF" style={{ fontSize: '12px' }} />
-                                <YAxis dataKey="name" type="category" stroke="#9CA3AF" width={100} style={{ fontSize: '11px' }} />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px' }}
-                                    itemStyle={{ color: '#E5E7EB' }}
-                                />
-                                <Bar dataKey="count" fill="#10B981" radius={[0, 4, 4, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
+                    <CardContent>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                            <ChurchIcon color="success" />
+                            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                                Distribution par Ville (Top 10)
+                            </Typography>
+                        </Box>
+                        <BarChart
+                            yAxis={[{ scaleType: 'band', data: stats.charts.churches_by_city.map((c: any) => c.name) }]}
+                            series={[
+                                {
+                                    data: stats.charts.churches_by_city.map((c: any) => c.count),
+                                    label: 'Églises',
+                                    color: '#10B981'
+                                }
+                            ]}
+                            layout="horizontal"
+                            height={320}
+                        />
                     </CardContent>
                 </Card>
 
                 <Card>
-                    <CardHeader>
-                        <CardTitle style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <Calendar size={20} /> État des Événements
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent style={{ height: '320px' }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={stats.charts.events_status}
-                                    cx="50%"
-                                    cy="50%"
-                                    labelLine={false}
-                                    label={({ name, percent }: any) => `${name}: ${((percent || 0) * 100).toFixed(0)}%`}
-                                    outerRadius={100}
-                                    fill="#8884d8"
-                                    dataKey="count"
-                                >
-                                    <Cell fill="#3B82F6" /> {/* À venir - Bleu */}
-                                    <Cell fill="#F59E0B" /> {/* En cours - Orange */}
-                                    <Cell fill="#10B981" /> {/* Terminés - Vert */}
-                                </Pie>
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px' }}
-                                    itemStyle={{ color: '#E5E7EB' }}
-                                />
-                                <Legend wrapperStyle={{ color: '#E5E7EB' }} />
-                            </PieChart>
-                        </ResponsiveContainer>
+                    <CardContent>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                            <CalendarIcon color="warning" />
+                            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                                État des Événements
+                            </Typography>
+                        </Box>
+                        <PieChart
+                            series={[
+                                {
+                                    data: stats.charts.events_status.map((e: any, index: number) => ({
+                                        id: e.name,
+                                        value: e.count,
+                                        label: e.name,
+                                        color: index === 0 ? '#3B82F6' : index === 1 ? '#F59E0B' : '#10B981'
+                                    })),
+                                    arcLabel: (item) => `${item.label}: ${item.value}`,
+                                    arcLabelMinAngle: 35
+                                }
+                            ]}
+                            height={320}
+                        />
                     </CardContent>
                 </Card>
-            </div>
-        </div>
+            </Box>
+        </Box>
     );
 }
 
-function KpiCard({ icon: Icon, title, value, trend, color }: any) {
+interface KpiCardProps {
+    icon: React.ElementType;
+    title: string;
+    value: number;
+    trend: string;
+    color: 'primary' | 'secondary' | 'success' | 'warning' | 'info' | 'error';
+}
+
+function KpiCard({ icon: Icon, title, value, trend, color }: KpiCardProps) {
     return (
-        <Card className="border-gray-800 bg-surface hover:bg-white/5 transition-colors">
-            <CardContent className="p-6 flex items-start justify-between">
-                <div>
-                    <p className="text-gray-400 text-sm font-medium mb-1">{title}</p>
-                    <h3 className="text-3xl font-bold text-white">{value}</h3>
-                    <p className="text-xs text-emerald-400 mt-2 font-mono">{trend}</p>
-                </div>
-                <div className={`p-3 rounded-lg ${color}`}>
-                    <Icon className="h-6 w-6" />
-                </div>
+        <Card sx={{ height: '100%' }}>
+            <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                            {title}
+                        </Typography>
+                        <Typography variant="h4" sx={{ fontWeight: 800 }}>
+                            {value}
+                        </Typography>
+                        <Chip
+                            label={trend}
+                            size="small"
+                            color={color}
+                            sx={{ mt: 1, fontWeight: 600 }}
+                        />
+                    </Box>
+                    <Box
+                        sx={{
+                            p: 1,
+                            borderRadius: 2,
+                            bgcolor: `${color}.main`,
+                            color: 'white',
+                            display: 'flex'
+                        }}
+                    >
+                        <Icon fontSize="small" />
+                    </Box>
+                </Box>
             </CardContent>
         </Card>
     );
