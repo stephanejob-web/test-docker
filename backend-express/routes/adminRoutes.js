@@ -235,12 +235,21 @@ router.get('/churches/:id', async (req, res) => {
         const [details] = await db.query('SELECT * FROM church_details WHERE church_id = ?', [church.id]);
         const [socials] = await db.query('SELECT * FROM church_socials WHERE church_id = ?', [church.id]);
         const [schedules] = await db.query('SELECT * FROM church_schedules WHERE church_id = ?', [church.id]);
+        const [events] = await db.query(
+            `SELECT e.id, e.title, e.start_datetime, e.end_datetime, e.status, ed.description
+             FROM events e
+             LEFT JOIN event_details ed ON e.id = ed.event_id
+             WHERE e.church_id = ?
+             ORDER BY e.start_datetime DESC`,
+            [church.id]
+        );
 
         res.json({
             ...church,
             details: details[0] || {},
             socials: socials || [],
-            schedules: schedules || []
+            schedules: schedules || [],
+            events: events || []
         });
     } catch (error) {
         console.error(error);

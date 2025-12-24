@@ -111,7 +111,8 @@ export default function AdminChurches() {
                 pastor_name: data.details.pastor_name || '',
                 has_parking: !!data.details.has_parking,
                 socials: data.socials || [],
-                schedules: data.schedules || []
+                schedules: data.schedules || [],
+                events: data.events || []
             });
             setEditingId(id);
         } catch (e) { alert('Erreur chargement'); }
@@ -281,6 +282,51 @@ export default function AdminChurches() {
                                     </IconButton>
                                 </Box>
                             ))}
+                        </Box>
+
+                        {/* ÉVÉNEMENTS */}
+                        <Box sx={{ pt: 2, borderTop: 1, borderColor: 'divider' }}>
+                            <Typography variant="h6" sx={{ mb: 2 }}>
+                                Événements associés ({formData.events?.length || 0})
+                            </Typography>
+                            {formData.events && formData.events.length > 0 ? (
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 300, overflow: 'auto' }}>
+                                    {formData.events.map((event: any) => (
+                                        <Card key={event.id} variant="outlined" sx={{ p: 2 }}>
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 1 }}>
+                                                <Typography variant="subtitle1" fontWeight="bold">
+                                                    {event.title}
+                                                </Typography>
+                                                <Typography
+                                                    variant="caption"
+                                                    sx={{
+                                                        px: 1,
+                                                        py: 0.5,
+                                                        borderRadius: 1,
+                                                        bgcolor: event.status === 'PUBLISHED' ? 'success.main' : event.status === 'DRAFT' ? 'warning.main' : 'error.main',
+                                                        color: 'white',
+                                                        fontWeight: 'bold'
+                                                    }}
+                                                >
+                                                    {event.status}
+                                                </Typography>
+                                            </Box>
+                                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                                📅 {new Date(event.start_datetime).toLocaleString('fr-FR')} → {new Date(event.end_datetime).toLocaleString('fr-FR')}
+                                            </Typography>
+                                            {event.description && (
+                                                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                                                    {event.description.substring(0, 100)}{event.description.length > 100 ? '...' : ''}
+                                                </Typography>
+                                            )}
+                                        </Card>
+                                    ))}
+                                </Box>
+                            ) : (
+                                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                                    Aucun événement associé à cette église
+                                </Typography>
+                            )}
                         </Box>
                     </Box>
                 </DialogContent>
