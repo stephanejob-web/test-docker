@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useParams, useNavigate } from 'react-router-dom';
 import api from '../lib/axios';
 import {
     Box,
@@ -23,7 +24,8 @@ import {
     Save as SaveIcon,
     Add as AddIcon,
     Delete as DeleteIcon,
-    LocationOn as LocationOnIcon
+    LocationOn as LocationOnIcon,
+    ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
 import { ImageUpload } from '../components/ImageUpload';
 import { churchSchema, type ChurchFormData } from '../lib/validationSchemas';
@@ -35,6 +37,9 @@ interface Denomination { id: number; name: string; }
 interface ActivityType { id: number; label_fr: string; }
 
 export default function MyChurch() {
+    const { churchId } = useParams<{ churchId: string }>();
+    const navigate = useNavigate();
+    const isAdminMode = !!churchId; // Mode admin si churchId existe
     const [activeTab, setActiveTab] = useState(0);
     const [success, setSuccess] = useState('');
     const [backendErrors, setBackendErrors] = useState<Array<{ field: string; message: string }>>([]);
@@ -94,7 +99,13 @@ export default function MyChurch() {
 
     const fetchChurchData = async () => {
         try {
-            const { data } = await api.get('/church/my-church');
+            // Mode admin: charger une église spécifique par ID
+            // Mode pastor: charger l'église du pasteur connecté
+            const endpoint = isAdminMode
+                ? `/admin/churches/${churchId}`
+                : '/church/my-church';
+
+            const { data } = await api.get(endpoint);
             if (data && data.id) {
                 // Reset form with fetched data
                 reset({
@@ -129,8 +140,19 @@ export default function MyChurch() {
         setSuccess('');
 
         try {
-            await api.post('/church/my-church', formData);
+            // Mode admin: modifier une église spécifique
+            // Mode pastor: modifier son église
+            if (isAdminMode) {
+                await api.put(`/admin/churches/${churchId}`, formData);
+            } else {
+                await api.post('/church/my-church', formData);
+            }
             setSuccess('Sauvegardé avec succès !');
+
+            // En mode admin, retourner à la liste après sauvegarde
+            if (isAdminMode) {
+                setTimeout(() => navigate('/dashboard/admin/churches'), 1500);
+            }
         } catch (err: unknown) {
             // Handle structured backend errors
             const error = err as { response?: { data?: { errors?: Array<{ field: string; message: string }>; message?: string } } };
@@ -158,9 +180,21 @@ export default function MyChurch() {
 
     return (
         <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: '1200px', mx: 'auto', pb: 4 }}>
+            {/* Bouton Retour en mode admin */}
+            {isAdminMode && (
+                <Button
+                    variant="text"
+                    startIcon={<ArrowBackIcon />}
+                    onClick={() => navigate('/dashboard/admin/churches')}
+                    sx={{ alignSelf: 'flex-start' }}
+                >
+                    Retour à la liste
+                </Button>
+            )}
+
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
-                    Mon Église
+                    {isAdminMode ? "Modifier l'Église" : "Mon Église"}
                 </Typography>
                 <Button
                     type="submit"

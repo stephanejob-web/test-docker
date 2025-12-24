@@ -262,7 +262,8 @@ router.put('/churches/:id', async (req, res) => {
     const churchId = req.params.id;
     const {
         church_name, latitude, longitude, denomination_id,
-        description, address, phone, website, pastor_name, has_parking, parking_capacity, is_parking_free,
+        description, address, street_number, street_name, postal_code, city,
+        phone, website, pastor_name, has_parking, parking_capacity, is_parking_free, logo_url,
         socials, schedules
     } = req.body;
 
@@ -272,33 +273,45 @@ router.put('/churches/:id', async (req, res) => {
 
         // 1. Update Church Basic Info
         await connection.query(
-            `UPDATE churches 
-             SET church_name = ?, location = ST_GeomFromText(?), denomination_id = ? 
+            `UPDATE churches
+             SET church_name = ?, location = ST_GeomFromText(?), denomination_id = ?
              WHERE id = ?`,
             [church_name, `POINT(${longitude} ${latitude})`, denomination_id, churchId]
         );
 
-        // 2. Update Details
+        // 2. Update Details (avec les nouveaux champs d'adresse)
         const [existingDetails] = await connection.query('SELECT church_id FROM church_details WHERE church_id = ?', [churchId]);
         const langId = 10; // Default to French
         const detailParams = [
-            description || null, address || null, phone || null, website || null,
-            pastor_name || null, has_parking ? 1 : 0, parking_capacity || null, is_parking_free ? 1 : 0,
+            description || null,
+            address || null,
+            street_number || null,
+            street_name || null,
+            postal_code || null,
+            city || null,
+            phone || null,
+            website || null,
+            pastor_name || null,
+            has_parking ? 1 : 0,
+            parking_capacity || null,
+            is_parking_free ? 1 : 0,
+            logo_url || null,
             langId
         ];
 
         if (existingDetails.length > 0) {
             await connection.query(
-                `UPDATE church_details 
-                 SET description=?, address=?, phone=?, website=?, pastor_name=?, has_parking=?, parking_capacity=?, is_parking_free=?, language_id=?
+                `UPDATE church_details
+                 SET description=?, address=?, street_number=?, street_name=?, postal_code=?, city=?,
+                     phone=?, website=?, pastor_name=?, has_parking=?, parking_capacity=?, is_parking_free=?, logo_url=?, language_id=?
                  WHERE church_id=?`,
                 [...detailParams, churchId]
             );
         } else {
             await connection.query(
-                `INSERT INTO church_details 
-                 (description, address, phone, website, pastor_name, has_parking, parking_capacity, is_parking_free, language_id, church_id)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                `INSERT INTO church_details
+                 (description, address, street_number, street_name, postal_code, city, phone, website, pastor_name, has_parking, parking_capacity, is_parking_free, logo_url, language_id, church_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [...detailParams, churchId]
             );
         }
