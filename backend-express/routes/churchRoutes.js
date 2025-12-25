@@ -260,6 +260,39 @@ router.get('/events/:id', async (req, res) => {
     }
 });
 
+// Changer le statut d'un événement (rapide)
+router.patch('/events/:id/status', async (req, res) => {
+    const eventId = req.params.id;
+    const { status } = req.body;
+
+    // Validate status
+    const validStatuses = ['PUBLISHED', 'CANCELLED', 'DRAFT', 'COMPLETED', 'ONGOING'];
+    if (!status || !validStatuses.includes(status)) {
+        return res.status(400).json({ message: 'Statut invalide' });
+    }
+
+    try {
+        const [event] = await db.query(
+            'SELECT id FROM events WHERE id = ? AND admin_id = ?',
+            [eventId, req.user.id]
+        );
+
+        if (event.length === 0) {
+            return res.status(403).json({ message: 'Non autorisé' });
+        }
+
+        await db.query(
+            'UPDATE events SET status = ? WHERE id = ?',
+            [status, eventId]
+        );
+
+        res.json({ message: 'Statut mis à jour avec succès', status });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erreur serveur lors de la mise à jour du statut' });
+    }
+});
+
 // Mettre à jour un événement
 router.put('/events/:id', validateEvent, async (req, res) => {
     const eventId = req.params.id;

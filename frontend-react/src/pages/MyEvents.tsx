@@ -18,7 +18,10 @@ import {
     Checkbox,
     FormControlLabel,
     FormHelperText,
-    InputAdornment
+    InputAdornment,
+    Menu,
+    ListItemIcon,
+    ListItemText
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -30,7 +33,12 @@ import {
     Image as ImageIcon,
     YouTube as YouTubeIcon,
     Church as ChurchIcon,
-    ArrowBack as ArrowBackIcon
+    ArrowBack as ArrowBackIcon,
+    MoreVert as MoreVertIcon,
+    Cancel as CancelIcon,
+    Publish as PublishIcon,
+    Drafts as DraftsIcon,
+    CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import DateTimeInput from '../components/DateTimeInput';
@@ -116,6 +124,7 @@ export default function MyEvents() {
     const [hasChurch, setHasChurch] = useState<boolean | null>(null);
     const [isChurchComplete, setIsChurchComplete] = useState<boolean>(false);
     const [languages, setLanguages] = useState<any[]>([]);
+    const [menuAnchor, setMenuAnchor] = useState<{ element: HTMLElement; eventId: number } | null>(null);
 
     // Load available languages
     useEffect(() => {
@@ -326,6 +335,21 @@ export default function MyEvents() {
         }
     };
 
+    const handleStatusChange = async (eventId: number, newStatus: string) => {
+        try {
+            setLoading(true);
+            await api.patch(`/church/events/${eventId}/status`, { status: newStatus });
+            alert(`Événement ${newStatus === 'CANCELLED' ? 'annulé' : newStatus === 'PUBLISHED' ? 'publié' : 'mis à jour'} avec succès !`);
+            setMenuAnchor(null);
+            checkChurchAndEvents();
+        } catch (err) {
+            console.error('Erreur lors du changement de statut:', err);
+            alert('Erreur lors du changement de statut');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     if (loading) return <Box sx={{ p: 4 }}><Typography>Chargement...</Typography></Box>;
 
     if (hasChurch === false) {
@@ -521,6 +545,48 @@ export default function MyEvents() {
                                                         onChange={handleChange}
                                                         placeholder="Ex: Pasteur John Doe"
                                                     />
+                                                </Grid>
+                                                <Grid size={{ xs: 12, md: 6 }}>
+                                                    <FormControl fullWidth>
+                                                        <InputLabel>Statut</InputLabel>
+                                                        <Select
+                                                            id="status"
+                                                            value={formData.status}
+                                                            onChange={(e) => setFormData({
+                                                                ...formData,
+                                                                status: e.target.value as string
+                                                            })}
+                                                            label="Statut"
+                                                        >
+                                                            <MenuItem value="PUBLISHED">
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                    <PublishIcon fontSize="small" color="success" />
+                                                                    Publié
+                                                                </Box>
+                                                            </MenuItem>
+                                                            <MenuItem value="DRAFT">
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                    <DraftsIcon fontSize="small" color="warning" />
+                                                                    Brouillon
+                                                                </Box>
+                                                            </MenuItem>
+                                                            <MenuItem value="CANCELLED">
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                    <CancelIcon fontSize="small" color="error" />
+                                                                    Annulé
+                                                                </Box>
+                                                            </MenuItem>
+                                                            <MenuItem value="COMPLETED">
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                    <CheckCircleIcon fontSize="small" />
+                                                                    Terminé
+                                                                </Box>
+                                                            </MenuItem>
+                                                        </Select>
+                                                        <FormHelperText>
+                                                            Choisissez le statut de l'événement
+                                                        </FormHelperText>
+                                                    </FormControl>
                                                 </Grid>
                                             </Grid>
 
@@ -966,7 +1032,28 @@ export default function MyEvents() {
                                             <EventIcon sx={{ fontSize: 64, color: 'rgba(255, 255, 255, 0.2)' }} />
                                         </Box>
                                     )}
-                                    <Box sx={{ position: 'absolute', top: 12, right: 12 }}>
+                                    <Box sx={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 1, alignItems: 'center' }}>
+                                        <IconButton
+                                            size="small"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setMenuAnchor({ element: e.currentTarget, eventId: event.id });
+                                            }}
+                                            sx={{
+                                                bgcolor: 'rgba(255, 255, 255, 0.95)',
+                                                backdropFilter: 'blur(12px)',
+                                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                                                transition: 'all 0.3s ease',
+                                                '&:hover': {
+                                                    bgcolor: 'primary.main',
+                                                    color: 'white',
+                                                    transform: 'scale(1.1)',
+                                                    boxShadow: '0 6px 16px rgba(25, 118, 210, 0.3)'
+                                                }
+                                            }}
+                                        >
+                                            <MoreVertIcon fontSize="small" />
+                                        </IconButton>
                                         {event.status === 'PUBLISHED' && (
                                             <Box sx={{ px: 1, py: 0.5, borderRadius: 8, fontSize: '0.75rem', fontWeight: 'bold', bgcolor: 'rgba(76, 175, 80, 0.8)', color: 'white', backdropFilter: 'blur(8px)' }}>
                                                 Publié
@@ -1078,6 +1165,50 @@ export default function MyEvents() {
                     </Grid>
                 </Grid>
             )}
+
+            {/* Menu d'actions rapides */}
+            <Menu
+                anchorEl={menuAnchor?.element}
+                open={Boolean(menuAnchor)}
+                onClose={() => setMenuAnchor(null)}
+                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                PaperProps={{
+                    sx: {
+                        borderRadius: 2,
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                        minWidth: 200
+                    }
+                }}
+            >
+                <MenuItem
+                    onClick={() => handleStatusChange(menuAnchor?.eventId || 0, 'DRAFT')}
+                    sx={{ py: 1.5, gap: 1.5 }}
+                >
+                    <ListItemIcon>
+                        <DraftsIcon fontSize="small" sx={{ color: '#ff9800' }} />
+                    </ListItemIcon>
+                    <ListItemText>Passer en brouillon</ListItemText>
+                </MenuItem>
+                <MenuItem
+                    onClick={() => handleStatusChange(menuAnchor?.eventId || 0, 'CANCELLED')}
+                    sx={{ py: 1.5, gap: 1.5 }}
+                >
+                    <ListItemIcon>
+                        <CancelIcon fontSize="small" sx={{ color: '#f44336' }} />
+                    </ListItemIcon>
+                    <ListItemText>Annuler l'événement</ListItemText>
+                </MenuItem>
+                <MenuItem
+                    onClick={() => handleStatusChange(menuAnchor?.eventId || 0, 'COMPLETED')}
+                    sx={{ py: 1.5, gap: 1.5 }}
+                >
+                    <ListItemIcon>
+                        <CheckCircleIcon fontSize="small" sx={{ color: '#9e9e9e' }} />
+                    </ListItemIcon>
+                    <ListItemText>Marquer comme terminé</ListItemText>
+                </MenuItem>
+            </Menu>
         </Box>
     );
 }
