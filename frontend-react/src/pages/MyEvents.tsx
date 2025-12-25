@@ -17,6 +17,7 @@ import {
     Grid,
     Checkbox,
     FormControlLabel,
+    FormHelperText,
     InputAdornment
 } from '@mui/material';
 import {
@@ -47,6 +48,8 @@ interface EventFormData {
     postal_code: string;
     city: string;
     speaker_name: string;
+    language_id: string;
+    translation_language_ids: number[];
     max_seats: string;
     image_url: string;
     is_free: number;
@@ -90,6 +93,8 @@ export default function MyEvents() {
         city: '',
         // Details
         speaker_name: '',
+        language_id: '10', // Default French
+        translation_language_ids: [],
         max_seats: '',
         image_url: '',
         // Logistics
@@ -110,6 +115,20 @@ export default function MyEvents() {
 
     const [hasChurch, setHasChurch] = useState<boolean | null>(null);
     const [isChurchComplete, setIsChurchComplete] = useState<boolean>(false);
+    const [languages, setLanguages] = useState<any[]>([]);
+
+    // Load available languages
+    useEffect(() => {
+        const loadLanguages = async () => {
+            try {
+                const { data } = await api.get('/settings/languages');
+                setLanguages(data.filter((lang: any) => lang.is_active));
+            } catch (err) {
+                console.error('Failed to load languages:', err);
+            }
+        };
+        loadLanguages();
+    }, []);
 
     useEffect(() => {
         if (isAdminMode && eventId) {
@@ -132,6 +151,10 @@ export default function MyEvents() {
                 // Ensure dates are formatted for datetime-local input (YYYY-MM-DDTHH:mm)
                 start_datetime: data.start_datetime ? new Date(data.start_datetime).toISOString().slice(0, 16) : '',
                 end_datetime: data.end_datetime ? new Date(data.end_datetime).toISOString().slice(0, 16) : '',
+                // Ensure language_id is a string
+                language_id: data.language_id ? data.language_id.toString() : '10',
+                // Ensure translation_language_ids is an array of numbers
+                translation_language_ids: data.translation_language_ids || [],
                 // Ensure booleans/checkboxes are strictly 1 or 0
                 has_parking: data.has_parking ? 1 : 0,
                 is_parking_free: data.is_parking_free ? 1 : 0,
@@ -234,7 +257,10 @@ export default function MyEvents() {
             // Préparer les données avec conversion des types
             const payload = {
                 ...formData,
-                language_id: 10, // Français par défaut
+                // Convertir language_id en integer
+                language_id: parseInt(formData.language_id) || 10,
+                // Inclure les langues de traduction
+                translation_language_ids: formData.translation_language_ids || [],
                 // Convertir latitude/longitude en floats
                 latitude: parseFloat(formData.latitude) || 0,
                 longitude: parseFloat(formData.longitude) || 0,
@@ -495,6 +521,65 @@ export default function MyEvents() {
                                                         onChange={handleChange}
                                                         placeholder="Ex: Pasteur John Doe"
                                                     />
+                                                </Grid>
+                                            </Grid>
+
+                                            <Grid container spacing={2}>
+                                                <Grid size={{ xs: 12, md: 6 }}>
+                                                    <FormControl fullWidth>
+                                                        <InputLabel>Langue du speaker</InputLabel>
+                                                        <Select
+                                                            id="language_id"
+                                                            value={formData.language_id}
+                                                            onChange={(e) => setFormData({
+                                                                ...formData,
+                                                                language_id: e.target.value as string
+                                                            })}
+                                                            label="Langue du speaker"
+                                                        >
+                                                            {languages.map(lang => (
+                                                                <MenuItem key={lang.id} value={lang.id.toString()}>
+                                                                    {lang.flag_emoji} {lang.name_fr}
+                                                                </MenuItem>
+                                                            ))}
+                                                        </Select>
+                                                        <FormHelperText>
+                                                            Langue dans laquelle le speaker parlera
+                                                        </FormHelperText>
+                                                    </FormControl>
+                                                </Grid>
+                                                <Grid size={{ xs: 12, md: 6 }}>
+                                                    <FormControl fullWidth>
+                                                        <InputLabel>Langues de traduction</InputLabel>
+                                                        <Select
+                                                            multiple
+                                                            value={formData.translation_language_ids}
+                                                            onChange={(e) => setFormData({
+                                                                ...formData,
+                                                                translation_language_ids: e.target.value as number[]
+                                                            })}
+                                                            renderValue={(selected) =>
+                                                                languages
+                                                                    .filter(l => selected.includes(l.id))
+                                                                    .map(l => `${l.flag_emoji} ${l.name_fr}`)
+                                                                    .join(', ')
+                                                            }
+                                                            label="Langues de traduction"
+                                                        >
+                                                            {languages
+                                                                .filter(l => l.id.toString() !== formData.language_id)
+                                                                .map(lang => (
+                                                                    <MenuItem key={lang.id} value={lang.id}>
+                                                                        <Checkbox checked={formData.translation_language_ids.includes(lang.id)} />
+                                                                        {lang.flag_emoji} {lang.name_fr}
+                                                                    </MenuItem>
+                                                                ))
+                                                            }
+                                                        </Select>
+                                                        <FormHelperText>
+                                                            Langues dans lesquelles l'événement sera traduit (optionnel)
+                                                        </FormHelperText>
+                                                    </FormControl>
                                                 </Grid>
                                             </Grid>
 
@@ -927,7 +1012,9 @@ export default function MyEvents() {
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                             <LocationOnIcon sx={{ fontSize: 16, color: 'secondary.main' }} />
                                             <Typography variant="body2" color="text.secondary">
-                                                {event.address || "Lieu non précisé"}
+                                                {event.city ?
+                                                    `${event.street_number || ''} ${event.street_name || ''}, ${event.city}`.trim().replace(/^,\s*/, '')
+                                                    : event.address || "Lieu non précisé"}
                                             </Typography>
                                         </Box>
                                     </Box>

@@ -1,148 +1,83 @@
+Tâche 1 – Gestion des événements et des langues
+🎯 Objectif
 
-# 📌 Cahier des charges – Amélioration base de données & dashboards
+Mettre en place une gestion flexible des langues pour les événements, en tenant compte de la langue du speaker et des langues de traduction disponibles lors de l’événement.
 
-## Contexte général
-L’application dispose d’une base de données et de plusieurs tableaux de bord (administrateur et utilisateur).
-Des évolutions récentes nécessitent :
-- une **mise à jour des données existantes**,
-- une **amélioration de l’expérience utilisateur (UX/UI)**,
-- l’ajout de **statistiques et graphiques pertinents** pour le suivi de l’activité.
+🧱 Contexte technique
 
----
+Table events : contient le champ language_id
 
-## 🗄️ Tâche 1 – Base de données
+Table event_detail : contient le champ speaker_name
 
-### 🎯 Objectif
-Mettre à jour et fiabiliser les données de la table `church_details`, suite à l’ajout de nouveaux champs liés à l’adresse.
+📝 Cas d’usage principal
 
-### 🧱 Nouveaux champs ajoutés
-La table `church_details` contient désormais les champs suivants :
-- `street_number`
-- `street_name`
-- `postal_code`
-- `city`
+Lors de la création d’un événement, il doit être possible de :
 
-Ces champs doivent être **correctement renseignés** pour tous les enregistrements.
+Renseigner le nom du speaker
 
-### ✅ Actions attendues
-- Générer des **données réalistes et cohérentes** pour les nouveaux champs.
-- Si nécessaire :
-  - Dropper la base de données existante
-  - La recréer proprement
-  - Réinjecter des données de test propres et cohérentes
-- Générer des **données de test complètes** afin de valider le bon fonctionnement de l’application.
+Définir la langue du speaker
 
-### ⚙️ Contraintes techniques
-- Générer **500 enregistrements minimum**
-- Respecter les **relations entre les tables** (clés étrangères, cohérence logique)
-- Les adresses doivent être **réalistes** (numéros, rues, codes postaux, villes crédibles)
-- Les données doivent permettre de **simuler un cas réel d’utilisation**
+Exemple :
 
-### 🏁 Résultat attendu
-- Une **base de données fonctionnelle**
-- Des **données exploitables** pour tester et comprendre le comportement de l’application
+Daniel Kolenda → Anglais
 
----
+Un speaker brésilien → Portugais (Brésil)
 
-## 📊 Tâche 2 – Dashboard Administrateur
+Indiquer les langues de traduction de l’événement
 
-### 🎯 Objectif
-Améliorer l’interface du tableau de bord administrateur afin d’offrir une meilleure visibilité sur l’activité de l’application.
+Par exemple :
 
-### 📈 Librairie imposée
-Utiliser la librairie **MUI X Charts** :
-👉 https://mui.com/x/react-charts/
+Traduction en français
 
-### 📌 Indicateurs et statistiques à afficher
-Le dashboard administrateur doit afficher clairement :
+Traduction en français + portugais
 
-- 📍 **Nombre total d’églises enregistrées**
-- 👤 **Liste ou compteur des utilisateurs en attente de validation**
-- 📅 **Nombre d’événements en cours**
-- 🔜 **Nombre d’événements à venir**
-- 🏙️ **Distribution des églises par ville**, visualisée via un **graphique en barres**
+Autres langues si nécessaire
 
-### 🧭 Contraintes UX
-- Les informations doivent être **facilement accessibles**
-- Les graphiques doivent être **lisibles, esthétiques et pertinents**
-- Le dashboard doit servir d’outil de **pilotage rapide** pour l’administrateur
+⚙️ Comportement par défaut
 
----
+Par défaut, la langue principale de l’événement est le français
 
-## 📄 Tâche 3 – Dashboard Utilisateur (Églises & Événements)
+La traduction est une option
 
-### 🎯 Objectif
-Améliorer la **pagination** des listes (églises, événements) pour une meilleure expérience utilisateur.
+La majorité des événements auront :
 
-### 📌 Composant imposé
-Remplacer la pagination existante par le composant MUI suivant :
+speaker_name en français
 
-```jsx
-<Pagination count={10} variant="outlined" />
-<Pagination count={10} variant="outlined" color="primary" />
-<Pagination count={10} variant="outlined" color="secondary" />
-<Pagination count={10} variant="outlined" disabled />
-```
+Aucun besoin de traduction supplémentaire
 
-⚙️ Attentes
-Pagination claire et intuitive
+🔁 Cas particulier (speaker étranger)
 
-Bonne gestion des pages (navigation fluide)
+Exemple :
+Un évangéliste venant des États-Unis (ex. Daniel Kolenda)
 
-Intégration cohérente avec le design existant
+Langue du speaker : Anglais
 
-## 🪟 Tâche 4 – Dashboard Utilisateur : Détails d’une église
+Langues de traduction disponibles :
 
-### 🎯 Objectif
-Améliorer l’affichage des informations d’une église via une **fenêtre modale** accessible depuis le bouton **“Voir l’église”**.
+Français
 
-### 🖱️ Comportement attendu
-- Au clic sur le bouton **“Voir l’église”** :
-  - Une **modale s’ouvre**.
-  - Elle affiche **toutes les informations de l’église**.
-  - Elle affiche également la **liste des événements associés** à cette église.
+(Optionnel) Portugais, Espagnol, etc.
 
-### 🧩 Problèmes à corriger
-- Certaines informations ne sont **pas visibles** actuellement.
-- Le contenu dépasse la **hauteur de l’écran**, rendant la lecture difficile.
+💡 Idée clé
 
-### ✅ Améliorations attendues
-- La modale doit être **scrollable** pour afficher tout le contenu.
-- Le contenu doit être **structuré et lisible**.
-- Les événements liés à l’église doivent être **clairement identifiables**.
+La gestion des langues doit être :
 
-### 🏁 Résultat attendu
-- Application plus **réaliste**, **robuste** et **facile à tester**.
-- Tableaux de bord plus **clairs**, **modernes** et **informatiques**.
-- **Amélioration significative de l’expérience utilisateur** pour les administrateurs et les utilisateurs finaux.
+Optionnelle
 
+Flexible
 
-## 🗂️ Tâche 5 – Dashboard : Ajout d’un Drawer dans le menu latéral
+Adaptée aux événements internationaux
+dans
+Simple pour les événements locaux francophones
 
-### 🎯 Objectif
-Améliorer la navigation dans le tableau de bord en ajoutant un **drawer** (panneau coulissant) dans le menu situé à gauche de la page.
+✅ Résultat attendu
 
-### 📌 Page concernée
-- URL : `http://localhost/dashboard/`
+Une meilleure expérience lors de la création d’événements
 
-### 📈 Composant à utiliser
-- Librairie : **Material-UI (MUI)**
-- Documentation officielle : [MUI Drawer](https://mui.com/material-ui/react-drawer/)
+Une gestion claire :
 
-### ✅ Comportement attendu
-- Le drawer doit :
-  - Pouvoir **s’ouvrir et se fermer** facilement.
-  - Contenir le **menu de navigation** du dashboard.
-  - Être intégré de manière **cohérente avec le design existant**.
-- Navigation fluide et intuitive pour l’utilisateur.
-- Compatible avec les autres composants du dashboard.
+de la langue du speaker
 
-### ⚙️ Contraintes techniques
-- Utiliser les **meilleures pratiques MUI** pour l’accessibilité et la réactivité.
-- Le drawer doit **s’adapter aux différentes tailles d’écran** (responsive design).
-- Les éléments du menu doivent être **clairs et hiérarchisés**.
+des langues de traduction
 
-### 🏁 Résultat attendu
-- Navigation améliorée dans le tableau de bord.
-- Menu latéral plus **moderne et interactif** grâce au drawer.
-- Expérience utilisateur simplifiée pour accéder aux différentes sections du dashboard.
+Une compatibilité avec les événements locaux et internationaux

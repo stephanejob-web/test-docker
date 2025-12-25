@@ -411,7 +411,7 @@ router.get('/events', async (req, res) => {
 router.get('/events/:id', async (req, res) => {
     try {
         const [events] = await db.query(
-            `SELECT id, title, start_datetime, end_datetime, status, church_id,
+            `SELECT id, title, start_datetime, end_datetime, status, church_id, language_id,
                     ST_X(event_location) as longitude, ST_Y(event_location) as latitude
              FROM events WHERE id = ?`,
             [req.params.id]
@@ -420,11 +420,17 @@ router.get('/events/:id', async (req, res) => {
 
         const [details] = await db.query('SELECT * FROM event_details WHERE event_id = ?', [req.params.id]);
 
+        const [translations] = await db.query(
+            'SELECT language_id FROM event_translations WHERE event_id = ?',
+            [req.params.id]
+        );
+
         // Flatten details into the main object for easier consumption
         const eventData = { ...events[0] };
         if (details[0]) {
             Object.assign(eventData, details[0]);
         }
+        eventData.translation_language_ids = translations.map(t => t.language_id);
 
         res.json(eventData);
     } catch (error) {
@@ -439,7 +445,8 @@ router.put('/events/:id', async (req, res) => {
         title, start_datetime, end_datetime, latitude, longitude, status,
         description, address, street_number, street_name, postal_code, city,
         speaker_name, max_seats, image_url, is_free, registration_link,
-        youtube_live, has_parking, parking_capacity, is_parking_free, parking_details
+        youtube_live, has_parking, parking_capacity, is_parking_free, parking_details,
+        translation_language_ids
     } = req.body;
 
     const connection = await db.getConnection();
@@ -510,6 +517,13 @@ router.put('/events/:id', async (req, res) => {
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [req.params.id, ...detailParams]
             );
+        }
+
+        // Update translations
+        await connection.query('DELETE FROM event_translations WHERE event_id = ?', [req.params.id]);
+        if (translation_language_ids && Array.isArray(translation_language_ids) && translation_language_ids.length > 0) {
+            const translationValues = translation_language_ids.map(langId => [req.params.id, langId]);
+            await connection.query('INSERT INTO event_translations (event_id, language_id) VALUES ?', [translationValues]);
         }
 
         await connection.commit();

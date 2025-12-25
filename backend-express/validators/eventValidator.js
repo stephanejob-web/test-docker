@@ -3,9 +3,8 @@ const { body, validationResult } = require('express-validator');
 // Middleware pour gérer les erreurs de validation
 const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
+
   if (!errors.isEmpty()) {
-    console.error('Erreurs de validation événement:', JSON.stringify(errors.array(), null, 2));
-    console.error('Données reçues:', JSON.stringify(req.body, null, 2));
     return res.status(400).json({
       message: 'Erreurs de validation',
       errors: errors.array().map(err => ({
@@ -14,6 +13,7 @@ const handleValidationErrors = (req, res, next) => {
       }))
     });
   }
+
   next();
 };
 
@@ -26,8 +26,20 @@ const validateEvent = [
     .isLength({ min: 3, max: 255 }).withMessage('Le titre doit contenir entre 3 et 255 caractères'),
 
   body('language_id')
-    .notEmpty().withMessage('La langue est obligatoire')
-    .isInt({ min: 1 }).withMessage('La langue doit être un nombre valide'),
+    .notEmpty().withMessage('La langue du speaker est obligatoire')
+    .isInt({ min: 1 }).withMessage('La langue du speaker doit être un nombre valide'),
+
+  body('translation_language_ids')
+    .optional()
+    .isArray().withMessage('Les langues de traduction doivent être un tableau')
+    .custom((value) => {
+      if (value && value.length > 0) {
+        if (!value.every(id => Number.isInteger(id) && id > 0)) {
+          throw new Error('Les IDs de langues de traduction doivent être des nombres valides');
+        }
+      }
+      return true;
+    }),
 
   body('start_datetime')
     .notEmpty().withMessage('La date de début est obligatoire')

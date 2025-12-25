@@ -144,10 +144,12 @@ router.post('/my-church', validateChurch, async (req, res) => {
 router.get('/my-events', async (req, res) => {
     try {
         const [events] = await db.query(
-            `SELECT id, title, start_datetime, end_datetime, status 
-             FROM events 
-             WHERE admin_id = ? 
-             ORDER BY start_datetime DESC`,
+            `SELECT e.id, e.title, e.start_datetime, e.end_datetime, e.status,
+                    ed.address, ed.street_number, ed.street_name, ed.postal_code, ed.city
+             FROM events e
+             LEFT JOIN event_details ed ON e.id = ed.event_id
+             WHERE e.admin_id = ?
+             ORDER BY e.start_datetime DESC`,
             [req.user.id]
         );
         res.json(events);
@@ -159,12 +161,15 @@ router.get('/my-events', async (req, res) => {
 
 // Créer un événement
 router.post('/events', validateEvent, async (req, res) => {
+
     const {
         title, start_datetime, end_datetime, latitude, longitude, church_id, language_id,
         // Detailed fields
         description, address, street_number, street_name, postal_code, city, speaker_name, max_seats, image_url,
         is_free, registration_link, youtube_live,
-        has_parking, parking_capacity, is_parking_free, parking_details
+        has_parking, parking_capacity, is_parking_free, parking_details,
+        // Translation languages
+        translation_language_ids
     } = req.body;
 
     const connection = await db.getConnection();
@@ -174,8 +179,8 @@ router.post('/events', validateEvent, async (req, res) => {
         // 1. Create Event
         const [result] = await connection.query(
             `INSERT INTO events (admin_id, church_id, title, start_datetime, end_datetime, event_location, language_id)
-             VALUES (?, ?, ?, ?, ?, ST_GeomFromText(?), 10)`,
-            [req.user.id, church_id || null, title, start_datetime, end_datetime, `POINT(${longitude} ${latitude})`]
+             VALUES (?, ?, ?, ?, ?, ST_GeomFromText(?), ?)`,
+            [req.user.id, church_id || null, title, start_datetime, end_datetime, `POINT(${longitude} ${latitude})`, language_id || 10]
         );
 
         const eventId = result.insertId;
@@ -208,6 +213,12 @@ router.post('/events', validateEvent, async (req, res) => {
             ]
         );
 
+        // 3. Insert translations if present
+        if (translation_language_ids && Array.isArray(translation_language_ids) && translation_language_ids.length > 0) {
+            const translationValues = translation_language_ids.map(langId => [eventId, langId]);
+            await connection.query('INSERT INTO event_translations (event_id, language_id) VALUES ?', [translationValues]);
+        }
+
         await connection.commit();
         res.status(201).json({ message: 'Événement créé avec succès', eventId });
     } catch (error) {
@@ -233,9 +244,15 @@ router.get('/events/:id', async (req, res) => {
 
         const [details] = await db.query('SELECT * FROM event_details WHERE event_id = ?', [req.params.id]);
 
+        const [translations] = await db.query(
+            'SELECT language_id FROM event_translations WHERE event_id = ?',
+            [req.params.id]
+        );
+
         res.json({
             ...events[0],
-            ...details[0]
+            ...details[0],
+            translation_language_ids: translations.map(t => t.language_id)
         });
     } catch (error) {
         console.error(error);
@@ -250,7 +267,8 @@ router.put('/events/:id', validateEvent, async (req, res) => {
         title, start_datetime, end_datetime, latitude, longitude, status,
         description, address, street_number, street_name, postal_code, city, speaker_name, max_seats, image_url,
         is_free, registration_link, youtube_live,
-        has_parking, parking_capacity, is_parking_free, parking_details
+        has_parking, parking_capacity, is_parking_free, parking_details,
+        translation_language_ids
     } = req.body;
 
     const connection = await db.getConnection();
@@ -317,6 +335,13 @@ router.put('/events/:id', validateEvent, async (req, res) => {
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 detailParams
             );
+        }
+
+        // 4. Update translations
+        await connection.query('DELETE FROM event_translations WHERE event_id = ?', [eventId]);
+        if (translation_language_ids && Array.isArray(translation_language_ids) && translation_language_ids.length > 0) {
+            const translationValues = translation_language_ids.map(langId => [eventId, langId]);
+            await connection.query('INSERT INTO event_translations (event_id, language_id) VALUES ?', [translationValues]);
         }
 
         await connection.commit();
