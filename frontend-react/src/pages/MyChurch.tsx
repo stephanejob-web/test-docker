@@ -264,6 +264,7 @@ export default function MyChurch() {
                                                         size="small"
                                                         label="N°"
                                                         InputProps={{ readOnly: true }}
+                                                        InputLabelProps={{ shrink: true }}
                                                         placeholder="Auto"
                                                     />
                                                 </Grid>
@@ -274,6 +275,7 @@ export default function MyChurch() {
                                                         size="small"
                                                         label="Rue"
                                                         InputProps={{ readOnly: true }}
+                                                        InputLabelProps={{ shrink: true }}
                                                         placeholder="Auto-rempli"
                                                     />
                                                 </Grid>
@@ -284,6 +286,7 @@ export default function MyChurch() {
                                                         size="small"
                                                         label="Code Postal"
                                                         InputProps={{ readOnly: true }}
+                                                        InputLabelProps={{ shrink: true }}
                                                         placeholder="Auto"
                                                     />
                                                 </Grid>
@@ -294,6 +297,7 @@ export default function MyChurch() {
                                                         size="small"
                                                         label="Ville"
                                                         InputProps={{ readOnly: true }}
+                                                        InputLabelProps={{ shrink: true }}
                                                         placeholder="Auto-remplie"
                                                     />
                                                 </Grid>
@@ -310,6 +314,7 @@ export default function MyChurch() {
                                                         size="small"
                                                         label="Latitude"
                                                         InputProps={{ readOnly: true }}
+                                                        InputLabelProps={{ shrink: true }}
                                                         placeholder="Auto-calculé"
                                                     />
                                                 </Grid>
@@ -320,6 +325,7 @@ export default function MyChurch() {
                                                         size="small"
                                                         label="Longitude"
                                                         InputProps={{ readOnly: true }}
+                                                        InputLabelProps={{ shrink: true }}
                                                         placeholder="Auto-calculé"
                                                     />
                                                 </Grid>
@@ -360,6 +366,7 @@ export default function MyChurch() {
                                         {...register('description')}
                                         fullWidth
                                         label="Description Courte"
+                                        InputLabelProps={{ shrink: true }}
                                         placeholder="Présentez votre église en quelques mots..."
                                         error={!!errors.description}
                                         helperText={errors.description?.message}
@@ -409,6 +416,7 @@ export default function MyChurch() {
                                             {...register('phone')}
                                             fullWidth
                                             label="Téléphone"
+                                            InputLabelProps={{ shrink: true }}
                                             placeholder="+33 1 23 45 67 89"
                                             error={!!errors.phone}
                                             helperText={errors.phone?.message}
@@ -419,6 +427,7 @@ export default function MyChurch() {
                                             {...register('website')}
                                             fullWidth
                                             label="Site Web"
+                                            InputLabelProps={{ shrink: true }}
                                             placeholder="https://..."
                                             error={!!errors.website}
                                             helperText={errors.website?.message}
@@ -493,6 +502,7 @@ export default function MyChurch() {
                                             {...register(`socials.${idx}.url` as const)}
                                             fullWidth
                                             label="URL"
+                                            InputLabelProps={{ shrink: true }}
                                             placeholder="https://..."
                                             error={!!errors.socials?.[idx]?.url}
                                             helperText={errors.socials?.[idx]?.url?.message}
