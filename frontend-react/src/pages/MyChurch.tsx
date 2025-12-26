@@ -107,6 +107,12 @@ export default function MyChurch() {
 
             const { data } = await api.get(endpoint);
             if (data && data.id) {
+                // Normaliser les horaires: convertir HH:MM:SS en HH:MM
+                const normalizedSchedules = (data.schedules || []).map((schedule: any) => ({
+                    ...schedule,
+                    start_time: schedule.start_time?.substring(0, 5) || '' // HH:MM:SS -> HH:MM
+                }));
+
                 // Reset form with fetched data
                 reset({
                     church_name: data.church_name,
@@ -127,7 +133,7 @@ export default function MyChurch() {
                     is_parking_free: !!data.details.is_parking_free,
                     logo_url: data.details.logo_url || '',
                     socials: data.socials || [],
-                    schedules: data.schedules || [],
+                    schedules: normalizedSchedules,
                 });
             }
         } catch (err) {
