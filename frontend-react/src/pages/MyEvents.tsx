@@ -51,7 +51,9 @@ import {
     Visibility as VisibilityIcon,
     NavigateNext as NavigateNextIcon,
     NavigateBefore as NavigateBeforeIcon,
-    Info as InfoIcon
+    Info as InfoIcon,
+    ViewModule as ViewModuleIcon,
+    ViewList as ViewListIcon
 } from '@mui/icons-material';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import DateTimeInput from '../components/DateTimeInput';
