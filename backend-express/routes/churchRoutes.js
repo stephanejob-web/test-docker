@@ -14,6 +14,8 @@ router.use(requirePastor);
 // Récupérer mon église
 router.get('/my-church', async (req, res) => {
     try {
+        console.log('[GET /my-church] User ID:', req.user.id, 'Role:', req.user.role);
+
         const [churches] = await db.query(
             `SELECT id, church_name, denomination_id, ST_X(location) as longitude, ST_Y(location) as latitude
        FROM churches
@@ -21,7 +23,10 @@ router.get('/my-church', async (req, res) => {
             [req.user.id]
         );
 
+        console.log('[GET /my-church] Churches found:', churches.length);
+
         if (churches.length === 0) {
+            console.log('[GET /my-church] No church found for user', req.user.id);
             return res.status(404).json({ message: 'Aucune église associée' });
         }
 
