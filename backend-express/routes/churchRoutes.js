@@ -53,7 +53,7 @@ router.post('/my-church', validateChurch, async (req, res) => {
     const {
         church_name, latitude, longitude, denomination_id,
         // Details
-        description, address, street_number, street_name, postal_code, city, phone, website, pastor_name, has_parking, parking_capacity, is_parking_free, logo_url,
+        description, address, street_number, street_name, postal_code, city, phone, website, pastor_first_name, pastor_last_name, has_parking, parking_capacity, is_parking_free, logo_url,
         // Relations
         socials, // Array of { platform, url }
         schedules // Array of { day_of_week, start_time, activity_type_id }
@@ -91,22 +91,22 @@ router.post('/my-church', validateChurch, async (req, res) => {
         const detailParams = [
             description || null, address || null, street_number || null, street_name || null,
             postal_code || null, city || null, phone || null, website || null,
-            pastor_name || null, has_parking ? 1 : 0, parking_capacity || null, is_parking_free ? 1 : 0,
+            pastor_first_name || null, pastor_last_name || null, has_parking ? 1 : 0, parking_capacity || null, is_parking_free ? 1 : 0,
             langId, logo_url || null
         ];
 
         if (existingDetails.length > 0) {
             await connection.query(
                 `UPDATE church_details
-                 SET description=?, address=?, street_number=?, street_name=?, postal_code=?, city=?, phone=?, website=?, pastor_name=?, has_parking=?, parking_capacity=?, is_parking_free=?, language_id=?, logo_url=?
+                 SET description=?, address=?, street_number=?, street_name=?, postal_code=?, city=?, phone=?, website=?, pastor_first_name=?, pastor_last_name=?, has_parking=?, parking_capacity=?, is_parking_free=?, language_id=?, logo_url=?
                  WHERE church_id=?`,
                 [...detailParams, churchId]
             );
         } else {
             await connection.query(
                 `INSERT INTO church_details
-                 (description, address, street_number, street_name, postal_code, city, phone, website, pastor_name, has_parking, parking_capacity, is_parking_free, language_id, logo_url, church_id)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                 (description, address, street_number, street_name, postal_code, city, phone, website, pastor_first_name, pastor_last_name, has_parking, parking_capacity, is_parking_free, language_id, logo_url, church_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [...detailParams, churchId]
             );
         }

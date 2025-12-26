@@ -40,40 +40,47 @@ const validateChurch = [
     .optional()
     .isInt({ min: 1 }).withMessage('La langue doit être un nombre valide'),
 
-  body('pastor_name')
-    .optional()
+  body('pastor_first_name')
     .trim()
-    .isLength({ max: 100 }).withMessage('Le nom du pasteur ne doit pas dépasser 100 caractères'),
+    .notEmpty().withMessage('Le prénom du pasteur est obligatoire')
+    .isLength({ min: 2, max: 50 }).withMessage('Le prénom doit contenir entre 2 et 50 caractères')
+    .matches(/^[a-zA-ZÀ-ÿ\s-]+$/).withMessage('Le prénom ne doit contenir que des lettres'),
+
+  body('pastor_last_name')
+    .trim()
+    .notEmpty().withMessage('Le nom du pasteur est obligatoire')
+    .isLength({ min: 2, max: 50 }).withMessage('Le nom doit contenir entre 2 et 50 caractères')
+    .matches(/^[a-zA-ZÀ-ÿ\s-]+$/).withMessage('Le nom ne doit contenir que des lettres'),
 
   body('address')
-    .optional()
     .trim()
+    .notEmpty().withMessage('L\'adresse complète est obligatoire')
     .isLength({ max: 500 }).withMessage('L\'adresse ne doit pas dépasser 500 caractères'),
 
-  // Champs d'adresse détaillés
+  // Champs d'adresse détaillés (obligatoires)
   body('street_number')
-    .optional()
     .trim()
+    .notEmpty().withMessage('Le numéro de rue est obligatoire')
     .isLength({ max: 20 }).withMessage('Le numéro de rue ne doit pas dépasser 20 caractères'),
 
   body('street_name')
-    .optional()
     .trim()
+    .notEmpty().withMessage('Le nom de rue est obligatoire')
     .isLength({ max: 255 }).withMessage('Le nom de rue ne doit pas dépasser 255 caractères'),
 
   body('postal_code')
-    .optional()
     .trim()
+    .notEmpty().withMessage('Le code postal est obligatoire')
     .matches(/^[0-9]{5}$/).withMessage('Le code postal doit contenir 5 chiffres'),
 
   body('city')
-    .optional()
     .trim()
+    .notEmpty().withMessage('La ville est obligatoire')
     .isLength({ min: 2, max: 100 }).withMessage('Le nom de la ville doit contenir entre 2 et 100 caractères'),
 
   body('phone')
-    .optional({ values: 'falsy' })
     .trim()
+    .notEmpty().withMessage('Le numéro de téléphone est obligatoire')
     .matches(/^[0-9+\s()-]{10,20}$/).withMessage('Le numéro de téléphone n\'est pas valide'),
 
   body('description')
@@ -98,10 +105,11 @@ const validateChurch = [
     .optional()
     .isBoolean().withMessage('Le champ parking gratuit doit être vrai ou faux'),
 
-  // Horaires (tableau)
+  // Horaires (tableau) - Au moins 1 horaire obligatoire
   body('schedules')
-    .optional()
-    .isArray().withMessage('Les horaires doivent être un tableau'),
+    .notEmpty().withMessage('Au moins un horaire est obligatoire')
+    .isArray().withMessage('Les horaires doivent être un tableau')
+    .isArray({ min: 1 }).withMessage('Au moins un horaire est obligatoire'),
 
   body('schedules.*.activity_type_id')
     .if(body('schedules').exists())

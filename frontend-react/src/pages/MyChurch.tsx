@@ -18,7 +18,9 @@ import {
     Tab,
     IconButton,
     Alert,
-    Grid
+    Grid,
+    FormHelperText,
+    Badge
 } from '@mui/material';
 import {
     Save as SaveIcon,
@@ -56,10 +58,11 @@ export default function MyChurch() {
         watch,
         setValue,
         reset,
+        trigger,
         formState: { errors, isSubmitting },
     } = useForm<ChurchFormData>({
         resolver: zodResolver(churchSchema),
-        mode: 'onChange', // Real-time validation
+        mode: 'all', // Validation complète en temps réel
         defaultValues: {
             socials: [],
             schedules: [],
@@ -78,6 +81,47 @@ export default function MyChurch() {
     });
 
     const has_parking = watch('has_parking');
+
+    // Compter les erreurs par onglet
+    const getTabErrorCount = (tabIndex: number): number => {
+        const errorKeys = Object.keys(errors);
+        let count = 0;
+
+        switch (tabIndex) {
+            case 0: // Général
+                const generalFields = ['church_name', 'denomination_id', 'address', 'street_number', 'street_name', 'postal_code', 'city', 'latitude', 'longitude', 'description', 'logo_url'];
+                count = errorKeys.filter(key => generalFields.includes(key)).length;
+                break;
+            case 1: // Détails & Infos
+                const detailsFields = ['pastor_first_name', 'pastor_last_name', 'phone', 'website', 'has_parking', 'parking_capacity', 'is_parking_free'];
+                count = errorKeys.filter(key => detailsFields.includes(key)).length;
+                break;
+            case 2: // Réseaux Sociaux
+                if (errors.socials) {
+                    if (Array.isArray(errors.socials)) {
+                        // Compter les erreurs dans les éléments du tableau
+                        count = errors.socials.filter(e => e).length;
+                    } else {
+                        // Erreur au niveau du tableau (ex: validation globale)
+                        count = 1;
+                    }
+                }
+                break;
+            case 3: // Horaires
+                if (errors.schedules) {
+                    if (Array.isArray(errors.schedules)) {
+                        // Compter les erreurs dans les éléments du tableau
+                        count = errors.schedules.filter(e => e).length;
+                    } else {
+                        // Erreur au niveau du tableau (ex: min 1 horaire obligatoire)
+                        count = 1;
+                    }
+                }
+                break;
+        }
+
+        return count;
+    };
 
     useEffect(() => {
         fetchReferences();
@@ -127,7 +171,8 @@ export default function MyChurch() {
                     city: data.details.city || '',
                     phone: data.details.phone || '',
                     website: data.details.website || '',
-                    pastor_name: data.details.pastor_name || '',
+                    pastor_first_name: data.details.pastor_first_name || '',
+                    pastor_last_name: data.details.pastor_last_name || '',
                     has_parking: !!data.details.has_parking,
                     parking_capacity: data.details.parking_capacity || null,
                     is_parking_free: !!data.details.is_parking_free,
@@ -135,6 +180,9 @@ export default function MyChurch() {
                     socials: data.socials || [],
                     schedules: normalizedSchedules,
                 });
+
+                // Forcer la validation complète après le chargement des données
+                setTimeout(() => trigger(), 100);
             }
         } catch (err) {
             console.error('Error fetching church:', err);
@@ -204,7 +252,7 @@ export default function MyChurch() {
                 </Typography>
                 <Button
                     type="submit"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || Object.keys(errors).length > 0}
                     variant="contained"
                     color="success"
                     size="large"
@@ -226,10 +274,50 @@ export default function MyChurch() {
             {/* Tabs Header */}
             <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
                 <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)}>
-                    <Tab label="Général" />
-                    <Tab label="Détails & Infos" />
-                    <Tab label="Réseaux Sociaux" />
-                    <Tab label="Horaires" />
+                    <Tab
+                        label={
+                            <Badge
+                                badgeContent={getTabErrorCount(0)}
+                                color="error"
+                                sx={{ '& .MuiBadge-badge': { right: -12, top: 2 } }}
+                            >
+                                Général
+                            </Badge>
+                        }
+                    />
+                    <Tab
+                        label={
+                            <Badge
+                                badgeContent={getTabErrorCount(1)}
+                                color="error"
+                                sx={{ '& .MuiBadge-badge': { right: -12, top: 2 } }}
+                            >
+                                Détails & Infos
+                            </Badge>
+                        }
+                    />
+                    <Tab
+                        label={
+                            <Badge
+                                badgeContent={getTabErrorCount(2)}
+                                color="error"
+                                sx={{ '& .MuiBadge-badge': { right: -12, top: 2 } }}
+                            >
+                                Réseaux Sociaux
+                            </Badge>
+                        }
+                    />
+                    <Tab
+                        label={
+                            <Badge
+                                badgeContent={getTabErrorCount(3)}
+                                color="error"
+                                sx={{ '& .MuiBadge-badge': { right: -12, top: 2 } }}
+                            >
+                                Horaires
+                            </Badge>
+                        }
+                    />
                 </Tabs>
             </Box>
 
@@ -241,21 +329,24 @@ export default function MyChurch() {
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                                 {/* SECTION 1: ADRESSE (PRIORITAIRE) */}
                                 <Box sx={{ pb: 4, borderBottom: 1, borderColor: 'divider' }}>
-                                    <Typography variant="h5" sx={{ mb: 3, color: 'primary.main', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <Typography variant="h5" sx={{ mb: 1, color: 'primary.main', display: 'flex', alignItems: 'center', gap: 1 }}>
                                         <LocationOnIcon /> Localisation de l'Église
                                     </Typography>
+                                    <Alert severity="info" sx={{ mb: 3 }}>
+                                        Utilisez la recherche d'adresse ci-dessous. Tous les champs d'adresse et coordonnées GPS seront remplis automatiquement.
+                                    </Alert>
                                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                                         {/* Autocomplete d'adresse */}
                                         <AddressAutocomplete
                                             defaultValue={watch('address') || ''}
                                             onAddressSelect={(addressData) => {
-                                                setValue('address', addressData.full_address);
-                                                setValue('street_number', addressData.street_number);
-                                                setValue('street_name', addressData.street_name);
-                                                setValue('postal_code', addressData.postal_code);
-                                                setValue('city', addressData.city);
-                                                setValue('latitude', addressData.latitude);
-                                                setValue('longitude', addressData.longitude);
+                                                setValue('address', addressData.full_address, { shouldValidate: true });
+                                                setValue('street_number', addressData.street_number, { shouldValidate: true });
+                                                setValue('street_name', addressData.street_name, { shouldValidate: true });
+                                                setValue('postal_code', addressData.postal_code, { shouldValidate: true });
+                                                setValue('city', addressData.city, { shouldValidate: true });
+                                                setValue('latitude', addressData.latitude, { shouldValidate: true });
+                                                setValue('longitude', addressData.longitude, { shouldValidate: true });
                                             }}
                                             error={errors.address?.message}
                                         />
@@ -268,10 +359,12 @@ export default function MyChurch() {
                                                         {...register('street_number')}
                                                         fullWidth
                                                         size="small"
-                                                        label="N°"
+                                                        label="N° *"
                                                         InputProps={{ readOnly: true }}
                                                         InputLabelProps={{ shrink: true }}
                                                         placeholder="Auto"
+                                                        error={!!errors.street_number}
+                                                        helperText={errors.street_number?.message}
                                                     />
                                                 </Grid>
                                                 <Grid size={{ xs: 12, md: 9 }}>
@@ -279,10 +372,12 @@ export default function MyChurch() {
                                                         {...register('street_name')}
                                                         fullWidth
                                                         size="small"
-                                                        label="Rue"
+                                                        label="Rue *"
                                                         InputProps={{ readOnly: true }}
                                                         InputLabelProps={{ shrink: true }}
                                                         placeholder="Auto-rempli"
+                                                        error={!!errors.street_name}
+                                                        helperText={errors.street_name?.message}
                                                     />
                                                 </Grid>
                                                 <Grid size={{ xs: 12, md: 3 }}>
@@ -290,10 +385,12 @@ export default function MyChurch() {
                                                         {...register('postal_code')}
                                                         fullWidth
                                                         size="small"
-                                                        label="Code Postal"
+                                                        label="Code Postal *"
                                                         InputProps={{ readOnly: true }}
                                                         InputLabelProps={{ shrink: true }}
                                                         placeholder="Auto"
+                                                        error={!!errors.postal_code}
+                                                        helperText={errors.postal_code?.message}
                                                     />
                                                 </Grid>
                                                 <Grid size={{ xs: 12, md: 9 }}>
@@ -301,10 +398,12 @@ export default function MyChurch() {
                                                         {...register('city')}
                                                         fullWidth
                                                         size="small"
-                                                        label="Ville"
+                                                        label="Ville *"
                                                         InputProps={{ readOnly: true }}
                                                         InputLabelProps={{ shrink: true }}
                                                         placeholder="Auto-remplie"
+                                                        error={!!errors.city}
+                                                        helperText={errors.city?.message}
                                                     />
                                                 </Grid>
                                             </Grid>
@@ -318,10 +417,12 @@ export default function MyChurch() {
                                                         {...register('latitude', { valueAsNumber: true })}
                                                         fullWidth
                                                         size="small"
-                                                        label="Latitude"
+                                                        label="Latitude *"
                                                         InputProps={{ readOnly: true }}
                                                         InputLabelProps={{ shrink: true }}
                                                         placeholder="Auto-calculé"
+                                                        error={!!errors.latitude}
+                                                        helperText={errors.latitude?.message}
                                                     />
                                                 </Grid>
                                                 <Grid size={{ xs: 12, md: 6 }}>
@@ -329,10 +430,12 @@ export default function MyChurch() {
                                                         {...register('longitude', { valueAsNumber: true })}
                                                         fullWidth
                                                         size="small"
-                                                        label="Longitude"
+                                                        label="Longitude *"
                                                         InputProps={{ readOnly: true }}
                                                         InputLabelProps={{ shrink: true }}
                                                         placeholder="Auto-calculé"
+                                                        error={!!errors.longitude}
+                                                        helperText={errors.longitude?.message}
                                                     />
                                                 </Grid>
                                             </Grid>
@@ -358,14 +461,19 @@ export default function MyChurch() {
                                     <FormControl fullWidth error={!!errors.denomination_id}>
                                         <InputLabel>Dénomination *</InputLabel>
                                         <Select
-                                            {...register('denomination_id', { valueAsNumber: true })}
                                             label="Dénomination *"
-                                            defaultValue=""
+                                            value={watch('denomination_id') ?? ''}
+                                            onChange={(e) => {
+                                                const val = e.target.value as string | number;
+                                                setValue('denomination_id', val === '' ? 0 : Number(val), { shouldValidate: true });
+                                            }}
                                         >
                                             <MenuItem value="">Choisir...</MenuItem>
                                             {denominations.map(d => <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>)}
                                         </Select>
-                                        <FormError error={errors.denomination_id} />
+                                        {errors.denomination_id && (
+                                            <FormHelperText>{errors.denomination_id.message}</FormHelperText>
+                                        )}
                                     </FormControl>
 
                                     <TextField
@@ -400,28 +508,40 @@ export default function MyChurch() {
                     <Card>
                         <CardContent sx={{ p: 4 }}>
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                                <TextField
-                                    {...register('pastor_name')}
-                                    fullWidth
-                                    label="Nom du Pasteur Principal"
-                                    error={!!errors.pastor_name}
-                                    helperText={errors.pastor_name?.message}
-                                />
-
-                                <TextField
-                                    {...register('address')}
-                                    fullWidth
-                                    label="Adresse Complète"
-                                    error={!!errors.address}
-                                    helperText={errors.address?.message}
-                                />
+                                <Typography variant="h6" sx={{ mb: 2, color: 'text.primary' }}>
+                                    Pasteur Principal
+                                </Typography>
+                                <Grid container spacing={2}>
+                                    <Grid size={{ xs: 12, md: 6 }}>
+                                        <TextField
+                                            {...register('pastor_first_name')}
+                                            fullWidth
+                                            label="Prénom *"
+                                            InputLabelProps={{ shrink: true }}
+                                            placeholder="Jean"
+                                            error={!!errors.pastor_first_name}
+                                            helperText={errors.pastor_first_name?.message}
+                                        />
+                                    </Grid>
+                                    <Grid size={{ xs: 12, md: 6 }}>
+                                        <TextField
+                                            {...register('pastor_last_name')}
+                                            fullWidth
+                                            label="Nom *"
+                                            InputLabelProps={{ shrink: true }}
+                                            placeholder="Dupont"
+                                            error={!!errors.pastor_last_name}
+                                            helperText={errors.pastor_last_name?.message}
+                                        />
+                                    </Grid>
+                                </Grid>
 
                                 <Grid container spacing={2}>
                                     <Grid size={{ xs: 12, md: 6 }}>
                                         <TextField
                                             {...register('phone')}
                                             fullWidth
-                                            label="Téléphone"
+                                            label="Téléphone *"
                                             InputLabelProps={{ shrink: true }}
                                             placeholder="+33 1 23 45 67 89"
                                             error={!!errors.phone}
@@ -539,6 +659,14 @@ export default function MyChurch() {
                 {activeTab === 3 && (
                     <Card>
                         <CardContent sx={{ p: 4 }}>
+                            <Alert severity="info" sx={{ mb: 3 }}>
+                                Au moins un horaire est obligatoire pour votre église.
+                            </Alert>
+                            {errors.schedules && !Array.isArray(errors.schedules) && (
+                                <Alert severity="error" sx={{ mb: 3 }}>
+                                    {errors.schedules.message}
+                                </Alert>
+                            )}
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                 {scheduleFields.map((field, idx) => (
                                     <Box key={field.id} sx={{ display: 'flex', gap: 2, p: 2, bgcolor: 'action.hover', borderRadius: 1, flexWrap: 'wrap' }}>
