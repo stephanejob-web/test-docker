@@ -28,7 +28,9 @@ import {
     Divider,
     Chip,
     Stack,
-    Paper
+    Paper,
+    ToggleButton,
+    ToggleButtonGroup
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -99,6 +101,7 @@ export default function MyEvents() {
     const [loading, setLoading] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(eventId ? parseInt(eventId) : null);
     const [activeStep, setActiveStep] = useState(0);
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
     const initialFormState: EventFormData = {
         title: '',
@@ -1234,22 +1237,61 @@ export default function MyEvents() {
                     </Typography>
                 </Box>
                 {!isAdminMode && (
-                    <Button
-                        variant={showForm ? "outlined" : "contained"}
-                        color={showForm ? "error" : "primary"}
-                        startIcon={showForm ? <CloseIcon /> : <AddIcon />}
-                        onClick={() => {
-                            setShowForm(!showForm);
-                            if (showForm) {
-                                setEditingId(null);
-                                setFormData(initialFormState);
-                                setActiveStep(0);
-                            }
-                        }}
-                        disabled={!isChurchComplete}
-                    >
-                        {showForm ? 'Annuler' : 'Nouvel Événement'}
-                    </Button>
+                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                        {!showForm && (
+                            <ToggleButtonGroup
+                                value={viewMode}
+                                exclusive
+                                onChange={(_e, newMode) => {
+                                    if (newMode !== null) {
+                                        setViewMode(newMode);
+                                    }
+                                }}
+                                size="small"
+                                sx={{
+                                    bgcolor: 'background.paper',
+                                    '& .MuiToggleButton-root': {
+                                        px: 2,
+                                        py: 1,
+                                        border: '1px solid',
+                                        borderColor: 'divider',
+                                        '&.Mui-selected': {
+                                            bgcolor: 'primary.main',
+                                            color: 'white',
+                                            '&:hover': {
+                                                bgcolor: 'primary.dark',
+                                            }
+                                        }
+                                    }
+                                }}
+                            >
+                                <ToggleButton value="grid" aria-label="vue en grille">
+                                    <ViewModuleIcon sx={{ mr: 1 }} />
+                                    Cartes
+                                </ToggleButton>
+                                <ToggleButton value="list" aria-label="vue en liste">
+                                    <ViewListIcon sx={{ mr: 1 }} />
+                                    Liste
+                                </ToggleButton>
+                            </ToggleButtonGroup>
+                        )}
+                        <Button
+                            variant={showForm ? "outlined" : "contained"}
+                            color={showForm ? "error" : "primary"}
+                            startIcon={showForm ? <CloseIcon /> : <AddIcon />}
+                            onClick={() => {
+                                setShowForm(!showForm);
+                                if (showForm) {
+                                    setEditingId(null);
+                                    setFormData(initialFormState);
+                                    setActiveStep(0);
+                                }
+                            }}
+                            disabled={!isChurchComplete}
+                        >
+                            {showForm ? 'Annuler' : 'Nouvel Événement'}
+                        </Button>
+                    </Box>
                 )}
             </Box>
 
@@ -1370,7 +1412,7 @@ export default function MyEvents() {
                         </CardContent>
                     </Card>
                 </Box>
-            ) : (
+            ) : viewMode === 'grid' ? (
                 <Grid container spacing={3}>
                     {events.map((event) => (
                         <Grid size={{ xs: 12, md: 6, lg: 4 }} key={event.id}>
@@ -1580,6 +1622,225 @@ export default function MyEvents() {
                         </Box>
                     </Grid>
                 </Grid>
+            ) : (
+                // List View
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {events.map((event) => (
+                        <Card key={event.id} sx={{
+                            overflow: 'hidden',
+                            transition: 'all 0.2s',
+                            '&:hover': {
+                                boxShadow: 4,
+                                borderColor: 'primary.main'
+                            }
+                        }}>
+                            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' } }}>
+                                {/* Image */}
+                                <Box sx={{
+                                    width: { xs: '100%', md: 200 },
+                                    height: { xs: 180, md: 'auto' },
+                                    minHeight: { md: 160 },
+                                    bgcolor: 'grey.900',
+                                    position: 'relative',
+                                    flexShrink: 0
+                                }}>
+                                    {event.image_url ? (
+                                        <Box
+                                            component="img"
+                                            src={event.image_url}
+                                            alt={event.title}
+                                            sx={{
+                                                width: '100%',
+                                                height: '100%',
+                                                objectFit: 'cover'
+                                            }}
+                                        />
+                                    ) : (
+                                        <Box sx={{
+                                            width: '100%',
+                                            height: '100%',
+                                            background: 'linear-gradient(135deg, rgba(25, 118, 210, 0.5) 0%, rgba(156, 39, 176, 0.5) 100%)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center'
+                                        }}>
+                                            <EventIcon sx={{ fontSize: 48, color: 'rgba(255, 255, 255, 0.2)' }} />
+                                        </Box>
+                                    )}
+                                </Box>
+
+                                {/* Content */}
+                                <Box sx={{ flex: 1, p: 2.5, display: 'flex', flexDirection: 'column' }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 1.5 }}>
+                                        <Typography variant="h6" sx={{
+                                            fontWeight: 'bold',
+                                            flex: 1,
+                                            '&:hover': { color: 'primary.main' },
+                                            transition: 'color 0.3s'
+                                        }}>
+                                            {event.title}
+                                        </Typography>
+                                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', ml: 2 }}>
+                                            {event.status === 'PUBLISHED' && (
+                                                <Chip
+                                                    label="Publié"
+                                                    icon={<PublishIcon />}
+                                                    size="small"
+                                                    sx={{
+                                                        bgcolor: 'rgba(76, 175, 80, 0.9)',
+                                                        color: 'white',
+                                                        fontWeight: 'bold',
+                                                        backdropFilter: 'blur(8px)',
+                                                        boxShadow: '0 2px 8px rgba(76, 175, 80, 0.4)',
+                                                        '& .MuiChip-icon': { color: 'white' }
+                                                    }}
+                                                />
+                                            )}
+                                            {event.status === 'DRAFT' && (
+                                                <Chip
+                                                    label="Brouillon"
+                                                    icon={<DraftsIcon />}
+                                                    size="small"
+                                                    sx={{
+                                                        bgcolor: 'rgba(255, 193, 7, 0.9)',
+                                                        color: 'white',
+                                                        fontWeight: 'bold',
+                                                        backdropFilter: 'blur(8px)',
+                                                        boxShadow: '0 2px 8px rgba(255, 193, 7, 0.4)',
+                                                        '& .MuiChip-icon': { color: 'white' }
+                                                    }}
+                                                />
+                                            )}
+                                            {event.status === 'CANCELLED' && (
+                                                <Chip
+                                                    label="Annulé"
+                                                    icon={<CancelIcon />}
+                                                    size="small"
+                                                    sx={{
+                                                        bgcolor: 'rgba(244, 67, 54, 0.9)',
+                                                        color: 'white',
+                                                        fontWeight: 'bold',
+                                                        backdropFilter: 'blur(8px)',
+                                                        boxShadow: '0 2px 8px rgba(244, 67, 54, 0.4)',
+                                                        '& .MuiChip-icon': { color: 'white' }
+                                                    }}
+                                                />
+                                            )}
+                                            {event.status === 'COMPLETED' && (
+                                                <Chip
+                                                    label="Terminé"
+                                                    icon={<CheckCircleIcon />}
+                                                    size="small"
+                                                    sx={{
+                                                        bgcolor: 'rgba(158, 158, 158, 0.9)',
+                                                        color: 'white',
+                                                        fontWeight: 'bold',
+                                                        backdropFilter: 'blur(8px)',
+                                                        boxShadow: '0 2px 8px rgba(158, 158, 158, 0.4)',
+                                                        '& .MuiChip-icon': { color: 'white' }
+                                                    }}
+                                                />
+                                            )}
+                                            <IconButton
+                                                size="small"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setMenuAnchor({ element: e.currentTarget, eventId: event.id });
+                                                }}
+                                                sx={{
+                                                    bgcolor: 'primary.main',
+                                                    color: 'white',
+                                                    '&:hover': {
+                                                        bgcolor: 'primary.dark',
+                                                        transform: 'rotate(90deg)'
+                                                    },
+                                                    transition: 'all 0.3s'
+                                                }}
+                                            >
+                                                <MoreVertIcon fontSize="small" />
+                                            </IconButton>
+                                        </Box>
+                                    </Box>
+
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mb: 2 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <EventIcon sx={{ fontSize: 18, color: 'primary.main' }} />
+                                            <Typography variant="body2" color="text.secondary">
+                                                {new Date(event.start_datetime).toLocaleDateString('fr-FR', {
+                                                    weekday: 'long',
+                                                    year: 'numeric',
+                                                    month: 'long',
+                                                    day: 'numeric'
+                                                })} à {new Date(event.start_datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </Typography>
+                                        </Box>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <LocationOnIcon sx={{ fontSize: 18, color: 'secondary.main' }} />
+                                            <Typography variant="body2" color="text.secondary">
+                                                {event.city || event.address || "Lieu non précisé"}
+                                            </Typography>
+                                        </Box>
+                                        {event.description && (
+                                            <Typography variant="body2" color="text.secondary" sx={{ mt: 1, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                                {event.description}
+                                            </Typography>
+                                        )}
+                                    </Box>
+
+                                    <Box sx={{ display: 'flex', gap: 1, mt: 'auto' }}>
+                                        <Button
+                                            variant="outlined"
+                                            size="small"
+                                            onClick={() => handleEdit(event.id)}
+                                        >
+                                            Modifier
+                                        </Button>
+                                    </Box>
+                                </Box>
+                            </Box>
+                        </Card>
+                    ))}
+
+                    {/* Add New Event Card in List View */}
+                    <Card
+                        onClick={() => { setShowForm(true); setEditingId(null); setFormData(initialFormState); setActiveStep(0); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                        sx={{
+                            border: 2,
+                            borderStyle: 'dashed',
+                            borderColor: 'divider',
+                            cursor: 'pointer',
+                            transition: 'all 0.3s',
+                            '&:hover': {
+                                borderColor: 'primary.main',
+                                bgcolor: 'action.hover'
+                            }
+                        }}
+                    >
+                        <CardContent sx={{ py: 4 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                                <Box sx={{
+                                    width: 48,
+                                    height: 48,
+                                    borderRadius: '50%',
+                                    bgcolor: 'action.hover',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                    <AddIcon sx={{ fontSize: 24, color: 'primary.main' }} />
+                                </Box>
+                                <Box>
+                                    <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
+                                        Créer un nouvel événement
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                        Planifiez votre prochain culte
+                                    </Typography>
+                                </Box>
+                            </Box>
+                        </CardContent>
+                    </Card>
+                </Box>
             )}
 
             <Menu
