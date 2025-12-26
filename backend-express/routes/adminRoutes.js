@@ -8,7 +8,7 @@ router.use(requireSuperAdmin);
 
 // --- UTILISATEURS ---
 
-// Lister tous les utilisateurs (avec pagination, recherche, filtres)
+// Lister tous les utilisateurs validés (VALIDATED + SUSPENDED)
 router.get('/users', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -16,22 +16,16 @@ router.get('/users', async (req, res) => {
         const offset = (page - 1) * limit;
         const search = req.query.search || '';
         const roleFilter = req.query.role || '';
-        const statusFilter = req.query.status || '';
 
-        // Build WHERE clause
-        let whereClause = 'WHERE 1=1';
+        // Build WHERE clause - IMPORTANT: Utilisateurs validés (actifs ou suspendus)
+        // Les comptes PENDING et REJECTED restent dans "Demandes d'inscription"
+        let whereClause = 'WHERE a.status IN ("VALIDATED", "SUSPENDED")';
         const params = [];
 
         // Filter by Role
         if (roleFilter && roleFilter !== 'ALL') {
             whereClause += ' AND a.role = ?';
             params.push(roleFilter);
-        }
-
-        // Filter by Status
-        if (statusFilter && statusFilter !== 'ALL') {
-            whereClause += ' AND a.status = ?';
-            params.push(statusFilter);
         }
 
         // Filter by Search (Name or Email)
@@ -93,7 +87,14 @@ router.get('/pending-users', async (req, res) => {
 router.put('/users/:id', async (req, res) => {
     console.log('PUT /users/:id body:', req.body);
     const { status, role } = req.body;
+    const targetUserId = parseInt(req.params.id);
+
     try {
+        // Protection: Empêcher de modifier son propre compte
+        if (req.user.id === targetUserId) {
+            return res.status(403).json({ message: 'Vous ne pouvez pas modifier votre propre compte' });
+        }
+
         let updateQuery = 'UPDATE admins SET ';
         const updateParams = [];
 
@@ -118,7 +119,14 @@ router.put('/users/:id', async (req, res) => {
 
 // Supprimer un utilisateur
 router.delete('/users/:id', async (req, res) => {
+    const targetUserId = parseInt(req.params.id);
+
     try {
+        // Protection: Empêcher de supprimer son propre compte
+        if (req.user.id === targetUserId) {
+            return res.status(403).json({ message: 'Vous ne pouvez pas supprimer votre propre compte' });
+        }
+
         await db.query('DELETE FROM admins WHERE id = ?', [req.params.id]);
         res.json({ message: 'Utilisateur supprimé' });
     } catch (error) {
@@ -651,6 +659,108 @@ router.get('/stats', async (req, res) => {
                     churches: churchGrowth
                 }
             }
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erreur serveur' });
+    }
+});
+
+// ========================================
+// GESTION DES DEMANDES D'INSCRIPTION
+// ========================================
+
+// Lister toutes les demandes d'inscription (PENDING + REJECTED)
+router.get('/pending-registrations', async (req, res) => {
+    try {
+        const [registrationRequests] = await db.query(
+            `SELECT id, email, first_name, last_name, role, status, document_sirene_path, rejection_reason, created_at
+             FROM admins
+             WHERE status IN ('PENDING', 'REJECTED')
+             ORDER BY
+                CASE status
+                    WHEN 'PENDING' THEN 1
+                    WHEN 'REJECTED' THEN 2
+                END,
+                created_at DESC`
+        );
+
+        res.json(registrationRequests);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erreur serveur' });
+    }
+});
+
+// Lister toutes les demandes (tous statuts)
+router.get('/all-registrations', async (req, res) => {
+    try {
+        const [allAdmins] = await db.query(
+            `SELECT id, email, first_name, last_name, role, status, document_sirene_path, rejection_reason, created_at
+             FROM admins
+             ORDER BY created_at DESC`
+        );
+
+        res.json(allAdmins);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erreur serveur' });
+    }
+});
+
+// Valider une demande d'inscription (PENDING ou REJECTED)
+router.post('/validate-registration/:id', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const [admin] = await db.query('SELECT * FROM admins WHERE id = ?', [id]);
+
+        if (admin.length === 0) {
+            return res.status(404).json({ message: 'Demande non trouvée' });
+        }
+
+        if (admin[0].status !== 'PENDING' && admin[0].status !== 'REJECTED') {
+            return res.status(400).json({ message: 'Seuls les comptes en attente ou rejetés peuvent être validés' });
+        }
+
+        await db.query(
+            'UPDATE admins SET status = ?, rejection_reason = NULL WHERE id = ?',
+            ['VALIDATED', id]
+        );
+
+        res.json({
+            message: `Le compte de ${admin[0].first_name} ${admin[0].last_name} a été validé avec succès.`
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erreur serveur' });
+    }
+});
+
+// Rejeter une demande d'inscription
+router.post('/reject-registration/:id', async (req, res) => {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    try {
+        const [admin] = await db.query('SELECT * FROM admins WHERE id = ?', [id]);
+
+        if (admin.length === 0) {
+            return res.status(404).json({ message: 'Demande non trouvée' });
+        }
+
+        if (admin[0].status !== 'PENDING') {
+            return res.status(400).json({ message: 'Cette demande a déjà été traitée' });
+        }
+
+        await db.query(
+            'UPDATE admins SET status = ?, rejection_reason = ? WHERE id = ?',
+            ['REJECTED', reason || 'Document non conforme', id]
+        );
+
+        res.json({
+            message: `La demande de ${admin[0].first_name} ${admin[0].last_name} a été rejetée.`,
+            reason: reason || 'Document non conforme'
         });
     } catch (error) {
         console.error(error);

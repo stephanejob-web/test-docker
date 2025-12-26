@@ -7,9 +7,16 @@ const { validateRegister, validateLogin } = require('../validators/authValidator
 
 // Inscription
 router.post('/register', validateRegister, async (req, res) => {
-    const { email, password, first_name, last_name } = req.body;
+    const { email, password, first_name, last_name, document_sirene_path } = req.body;
 
     try {
+        // VALIDATION OBLIGATOIRE : Document SIRENE requis
+        if (!document_sirene_path || document_sirene_path.trim() === '') {
+            return res.status(400).json({
+                message: 'Le document SIRENE est obligatoire pour l\'inscription. Veuillez téléverser un Avis de situation SIRENE valide.'
+            });
+        }
+
         // Vérifier si l'utilisateur existe déjà
         const [existingUsers] = await db.query('SELECT * FROM admins WHERE email = ?', [email]);
         if (existingUsers.length > 0) {
@@ -19,13 +26,16 @@ router.post('/register', validateRegister, async (req, res) => {
         // Hasher le mot de passe
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Créer l'utilisateur (Role PASTOR par défaut, Status PENDING)
+        // Créer l'utilisateur avec le document SIRENE (Role PASTOR par défaut, Status PENDING)
         await db.query(
-            'INSERT INTO admins (email, password_hash, role, status, first_name, last_name) VALUES (?, ?, ?, ?, ?, ?)',
-            [email, hashedPassword, 'PASTOR', 'PENDING', first_name, last_name]
+            'INSERT INTO admins (email, password_hash, role, status, first_name, last_name, document_sirene_path) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [email, hashedPassword, 'PASTOR', 'PENDING', first_name, last_name, document_sirene_path]
         );
 
-        res.status(201).json({ message: 'Inscription réussie. Votre compte est en attente de validation par un administrateur.' });
+        res.status(201).json({
+            message: 'Inscription réussie. Votre compte est en attente de validation par un administrateur.',
+            info: 'Vous recevrez un email une fois que votre document aura été vérifié.'
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Erreur serveur' });

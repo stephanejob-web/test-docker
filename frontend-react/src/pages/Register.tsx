@@ -17,8 +17,9 @@ import {
   Alert,
   InputAdornment,
   IconButton,
+  FormHelperText,
 } from '@mui/material';
-import { Visibility, VisibilityOff, Church } from '@mui/icons-material';
+import { Visibility, VisibilityOff, Church, Upload as UploadIcon, CheckCircle as CheckCircleIcon } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 
 export default function Register() {
@@ -28,6 +29,9 @@ export default function Register() {
   >([]);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [documentSirenePath, setDocumentSirenePath] = useState('');
+  const [documentUploading, setDocumentUploading] = useState(false);
+  const [documentFileName, setDocumentFileName] = useState('');
 
   const {
     register,
@@ -42,9 +46,54 @@ export default function Register() {
 
   const password = watch('password', '');
 
+  const handleDocumentUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Vérifier le type de fichier
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Format non autorisé. Seuls les PDF, JPG et PNG sont acceptés.');
+      return;
+    }
+
+    // Vérifier la taille (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Le fichier est trop volumineux. Taille maximale : 10MB');
+      return;
+    }
+
+    try {
+      setDocumentUploading(true);
+      const formData = new FormData();
+      formData.append('document', file);
+
+      const { data } = await api.post('/upload/sirene', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      setDocumentSirenePath(data.path);
+      setDocumentFileName(file.name);
+    } catch (error) {
+      console.error('Erreur lors de l\'upload:', error);
+      alert('Erreur lors de l\'upload du document');
+    } finally {
+      setDocumentUploading(false);
+    }
+  };
+
   const onSubmit = async (data: RegisterFormData) => {
     setBackendErrors([]);
     setSuccess('');
+
+    // Vérifier que le document SIRENE a été uploadé
+    if (!documentSirenePath) {
+      setBackendErrors([{
+        field: 'document',
+        message: 'Le document SIRENE est obligatoire'
+      }]);
+      return;
+    }
 
     try {
       await api.post('/auth/register', {
@@ -52,10 +101,13 @@ export default function Register() {
         last_name: data.last_name,
         email: data.email,
         password: data.password,
+        document_sirene_path: documentSirenePath,
       });
 
-      setSuccess('Inscription réussie ! Votre compte est en attente de validation.');
+      setSuccess('Inscription réussie ! Votre compte est en attente de validation par un administrateur.');
       reset();
+      setDocumentSirenePath('');
+      setDocumentFileName('');
     } catch (err: any) {
       if (err.response?.data?.errors) {
         setBackendErrors(err.response.data.errors);
@@ -257,6 +309,57 @@ export default function Register() {
                 }}
               />
               <FormError error={errors.confirmPassword} />
+
+              {/* Document SIRENE Upload */}
+              <Box sx={{ mt: 3, mb: 2 }}>
+                <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.primary' }}>
+                  Document SIRENE <span style={{ color: '#EF4444' }}>*</span>
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+                  Téléversez votre Avis de situation SIRENE (PDF, JPG ou PNG, max 10MB)
+                </Typography>
+
+                <Button
+                  variant="outlined"
+                  component="label"
+                  fullWidth
+                  startIcon={documentSirenePath ? <CheckCircleIcon /> : <UploadIcon />}
+                  disabled={documentUploading}
+                  sx={{
+                    py: 1.5,
+                    borderColor: documentSirenePath ? '#10B981' : undefined,
+                    color: documentSirenePath ? '#10B981' : undefined,
+                    '&:hover': {
+                      borderColor: documentSirenePath ? '#059669' : undefined,
+                    }
+                  }}
+                >
+                  {documentUploading ? 'Upload en cours...' :
+                   documentSirenePath ? `✓ ${documentFileName}` :
+                   'Choisir le document SIRENE'}
+                  <input
+                    type="file"
+                    hidden
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={handleDocumentUpload}
+                    disabled={documentUploading}
+                  />
+                </Button>
+
+                {!documentSirenePath && (
+                  <FormHelperText error>
+                    Le document SIRENE est obligatoire pour valider votre inscription
+                  </FormHelperText>
+                )}
+
+                <Alert severity="info" sx={{ mt: 2, fontSize: '0.875rem' }}>
+                  <Typography variant="caption">
+                    <strong>Qu'est-ce que l'Avis de situation SIRENE ?</strong><br />
+                    C'est un document officiel attestant de l'existence de votre église en tant qu'association.
+                    Vous pouvez l'obtenir gratuitement sur le site de l'INSEE.
+                  </Typography>
+                </Alert>
+              </Box>
 
               {/* Submit Button */}
               <Button
