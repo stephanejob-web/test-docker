@@ -4,6 +4,7 @@ const db = require('../config/db');
 const { verifyToken, requirePastor } = require('../middleware/authMiddleware');
 const { validateChurch } = require('../validators/churchValidator');
 const { validateEvent } = require('../validators/eventValidator');
+const { enrichEventsWithStatus, enrichEventWithStatus } = require('../utils/eventStatus');
 
 router.use(verifyToken);
 // TODO: check if user is validated too (status === 'VALIDATED') - Good practice but simplified for now as per plan
@@ -149,15 +150,19 @@ router.post('/my-church', validateChurch, async (req, res) => {
 router.get('/my-events', async (req, res) => {
     try {
         const [events] = await db.query(
-            `SELECT e.id, e.title, e.start_datetime, e.end_datetime, e.status,
-                    ed.address, ed.street_number, ed.street_name, ed.postal_code, ed.city
+            `SELECT e.id, e.title, e.start_datetime, e.end_datetime,
+                    e.cancelled_at, e.cancellation_reason, e.cancelled_by,
+                    ed.address, ed.street_number, ed.street_name, ed.postal_code, ed.city,
+                    ed.description, ed.image_url
              FROM events e
              LEFT JOIN event_details ed ON e.id = ed.event_id
              WHERE e.admin_id = ?
              ORDER BY e.start_datetime DESC`,
             [req.user.id]
         );
-        res.json(events);
+        // Enrich events with computed status
+        const enrichedEvents = enrichEventsWithStatus(events);
+        res.json(enrichedEvents);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Erreur serveur' });
@@ -254,47 +259,75 @@ router.get('/events/:id', async (req, res) => {
             [req.params.id]
         );
 
-        res.json({
+        const eventData = {
             ...events[0],
             ...details[0],
             translation_language_ids: translations.map(t => t.language_id)
-        });
+        };
+
+        // Enrich with computed status
+        const enrichedEvent = enrichEventWithStatus(eventData);
+        res.json(enrichedEvent);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Erreur serveur' });
     }
 });
 
-// Changer le statut d'un événement (rapide)
-router.patch('/events/:id/status', async (req, res) => {
+// Annuler un événement avec motif
+router.post('/events/:id/cancel', async (req, res) => {
     const eventId = req.params.id;
-    const { status } = req.body;
+    const { cancellation_reason } = req.body;
 
-    // Validate status
-    const validStatuses = ['PUBLISHED', 'CANCELLED', 'DRAFT', 'COMPLETED', 'ONGOING'];
-    if (!status || !validStatuses.includes(status)) {
-        return res.status(400).json({ message: 'Statut invalide' });
+    // Validate cancellation reason
+    if (!cancellation_reason || cancellation_reason.trim().length < 10) {
+        return res.status(400).json({ message: 'Le motif d\'annulation est obligatoire et doit contenir au moins 10 caractères' });
     }
 
     try {
-        const [event] = await db.query(
-            'SELECT id FROM events WHERE id = ? AND admin_id = ?',
+        // Check ownership and current status
+        const [events] = await db.query(
+            'SELECT start_datetime, end_datetime, cancelled_at FROM events WHERE id = ? AND admin_id = ?',
             [eventId, req.user.id]
         );
 
-        if (event.length === 0) {
+        if (events.length === 0) {
             return res.status(403).json({ message: 'Non autorisé' });
         }
 
+        const event = events[0];
+
+        // Check if already cancelled
+        if (event.cancelled_at) {
+            return res.status(400).json({ message: 'Cet événement est déjà annulé' });
+        }
+
+        // Check if event is UPCOMING (only allow cancellation before event starts)
+        const now = new Date();
+        const startDate = new Date(event.start_datetime);
+        const endDate = new Date(event.end_datetime);
+
+        if (now >= startDate && now <= endDate) {
+            return res.status(400).json({ message: 'Impossible d\'annuler un événement en cours' });
+        }
+
+        if (now > endDate) {
+            return res.status(400).json({ message: 'Impossible d\'annuler un événement déjà terminé' });
+        }
+
+        // Cancel the event
         await db.query(
-            'UPDATE events SET status = ? WHERE id = ?',
-            [status, eventId]
+            'UPDATE events SET cancelled_at = NOW(), cancellation_reason = ?, cancelled_by = ? WHERE id = ?',
+            [cancellation_reason.trim(), req.user.id, eventId]
         );
 
-        res.json({ message: 'Statut mis à jour avec succès', status });
+        res.json({
+            message: 'Événement annulé avec succès',
+            cancellation_reason: cancellation_reason.trim()
+        });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Erreur serveur lors de la mise à jour du statut' });
+        res.status(500).json({ message: 'Erreur serveur lors de l\'annulation de l\'événement' });
     }
 });
 
@@ -302,20 +335,21 @@ router.patch('/events/:id/status', async (req, res) => {
 router.put('/events/:id', validateEvent, async (req, res) => {
     const eventId = req.params.id;
     const {
-        title, start_datetime, end_datetime, latitude, longitude, status,
+        title, start_datetime, end_datetime, latitude, longitude,
         description, address, street_number, street_name, postal_code, city, speaker_name, max_seats, image_url,
         is_free, registration_link, youtube_live,
         has_parking, parking_capacity, is_parking_free, parking_details,
         translation_language_ids
     } = req.body;
+    // Note: status is NOT included as it's computed automatically based on dates
 
     const connection = await db.getConnection();
     try {
         await connection.beginTransaction();
 
-        // 1. Check ownership
+        // 1. Check ownership and event dates
         const [event] = await connection.query(
-            'SELECT id FROM events WHERE id = ? AND admin_id = ?',
+            'SELECT id, start_datetime, end_datetime FROM events WHERE id = ? AND admin_id = ?',
             [eventId, req.user.id]
         );
 
@@ -324,8 +358,16 @@ router.put('/events/:id', validateEvent, async (req, res) => {
             return res.status(403).json({ message: 'Non autorisé' });
         }
 
-        // 2. Update Event Core
-        if (title || start_datetime || end_datetime || (latitude && longitude) || status) {
+        // 2. Check if event is COMPLETED (cannot modify completed events)
+        const now = new Date();
+        const endDate = new Date(event[0].end_datetime);
+        if (now > endDate) {
+            await connection.rollback();
+            return res.status(400).json({ message: 'Impossible de modifier un événement terminé' });
+        }
+
+        // 3. Update Event Core (excluding status - it's computed automatically)
+        if (title || start_datetime || end_datetime || (latitude && longitude)) {
             let updateQuery = 'UPDATE events SET ';
             const updateParams = [];
 
@@ -333,7 +375,6 @@ router.put('/events/:id', validateEvent, async (req, res) => {
             if (start_datetime) { updateQuery += 'start_datetime = ?, '; updateParams.push(start_datetime); }
             if (end_datetime) { updateQuery += 'end_datetime = ?, '; updateParams.push(end_datetime); }
             if (latitude && longitude) { updateQuery += 'event_location = ST_GeomFromText(?), '; updateParams.push(`POINT(${longitude} ${latitude})`); }
-            if (status) { updateQuery += 'status = ?, '; updateParams.push(status); }
 
             // Remove trailing comma
             updateQuery = updateQuery.slice(0, -2);
@@ -343,7 +384,7 @@ router.put('/events/:id', validateEvent, async (req, res) => {
             await connection.query(updateQuery, updateParams);
         }
 
-        // 3. Update Details
+        // 4. Update Details
         // Check if details exist first (normally they should)
         const [existingDetails] = await connection.query('SELECT event_id FROM event_details WHERE event_id = ?', [eventId]);
 
@@ -375,7 +416,7 @@ router.put('/events/:id', validateEvent, async (req, res) => {
             );
         }
 
-        // 4. Update translations
+        // 5. Update translations
         await connection.query('DELETE FROM event_translations WHERE event_id = ?', [eventId]);
         if (translation_language_ids && Array.isArray(translation_language_ids) && translation_language_ids.length > 0) {
             const translationValues = translation_language_ids.map(langId => [eventId, langId]);

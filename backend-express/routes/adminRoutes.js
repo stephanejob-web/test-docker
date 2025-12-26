@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const { verifyToken, requireSuperAdmin } = require('../middleware/authMiddleware');
+const { enrichEventsWithStatus, enrichEventWithStatus } = require('../utils/eventStatus');
 
 router.use(verifyToken);
 router.use(requireSuperAdmin);
@@ -244,7 +245,9 @@ router.get('/churches/:id', async (req, res) => {
         const [socials] = await db.query('SELECT * FROM church_socials WHERE church_id = ?', [church.id]);
         const [schedules] = await db.query('SELECT * FROM church_schedules WHERE church_id = ?', [church.id]);
         const [events] = await db.query(
-            `SELECT e.id, e.title, e.start_datetime, e.end_datetime, e.status, ed.description
+            `SELECT e.id, e.title, e.start_datetime, e.end_datetime,
+                    e.cancelled_at, e.cancellation_reason, e.cancelled_by,
+                    ed.description
              FROM events e
              LEFT JOIN event_details ed ON e.id = ed.event_id
              WHERE e.church_id = ?
@@ -252,12 +255,15 @@ router.get('/churches/:id', async (req, res) => {
             [church.id]
         );
 
+        // Enrich events with computed status
+        const enrichedEvents = enrichEventsWithStatus(events);
+
         res.json({
             ...church,
             details: details[0] || {},
             socials: socials || [],
             schedules: schedules || [],
-            events: events || []
+            events: enrichedEvents || []
         });
     } catch (error) {
         console.error(error);
@@ -365,11 +371,8 @@ router.get('/events', async (req, res) => {
         let whereClause = 'WHERE 1=1';
         const params = [];
 
-        // Filter by Status
-        if (status && status !== 'ALL') {
-            whereClause += ' AND e.status = ?';
-            params.push(status);
-        }
+        // Note: Status filtering removed - status is now computed dynamically
+        // TODO: Implement status filtering in JavaScript after enriching events with computed status
 
         // Filter by Search (Title, Church Name, Creator Name)
         if (search) {
@@ -391,7 +394,9 @@ router.get('/events', async (req, res) => {
 
         // 2. Get Data
         const [events] = await db.query(
-            `SELECT e.id, e.title, e.start_datetime, e.end_datetime, e.status, c.church_name, a.first_name, a.last_name
+            `SELECT e.id, e.title, e.start_datetime, e.end_datetime,
+                    e.cancelled_at, e.cancellation_reason, e.cancelled_by,
+                    c.church_name, a.first_name, a.last_name
              FROM events e
              LEFT JOIN churches c ON e.church_id = c.id
              LEFT JOIN admins a ON e.admin_id = a.id
@@ -401,8 +406,11 @@ router.get('/events', async (req, res) => {
             [...params, limit, offset]
         );
 
+        // Enrich events with computed status
+        const enrichedEvents = enrichEventsWithStatus(events);
+
         res.json({
-            data: events,
+            data: enrichedEvents,
             meta: {
                 total,
                 page,
@@ -421,6 +429,7 @@ router.get('/events/:id', async (req, res) => {
     try {
         const [events] = await db.query(
             `SELECT id, title, start_datetime, end_datetime, status, church_id, language_id,
+                    cancelled_at, cancellation_reason, cancelled_by,
                     ST_X(event_location) as longitude, ST_Y(event_location) as latitude
              FROM events WHERE id = ?`,
             [req.params.id]
@@ -441,7 +450,10 @@ router.get('/events/:id', async (req, res) => {
         }
         eventData.translation_language_ids = translations.map(t => t.language_id);
 
-        res.json(eventData);
+        // Enrich with computed status
+        const enrichedEvent = enrichEventWithStatus(eventData);
+
+        res.json(enrichedEvent);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Erreur serveur' });
@@ -451,18 +463,19 @@ router.get('/events/:id', async (req, res) => {
 // Modifier un événement (Admin)
 router.put('/events/:id', async (req, res) => {
     const {
-        title, start_datetime, end_datetime, latitude, longitude, status,
+        title, start_datetime, end_datetime, latitude, longitude,
         description, address, street_number, street_name, postal_code, city,
         speaker_name, max_seats, image_url, is_free, registration_link,
         youtube_live, has_parking, parking_capacity, is_parking_free, parking_details,
         translation_language_ids
     } = req.body;
+    // Note: status is NOT included as it's computed automatically based on dates
 
     const connection = await db.getConnection();
     try {
         await connection.beginTransaction();
 
-        // Update events table
+        // Update events table (excluding status - it's computed automatically)
         let updateQuery = 'UPDATE events SET ';
         const updateParams = [];
 
@@ -473,7 +486,6 @@ router.put('/events/:id', async (req, res) => {
             updateQuery += 'event_location = ST_GeomFromText(?), ';
             updateParams.push(`POINT(${longitude} ${latitude})`);
         }
-        if (status !== undefined) { updateQuery += 'status = ?, '; updateParams.push(status); }
 
         if (updateParams.length > 0) {
             updateQuery = updateQuery.slice(0, -2); // Remove trailing comma
