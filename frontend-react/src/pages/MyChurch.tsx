@@ -359,7 +359,7 @@ export default function MyChurch() {
                                                         {...register('street_number')}
                                                         fullWidth
                                                         size="small"
-                                                        label="N° *"
+                                                        label="N°"
                                                         InputProps={{ readOnly: true }}
                                                         InputLabelProps={{ shrink: true }}
                                                         placeholder="Auto"
