@@ -1040,15 +1040,15 @@ export default function MyEvents() {
                                                 setMenuAnchor({ element: e.currentTarget, eventId: event.id });
                                             }}
                                             sx={{
-                                                bgcolor: 'rgba(255, 255, 255, 0.95)',
+                                                bgcolor: 'primary.main',
+                                                color: 'white',
                                                 backdropFilter: 'blur(12px)',
-                                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                                                boxShadow: '0 4px 12px rgba(25, 118, 210, 0.4)',
                                                 transition: 'all 0.3s ease',
                                                 '&:hover': {
-                                                    bgcolor: 'primary.main',
-                                                    color: 'white',
-                                                    transform: 'scale(1.1)',
-                                                    boxShadow: '0 6px 16px rgba(25, 118, 210, 0.3)'
+                                                    bgcolor: 'primary.dark',
+                                                    transform: 'scale(1.15) rotate(90deg)',
+                                                    boxShadow: '0 6px 20px rgba(25, 118, 210, 0.6)'
                                                 }
                                             }}
                                         >
