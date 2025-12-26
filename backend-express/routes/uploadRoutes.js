@@ -4,10 +4,14 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// Ensure upload directory exists
+// Ensure upload directories exist
 const uploadDir = 'uploads';
+const sireneDir = 'uploads/sirene';
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir);
+}
+if (!fs.existsSync(sireneDir)) {
+    fs.mkdirSync(sireneDir, { recursive: true });
 }
 
 // Storage Strategy
@@ -62,6 +66,54 @@ router.post('/', upload.single('file'), (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Erreur lors de l\'upload' });
+    }
+});
+
+// Configuration spécifique pour les documents SIRENE
+const sireneStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/sirene/');
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'sirene-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const sireneFileFilter = (req, file, cb) => {
+    // Formats autorisés : PDF, JPG, PNG
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+    if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+    } else {
+        cb(new Error('Format non autorisé. Seuls les PDF, JPG et PNG sont acceptés.'), false);
+    }
+};
+
+const uploadSirene = multer({
+    storage: sireneStorage,
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB pour les documents officiels
+    fileFilter: sireneFileFilter
+});
+
+// Route d'upload pour les documents SIRENE (pas de token requis pour l'inscription)
+router.post('/sirene', uploadSirene.single('document'), (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'Document SIRENE obligatoire' });
+        }
+
+        // Retourner le chemin relatif (sera stocké en BDD)
+        const filePath = `/uploads/sirene/${req.file.filename}`;
+
+        res.json({
+            message: 'Document SIRENE uploadé avec succès',
+            path: filePath,
+            filename: req.file.filename
+        });
+    } catch (error) {
+        console.error('Erreur upload SIRENE:', error);
+        res.status(500).json({ message: 'Erreur lors de l\'upload du document' });
     }
 });
 

@@ -26,6 +26,7 @@ import {
   People,
   Settings,
   Logout,
+  HowToReg,
 } from '@mui/icons-material';
 
 const drawerWidth = 260;
@@ -63,6 +64,12 @@ export default function DashboardLayout() {
       href: '/dashboard/events',
       icon: Event,
       roles: ['PASTOR', 'EVANGELIST'],
+    },
+    {
+      name: 'Demandes d\'inscription',
+      href: '/dashboard/admin/registrations',
+      icon: HowToReg,
+      roles: ['SUPER_ADMIN'],
     },
     {
       name: 'Utilisateurs',

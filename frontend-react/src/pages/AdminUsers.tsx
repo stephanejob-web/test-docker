@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../lib/axios';
+import { useAuth } from '../context/AuthContext';
 import {
     Box,
     Typography,
@@ -76,6 +77,7 @@ interface Church {
 }
 
 export default function AdminUsers() {
+    const { user: currentUser } = useAuth();
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -88,7 +90,6 @@ export default function AdminUsers() {
     // Filters and Search
     const [search, setSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('ALL');
-    const [statusFilter, setStatusFilter] = useState('ALL');
 
     // Church View Modal
     const [viewingChurch, setViewingChurch] = useState<Church | null>(null);
@@ -101,8 +102,7 @@ export default function AdminUsers() {
                     page: currentPage,
                     limit: itemsPerPage,
                     search,
-                    role: roleFilter,
-                    status: statusFilter
+                    role: roleFilter
                 }
             });
             setUsers(data.users);
@@ -113,7 +113,7 @@ export default function AdminUsers() {
         } finally {
             setLoading(false);
         }
-    }, [currentPage, search, roleFilter, statusFilter]);
+    }, [currentPage, search, roleFilter]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -170,16 +170,21 @@ export default function AdminUsers() {
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
-                Administration des Utilisateurs
-            </Typography>
+            <Box>
+                <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
+                    Utilisateurs
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                    Liste des utilisateurs validés. Les demandes en attente ou rejetées sont dans l'onglet "Demandes d'inscription".
+                </Typography>
+            </Box>
 
             {/* Filters and Search */}
             <Card sx={{ bgcolor: 'background.paper' }}>
                 <CardContent sx={{ pt: 3 }}>
                     <Grid container spacing={2}>
                         {/* Search */}
-                        <Grid size={{ xs: 12, md: 4 }}>
+                        <Grid size={{ xs: 12, md: 6 }}>
                             <TextField
                                 fullWidth
                                 placeholder="Nom, prénom, email..."
@@ -197,7 +202,7 @@ export default function AdminUsers() {
                         </Grid>
 
                         {/* Role Filter */}
-                        <Grid size={{ xs: 12, md: 4 }}>
+                        <Grid size={{ xs: 12, md: 6 }}>
                             <FormControl fullWidth>
                                 <InputLabel>Rôle</InputLabel>
                                 <Select
@@ -209,24 +214,6 @@ export default function AdminUsers() {
                                     <MenuItem value="PASTOR">Pasteur</MenuItem>
                                     <MenuItem value="USER">Utilisateur</MenuItem>
                                     <MenuItem value="SUPER_ADMIN">Super Admin</MenuItem>
-                                </Select>
-                            </FormControl>
-                        </Grid>
-
-                        {/* Status Filter */}
-                        <Grid size={{ xs: 12, md: 4 }}>
-                            <FormControl fullWidth>
-                                <InputLabel>Statut</InputLabel>
-                                <Select
-                                    value={statusFilter}
-                                    label="Statut"
-                                    onChange={(e) => setStatusFilter(e.target.value)}
-                                >
-                                    <MenuItem value="ALL">Tous les statuts</MenuItem>
-                                    <MenuItem value="VALIDATED">Validé</MenuItem>
-                                    <MenuItem value="PENDING">En attente</MenuItem>
-                                    <MenuItem value="SUSPENDED">Suspendu</MenuItem>
-                                    <MenuItem value="REJECTED">Rejeté</MenuItem>
                                 </Select>
                             </FormControl>
                         </Grid>
@@ -294,54 +281,68 @@ export default function AdminUsers() {
                                                 )}
                                             </TableCell>
                                             <TableCell align="right">
-                                                <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
-                                                    {user.status === 'PENDING' && (
-                                                        <>
-                                                            <IconButton
-                                                                size="small"
-                                                                sx={{ bgcolor: 'success.main', color: 'white', '&:hover': { bgcolor: 'success.dark' } }}
-                                                                onClick={() => updateUserStatus(user.id, 'VALIDATED')}
-                                                            >
-                                                                <CheckIcon fontSize="small" />
-                                                            </IconButton>
+                                                {(() => {
+                                                    const isOwnAccount = currentUser?.id === user.id;
+
+                                                    if (isOwnAccount) {
+                                                        return (
+                                                            <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                                                                Votre compte
+                                                            </Typography>
+                                                        );
+                                                    }
+
+                                                    return (
+                                                        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
+                                                            {user.status === 'PENDING' && (
+                                                                <>
+                                                                    <IconButton
+                                                                        size="small"
+                                                                        sx={{ bgcolor: 'success.main', color: 'white', '&:hover': { bgcolor: 'success.dark' } }}
+                                                                        onClick={() => updateUserStatus(user.id, 'VALIDATED')}
+                                                                    >
+                                                                        <CheckIcon fontSize="small" />
+                                                                    </IconButton>
+                                                                    <IconButton
+                                                                        size="small"
+                                                                        color="error"
+                                                                        onClick={() => updateUserStatus(user.id, 'REJECTED')}
+                                                                    >
+                                                                        <CloseIcon fontSize="small" />
+                                                                    </IconButton>
+                                                                </>
+                                                            )}
+                                                            {user.status === 'VALIDATED' && (
+                                                                <IconButton
+                                                                    size="small"
+                                                                    sx={{ bgcolor: 'orange', color: 'white', '&:hover': { bgcolor: 'darkorange' } }}
+                                                                    onClick={() => updateUserStatus(user.id, 'SUSPENDED')}
+                                                                    title="Suspendre"
+                                                                >
+                                                                    <BlockIcon fontSize="small" />
+                                                                </IconButton>
+                                                            )}
+                                                            {(user.status === 'SUSPENDED' || user.status === 'REJECTED') && (
+                                                                <IconButton
+                                                                    size="small"
+                                                                    sx={{ bgcolor: 'success.main', color: 'white', '&:hover': { bgcolor: 'success.dark' } }}
+                                                                    onClick={() => updateUserStatus(user.id, 'VALIDATED')}
+                                                                    title="Réactiver"
+                                                                >
+                                                                    <RefreshIcon fontSize="small" />
+                                                                </IconButton>
+                                                            )}
                                                             <IconButton
                                                                 size="small"
                                                                 color="error"
-                                                                onClick={() => updateUserStatus(user.id, 'REJECTED')}
+                                                                onClick={() => handleDelete(user.id)}
+                                                                title="Supprimer"
                                                             >
-                                                                <CloseIcon fontSize="small" />
+                                                                <DeleteIcon fontSize="small" />
                                                             </IconButton>
-                                                        </>
-                                                    )}
-                                                    {user.status === 'VALIDATED' && (
-                                                        <IconButton
-                                                            size="small"
-                                                            sx={{ bgcolor: 'orange', color: 'white', '&:hover': { bgcolor: 'darkorange' } }}
-                                                            onClick={() => updateUserStatus(user.id, 'SUSPENDED')}
-                                                            title="Suspendre"
-                                                        >
-                                                            <BlockIcon fontSize="small" />
-                                                        </IconButton>
-                                                    )}
-                                                    {(user.status === 'SUSPENDED' || user.status === 'REJECTED') && (
-                                                        <IconButton
-                                                            size="small"
-                                                            sx={{ bgcolor: 'success.main', color: 'white', '&:hover': { bgcolor: 'success.dark' } }}
-                                                            onClick={() => updateUserStatus(user.id, 'VALIDATED')}
-                                                            title="Réactiver"
-                                                        >
-                                                            <RefreshIcon fontSize="small" />
-                                                        </IconButton>
-                                                    )}
-                                                    <IconButton
-                                                        size="small"
-                                                        color="error"
-                                                        onClick={() => handleDelete(user.id)}
-                                                        title="Supprimer"
-                                                    >
-                                                        <DeleteIcon fontSize="small" />
-                                                    </IconButton>
-                                                </Box>
+                                                        </Box>
+                                                    );
+                                                })()}
                                             </TableCell>
                                         </TableRow>
                                     ))}
