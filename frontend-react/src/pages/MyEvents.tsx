@@ -21,7 +21,14 @@ import {
     InputAdornment,
     Menu,
     ListItemIcon,
-    ListItemText
+    ListItemText,
+    Stepper,
+    Step,
+    StepLabel,
+    Divider,
+    Chip,
+    Stack,
+    Paper
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -29,7 +36,6 @@ import {
     Close as CloseIcon,
     Event as EventIcon,
     LocationOn as LocationOnIcon,
-    AutoAwesome as AutoAwesomeIcon,
     Image as ImageIcon,
     YouTube as YouTubeIcon,
     Church as ChurchIcon,
@@ -38,7 +44,14 @@ import {
     Cancel as CancelIcon,
     Publish as PublishIcon,
     Drafts as DraftsIcon,
-    CheckCircle as CheckCircleIcon
+    CheckCircle as CheckCircleIcon,
+    Description as DescriptionIcon,
+    CalendarMonth as CalendarMonthIcon,
+    Settings as SettingsIcon,
+    Visibility as VisibilityIcon,
+    NavigateNext as NavigateNextIcon,
+    NavigateBefore as NavigateBeforeIcon,
+    Info as InfoIcon
 } from '@mui/icons-material';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import DateTimeInput from '../components/DateTimeInput';
@@ -77,21 +90,19 @@ interface EventData extends EventFormData {
 export default function MyEvents() {
     const { eventId } = useParams<{ eventId: string }>();
     const navigate = useNavigate();
-    const isAdminMode = !!eventId; // Mode admin si eventId existe
+    const isAdminMode = !!eventId;
 
     const [events, setEvents] = useState<EventData[]>([]);
-    const [showForm, setShowForm] = useState(isAdminMode); // Si mode admin, afficher le formulaire directement
+    const [showForm, setShowForm] = useState(isAdminMode);
     const [loading, setLoading] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(eventId ? parseInt(eventId) : null);
-    const [activeTab, setActiveTab] = useState(0);
+    const [activeStep, setActiveStep] = useState(0);
 
-    // Initial State
     const initialFormState: EventFormData = {
         title: '',
         start_datetime: '',
         end_datetime: '',
         description: '',
-        // Location
         latitude: '',
         longitude: '',
         address: '',
@@ -99,34 +110,204 @@ export default function MyEvents() {
         street_name: '',
         postal_code: '',
         city: '',
-        // Details
         speaker_name: '',
-        language_id: '10', // Default French
+        language_id: '10',
         translation_language_ids: [],
         max_seats: '',
         image_url: '',
-        // Logistics
-        is_free: 1, // Default true
+        is_free: 1,
         registration_link: '',
-        // Parking
         has_parking: 0,
         parking_capacity: '',
         is_parking_free: 1,
         parking_details: '',
-        // Online
         youtube_live: '',
-        status: 'PUBLISHED' // Default status
+        status: 'PUBLISHED'
     };
 
     const [formData, setFormData] = useState<EventFormData>(initialFormState);
     const [dateError, setDateError] = useState('');
-
     const [hasChurch, setHasChurch] = useState<boolean | null>(null);
     const [isChurchComplete, setIsChurchComplete] = useState<boolean>(false);
     const [languages, setLanguages] = useState<any[]>([]);
     const [menuAnchor, setMenuAnchor] = useState<{ element: HTMLElement; eventId: number } | null>(null);
 
-    // Load available languages
+    // Validation errors state
+    const [errors, setErrors] = useState<Record<string, string>>({});
+    const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+    // Protection contre la soumission immédiate après changement de step
+    const [lastStepChangeTime, setLastStepChangeTime] = useState<number>(0);
+
+    // Stepper configuration
+    const steps = [
+        { label: 'Informations générales', icon: <DescriptionIcon /> },
+        { label: 'Date & Heure', icon: <CalendarMonthIcon /> },
+        { label: 'Lieu & Localisation', icon: <LocationOnIcon /> },
+        { label: 'Options & Détails', icon: <SettingsIcon /> },
+        { label: 'Récapitulatif', icon: <VisibilityIcon /> }
+    ];
+
+    // Validation functions
+    const validateStep1 = () => {
+        const newErrors: Record<string, string> = {};
+
+        if (!formData.title || formData.title.trim().length === 0) {
+            newErrors.title = 'Le titre est obligatoire';
+        } else if (formData.title.trim().length < 3) {
+            newErrors.title = 'Le titre doit contenir au moins 3 caractères';
+        }
+
+        if (!formData.speaker_name || formData.speaker_name.trim().length === 0) {
+            newErrors.speaker_name = 'L\'intervenant est obligatoire';
+        }
+
+        if (!formData.description || formData.description.trim().length === 0) {
+            newErrors.description = 'La description est obligatoire';
+        } else if (formData.description.trim().length < 10) {
+            newErrors.description = 'La description doit contenir au moins 10 caractères';
+        }
+
+        return newErrors;
+    };
+
+    const validateStep2 = () => {
+        const newErrors: Record<string, string> = {};
+
+        if (!formData.start_datetime) {
+            newErrors.start_datetime = 'La date de début est obligatoire';
+        }
+
+        if (!formData.end_datetime) {
+            newErrors.end_datetime = 'La date de fin est obligatoire';
+        }
+
+        if (formData.start_datetime && formData.end_datetime) {
+            const startDate = new Date(formData.start_datetime);
+            const endDate = new Date(formData.end_datetime);
+            if (endDate <= startDate) {
+                newErrors.end_datetime = 'La date de fin doit être après la date de début';
+            }
+        }
+
+        if (!formData.language_id) {
+            newErrors.language_id = 'La langue principale est obligatoire';
+        }
+
+        return newErrors;
+    };
+
+    const validateStep3 = () => {
+        const newErrors: Record<string, string> = {};
+
+        if (!formData.address || formData.address.trim().length === 0) {
+            newErrors.address = 'L\'adresse est obligatoire';
+        }
+
+        if (!formData.latitude || !formData.longitude) {
+            newErrors.address = 'Veuillez sélectionner une adresse valide avec coordonnées GPS';
+        }
+
+        return newErrors;
+    };
+
+    const validateStep4 = () => {
+        const newErrors: Record<string, string> = {};
+
+        // Validation optionnelle mais si rempli, doit être valide
+        if (formData.max_seats && (isNaN(parseInt(formData.max_seats)) || parseInt(formData.max_seats) <= 0)) {
+            newErrors.max_seats = 'Le nombre de places doit être un nombre positif';
+        }
+
+        if (formData.youtube_live && formData.youtube_live.trim().length > 0) {
+            const urlPattern = /^https?:\/\/.+/;
+            if (!urlPattern.test(formData.youtube_live)) {
+                newErrors.youtube_live = 'Le lien YouTube doit être une URL valide (commençant par http:// ou https://)';
+            }
+        }
+
+        if (formData.is_free === 0 && formData.registration_link && formData.registration_link.trim().length > 0) {
+            const urlPattern = /^https?:\/\/.+/;
+            if (!urlPattern.test(formData.registration_link)) {
+                newErrors.registration_link = 'Le lien billetterie doit être une URL valide';
+            }
+        }
+
+        if (formData.has_parking === 1 && formData.parking_capacity && (isNaN(parseInt(formData.parking_capacity)) || parseInt(formData.parking_capacity) <= 0)) {
+            newErrors.parking_capacity = 'La capacité du parking doit être un nombre positif';
+        }
+
+        return newErrors;
+    };
+
+    const isStepValid = (step: number): boolean => {
+        switch (step) {
+            case 0:
+                return Object.keys(validateStep1()).length === 0;
+            case 1:
+                return Object.keys(validateStep2()).length === 0;
+            case 2:
+                return Object.keys(validateStep3()).length === 0;
+            case 3:
+                return Object.keys(validateStep4()).length === 0;
+            case 4:
+                return true; // Récapitulatif, toujours valide
+            default:
+                return false;
+        }
+    };
+
+    const handleNext = () => {
+        console.log('🔵 handleNext appelé. Step actuel:', activeStep);
+
+        // Validate current step before proceeding
+        let stepErrors = {};
+        switch (activeStep) {
+            case 0:
+                stepErrors = validateStep1();
+                break;
+            case 1:
+                stepErrors = validateStep2();
+                break;
+            case 2:
+                stepErrors = validateStep3();
+                break;
+            case 3:
+                stepErrors = validateStep4();
+                break;
+        }
+
+        console.log('🔵 Erreurs de validation:', stepErrors);
+        console.log('🔵 Nombre d\'erreurs:', Object.keys(stepErrors).length);
+
+        if (Object.keys(stepErrors).length === 0) {
+            setErrors({});
+            const newStep = activeStep + 1;
+            console.log('✅ Passage au step:', newStep);
+            setActiveStep(newStep);
+            setLastStepChangeTime(Date.now()); // Enregistrer le moment du changement
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+            console.log('❌ Validation échouée, affichage des erreurs');
+            setErrors(stepErrors);
+            // Mark all fields as touched to show errors
+            const touchedFields: Record<string, boolean> = {};
+            Object.keys(stepErrors).forEach(key => {
+                touchedFields[key] = true;
+            });
+            setTouched(prev => ({ ...prev, ...touchedFields }));
+        }
+    };
+
+    const handleBack = () => {
+        setActiveStep((prev) => prev - 1);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleFieldBlur = (fieldName: string) => {
+        setTouched(prev => ({ ...prev, [fieldName]: true }));
+    };
+
     useEffect(() => {
         const loadLanguages = async () => {
             try {
@@ -141,10 +322,8 @@ export default function MyEvents() {
 
     useEffect(() => {
         if (isAdminMode && eventId) {
-            // In admin mode, load the specific event directly
             loadEventForEdit(parseInt(eventId));
         } else {
-            // In pastor mode, check church and load events
             checkChurchAndEvents();
         }
     }, [isAdminMode, eventId]);
@@ -153,18 +332,13 @@ export default function MyEvents() {
         setLoading(true);
         try {
             const { data } = await api.get(`/admin/events/${id}`);
-            // Normalize data for form
             setFormData({
                 ...initialFormState,
                 ...data,
-                // Ensure dates are formatted for datetime-local input (YYYY-MM-DDTHH:mm)
                 start_datetime: data.start_datetime ? new Date(data.start_datetime).toISOString().slice(0, 16) : '',
                 end_datetime: data.end_datetime ? new Date(data.end_datetime).toISOString().slice(0, 16) : '',
-                // Ensure language_id is a string
                 language_id: data.language_id ? data.language_id.toString() : '10',
-                // Ensure translation_language_ids is an array of numbers
                 translation_language_ids: data.translation_language_ids || [],
-                // Ensure booleans/checkboxes are strictly 1 or 0
                 has_parking: data.has_parking ? 1 : 0,
                 is_parking_free: data.is_parking_free ? 1 : 0,
                 is_free: data.is_free ? 1 : 0
@@ -180,12 +354,9 @@ export default function MyEvents() {
     const checkChurchAndEvents = async () => {
         setLoading(true);
         try {
-            // 1. Check if church exists and is complete
             try {
                 const { data } = await api.get('/church/my-church');
                 setHasChurch(true);
-
-                // Check if church is complete (required fields)
                 const isComplete = Boolean(
                     data.church_name &&
                     data.denomination_id &&
@@ -194,28 +365,15 @@ export default function MyEvents() {
                     (data.details?.address || data.address)
                 );
                 setIsChurchComplete(isComplete);
-
-                // Debug log pour voir ce qui manque
-                if (!isComplete) {
-                    console.log('Église incomplète - Champs manquants:', {
-                        church_name: data.church_name,
-                        denomination_id: data.denomination_id,
-                        latitude: data.latitude,
-                        longitude: data.longitude,
-                        address: data.details?.address || data.address
-                    });
-                }
             } catch (err: unknown) {
                 const error = err as { response?: { status?: number } };
                 if (error.response && error.response.status === 404) {
                     setHasChurch(false);
                     setIsChurchComplete(false);
                     setLoading(false);
-                    return; // Stop here if no church
+                    return;
                 }
             }
-
-            // 2. Fetch Events if church exists
             const response = await api.get('/church/my-events');
             setEvents(response.data);
         } catch (err) {
@@ -237,20 +395,18 @@ export default function MyEvents() {
     const handleEdit = async (id: number) => {
         try {
             const { data } = await api.get(`/church/events/${id}`);
-            // Normalize data for form
             setFormData({
                 ...initialFormState,
                 ...data,
-                // Ensure dates are formatted for datetime-local input (YYYY-MM-DDTHH:mm)
                 start_datetime: data.start_datetime ? new Date(data.start_datetime).toISOString().slice(0, 16) : '',
                 end_datetime: data.end_datetime ? new Date(data.end_datetime).toISOString().slice(0, 16) : '',
-                // Ensure booleans/checkboxes are strictly 1 or 0
                 has_parking: data.has_parking ? 1 : 0,
                 is_parking_free: data.is_parking_free ? 1 : 0,
                 is_free: data.is_free ? 1 : 0
             });
             setEditingId(id);
             setShowForm(true);
+            setActiveStep(0);
             window.scrollTo({ top: 0, behavior: 'smooth' });
         } catch (err) {
             console.error(err);
@@ -258,32 +414,41 @@ export default function MyEvents() {
         }
     };
 
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        console.log('🔴 handleSubmit appelé. Step actuel:', activeStep, 'Dernier step:', steps.length - 1);
+
+        // Ne soumettre que si on est au dernier step (Récapitulatif)
+        if (activeStep !== steps.length - 1) {
+            console.log('❌ Submit bloqué - pas au dernier step. Step actuel:', activeStep);
+            return;
+        }
+
+        // Bloquer la soumission si le step vient juste de changer (protection contre les événements en cascade)
+        const timeSinceStepChange = Date.now() - lastStepChangeTime;
+        if (timeSinceStepChange < 500) {
+            console.log('❌ Submit bloqué - step vient de changer il y a', timeSinceStepChange, 'ms. Attente de 500ms minimum.');
+            return;
+        }
+
+        console.log('✅ Submit autorisé - au dernier step et délai respecté');
+
         setLoading(true);
         try {
-            // Préparer les données avec conversion des types
             const payload = {
                 ...formData,
-                // Convertir language_id en integer
                 language_id: parseInt(formData.language_id) || 10,
-                // Inclure les langues de traduction
                 translation_language_ids: formData.translation_language_ids || [],
-                // Convertir latitude/longitude en floats
                 latitude: parseFloat(formData.latitude) || 0,
                 longitude: parseFloat(formData.longitude) || 0,
-                // Convertir 0/1 en booleans
                 has_parking: formData.has_parking === 1,
                 is_parking_free: formData.is_parking_free === 1,
                 is_free: formData.is_free === 1,
-                // Convertir max_seats et parking_capacity en integers si présents
                 max_seats: formData.max_seats ? parseInt(formData.max_seats as string) : null,
                 parking_capacity: formData.parking_capacity ? parseInt(formData.parking_capacity as string) : null,
-                // Convertir les URLs vides en undefined pour éviter les erreurs de validation
                 registration_link: formData.registration_link || undefined,
                 youtube_live: formData.youtube_live || undefined,
-                // Ajouter les nouveaux champs d'adresse
                 street_number: formData.street_number || undefined,
                 street_name: formData.street_name || undefined,
                 postal_code: formData.postal_code || undefined,
@@ -291,23 +456,18 @@ export default function MyEvents() {
             };
 
             if (isAdminMode) {
-                // Mode admin: utiliser l'endpoint admin
                 await api.put(`/admin/events/${editingId}`, payload);
                 alert('Événement mis à jour avec succès !');
                 setTimeout(() => navigate('/dashboard/admin/events'), 1500);
             } else {
-                // Mode pastor: utiliser l'endpoint church
                 const churchRes = await api.get('/church/my-church');
                 const churchId = churchRes.data.id;
-
                 if (!churchId) {
                     alert("Veuillez d'abord créer votre fiche église.");
                     setLoading(false);
                     return;
                 }
-
                 const pastorPayload = { ...payload, church_id: churchId };
-
                 if (editingId) {
                     await api.put(`/church/events/${editingId}`, pastorPayload);
                     alert('Événement mis à jour avec succès !');
@@ -315,10 +475,10 @@ export default function MyEvents() {
                     await api.post('/church/events', pastorPayload);
                     alert('Événement créé avec succès !');
                 }
-
                 setShowForm(false);
                 setEditingId(null);
                 setFormData(initialFormState);
+                setActiveStep(0);
                 checkChurchAndEvents();
             }
         } catch (err: unknown) {
@@ -347,6 +507,673 @@ export default function MyEvents() {
             alert('Erreur lors du changement de statut');
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Step content renderers
+    const renderStepContent = () => {
+        switch (activeStep) {
+            case 0:
+                return (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        <Box sx={{ textAlign: 'center', mb: 2 }}>
+                            <DescriptionIcon sx={{ fontSize: 64, color: 'primary.main', mb: 1 }} />
+                            <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+                                Informations Générales
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                Donnez les informations de base de votre événement
+                            </Typography>
+                        </Box>
+
+                        <Grid container spacing={3}>
+                            <Grid size={{ xs: 12 }}>
+                                <TextField
+                                    id="title"
+                                    fullWidth
+                                    required
+                                    label="Titre de l'événement"
+                                    value={formData.title}
+                                    onChange={(e) => {
+                                        handleChange(e);
+                                        if (touched.title) {
+                                            const stepErrors = validateStep1();
+                                            setErrors(prev => ({ ...prev, title: stepErrors.title || '' }));
+                                        }
+                                    }}
+                                    onBlur={() => handleFieldBlur('title')}
+                                    error={touched.title && !!errors.title}
+                                    helperText={touched.title && errors.title ? errors.title : "Le titre principal qui apparaîtra sur la plateforme"}
+                                    placeholder="Ex: Culte de Louange, Conférence Biblique..."
+                                />
+                            </Grid>
+
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <TextField
+                                    id="speaker_name"
+                                    fullWidth
+                                    required
+                                    label="Intervenant / Speaker"
+                                    value={formData.speaker_name}
+                                    onChange={(e) => {
+                                        handleChange(e);
+                                        if (touched.speaker_name) {
+                                            const stepErrors = validateStep1();
+                                            setErrors(prev => ({ ...prev, speaker_name: stepErrors.speaker_name || '' }));
+                                        }
+                                    }}
+                                    onBlur={() => handleFieldBlur('speaker_name')}
+                                    error={touched.speaker_name && !!errors.speaker_name}
+                                    helperText={touched.speaker_name && errors.speaker_name ? errors.speaker_name : "Le nom de la personne qui interviendra"}
+                                    placeholder="Ex: Pasteur Jean Dupont"
+                                />
+                            </Grid>
+
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <FormControl fullWidth required>
+                                    <InputLabel>Statut de publication</InputLabel>
+                                    <Select
+                                        id="status"
+                                        value={formData.status}
+                                        label="Statut de publication"
+                                        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                                    >
+                                        <MenuItem value="PUBLISHED">
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <PublishIcon fontSize="small" color="success" />
+                                                Publié - Visible par tous
+                                            </Box>
+                                        </MenuItem>
+                                        <MenuItem value="DRAFT">
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <DraftsIcon fontSize="small" color="warning" />
+                                                Brouillon - Non visible
+                                            </Box>
+                                        </MenuItem>
+                                    </Select>
+                                    <FormHelperText>
+                                        Choisissez "Publié" pour rendre l'événement visible immédiatement
+                                    </FormHelperText>
+                                </FormControl>
+                            </Grid>
+
+                            <Grid size={{ xs: 12 }}>
+                                <TextField
+                                    id="description"
+                                    fullWidth
+                                    required
+                                    multiline
+                                    rows={5}
+                                    label="Description détaillée"
+                                    value={formData.description}
+                                    onChange={(e) => {
+                                        handleChange(e);
+                                        if (touched.description) {
+                                            const stepErrors = validateStep1();
+                                            setErrors(prev => ({ ...prev, description: stepErrors.description || '' }));
+                                        }
+                                    }}
+                                    onBlur={() => handleFieldBlur('description')}
+                                    error={touched.description && !!errors.description}
+                                    helperText={touched.description && errors.description ? errors.description : "Une description complète aidera les participants à mieux comprendre votre événement"}
+                                    placeholder="Décrivez votre événement : thème, programme, public visé..."
+                                />
+                            </Grid>
+
+                            <Grid size={{ xs: 12 }}>
+                                <TextField
+                                    id="image_url"
+                                    fullWidth
+                                    label="Image de couverture (URL)"
+                                    value={formData.image_url}
+                                    onChange={handleChange}
+                                    placeholder="https://exemple.com/image.jpg"
+                                    helperText="Lien vers une image qui représente votre événement"
+                                    InputProps={{
+                                        endAdornment: (
+                                            <InputAdornment position="end">
+                                                {formData.image_url ? (
+                                                    <Box
+                                                        component="img"
+                                                        src={formData.image_url}
+                                                        alt="Preview"
+                                                        sx={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 1 }}
+                                                    />
+                                                ) : (
+                                                    <ImageIcon sx={{ color: 'text.secondary' }} />
+                                                )}
+                                            </InputAdornment>
+                                        ),
+                                    }}
+                                />
+                            </Grid>
+                        </Grid>
+                    </Box>
+                );
+
+            case 1:
+                return (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        <Box sx={{ textAlign: 'center', mb: 2 }}>
+                            <CalendarMonthIcon sx={{ fontSize: 64, color: 'primary.main', mb: 1 }} />
+                            <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+                                Date & Heure
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                Planifiez votre événement et définissez les langues
+                            </Typography>
+                        </Box>
+
+                        <Grid container spacing={3}>
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <DateTimeInput
+                                    label="Date et heure de début"
+                                    value={formData.start_datetime}
+                                    onChange={(value) => {
+                                        setFormData(prev => ({ ...prev, start_datetime: value }));
+                                        if (formData.end_datetime && value && new Date(value) >= new Date(formData.end_datetime)) {
+                                            setDateError('La date de fin doit être après la date de début');
+                                        } else {
+                                            setDateError('');
+                                        }
+                                    }}
+                                    required
+                                />
+                            </Grid>
+
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <DateTimeInput
+                                    label="Date et heure de fin"
+                                    value={formData.end_datetime}
+                                    onChange={(value) => {
+                                        setFormData(prev => ({ ...prev, end_datetime: value }));
+                                        if (formData.start_datetime && value && new Date(value) <= new Date(formData.start_datetime)) {
+                                            setDateError('La date de fin doit être après la date de début');
+                                        } else {
+                                            setDateError('');
+                                        }
+                                    }}
+                                    required
+                                    minDateTime={formData.start_datetime}
+                                    error={dateError}
+                                />
+                            </Grid>
+                        </Grid>
+
+                        {dateError && (
+                            <Alert severity="error" icon={<InfoIcon />}>
+                                {dateError}
+                            </Alert>
+                        )}
+
+                        <Divider sx={{ my: 2 }}>
+                            <Chip label="Langues" />
+                        </Divider>
+
+                        <Grid container spacing={3}>
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <FormControl fullWidth required>
+                                    <InputLabel>Langue principale du speaker</InputLabel>
+                                    <Select
+                                        id="language_id"
+                                        value={formData.language_id}
+                                        label="Langue principale du speaker"
+                                        onChange={(e) => setFormData({ ...formData, language_id: e.target.value })}
+                                    >
+                                        {languages.map(lang => (
+                                            <MenuItem key={lang.id} value={lang.id.toString()}>
+                                                {lang.flag_emoji} {lang.name_fr}
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                    <FormHelperText>
+                                        Dans quelle langue l'intervenant parlera-t-il ?
+                                    </FormHelperText>
+                                </FormControl>
+                            </Grid>
+
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <FormControl fullWidth>
+                                    <InputLabel>Traductions disponibles (optionnel)</InputLabel>
+                                    <Select
+                                        multiple
+                                        value={formData.translation_language_ids}
+                                        label="Traductions disponibles (optionnel)"
+                                        onChange={(e) => setFormData({
+                                            ...formData,
+                                            translation_language_ids: e.target.value as number[]
+                                        })}
+                                        renderValue={(selected) =>
+                                            languages
+                                                .filter(l => selected.includes(l.id))
+                                                .map(l => `${l.flag_emoji} ${l.name_fr}`)
+                                                .join(', ')
+                                        }
+                                    >
+                                        {languages
+                                            .filter(l => l.id.toString() !== formData.language_id)
+                                            .map(lang => (
+                                                <MenuItem key={lang.id} value={lang.id}>
+                                                    <Checkbox checked={formData.translation_language_ids.includes(lang.id)} />
+                                                    {lang.flag_emoji} {lang.name_fr}
+                                                </MenuItem>
+                                            ))
+                                        }
+                                    </Select>
+                                    <FormHelperText>
+                                        Y aura-t-il des traductions simultanées ?
+                                    </FormHelperText>
+                                </FormControl>
+                            </Grid>
+                        </Grid>
+                    </Box>
+                );
+
+            case 2:
+                return (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        <Box sx={{ textAlign: 'center', mb: 2 }}>
+                            <LocationOnIcon sx={{ fontSize: 64, color: 'primary.main', mb: 1 }} />
+                            <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+                                Lieu & Localisation
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                Indiquez où se déroulera l'événement
+                            </Typography>
+                        </Box>
+
+                        {touched.address && errors.address ? (
+                            <Alert severity="error" icon={<InfoIcon />}>
+                                {errors.address}
+                            </Alert>
+                        ) : (
+                            <Alert severity="info" icon={<InfoIcon />}>
+                                Utilisez la recherche d'adresse ci-dessous. Les coordonnées GPS seront automatiquement calculées.
+                            </Alert>
+                        )}
+
+                        <AddressAutocomplete
+                            defaultValue={formData.address || ''}
+                            onAddressSelect={(addressData) => {
+                                setFormData(prev => ({
+                                    ...prev,
+                                    address: addressData.full_address,
+                                    street_number: addressData.street_number,
+                                    street_name: addressData.street_name,
+                                    postal_code: addressData.postal_code,
+                                    city: addressData.city,
+                                    latitude: addressData.latitude.toString(),
+                                    longitude: addressData.longitude.toString()
+                                }));
+                                // Clear address errors when an address is selected
+                                setErrors(prev => ({ ...prev, address: '' }));
+                                setTouched(prev => ({ ...prev, address: true }));
+                            }}
+                        />
+
+                        <Paper elevation={0} sx={{ p: 3, bgcolor: 'action.hover', borderRadius: 2 }}>
+                            <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 'bold' }}>
+                                Adresse décomposée
+                            </Typography>
+                            <Grid container spacing={2}>
+                                <Grid size={{ xs: 3 }}>
+                                    <TextField
+                                        fullWidth
+                                        size="small"
+                                        label="N°"
+                                        value={formData.street_number}
+                                        InputProps={{ readOnly: true }}
+                                        placeholder="Auto"
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 9 }}>
+                                    <TextField
+                                        fullWidth
+                                        size="small"
+                                        label="Rue"
+                                        value={formData.street_name}
+                                        InputProps={{ readOnly: true }}
+                                        placeholder="Auto-rempli"
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 4 }}>
+                                    <TextField
+                                        fullWidth
+                                        size="small"
+                                        label="Code Postal"
+                                        value={formData.postal_code}
+                                        InputProps={{ readOnly: true }}
+                                        placeholder="Auto"
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 8 }}>
+                                    <TextField
+                                        fullWidth
+                                        size="small"
+                                        label="Ville"
+                                        value={formData.city}
+                                        InputProps={{ readOnly: true }}
+                                        placeholder="Auto-remplie"
+                                    />
+                                </Grid>
+                            </Grid>
+                        </Paper>
+
+                        <Paper elevation={0} sx={{ p: 3, bgcolor: 'rgba(33, 150, 243, 0.05)', borderRadius: 2, border: 1, borderColor: 'primary.light' }}>
+                            <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 'bold', color: 'primary.main' }}>
+                                Coordonnées GPS (auto-calculées)
+                            </Typography>
+                            <Grid container spacing={2}>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        size="small"
+                                        label="Latitude"
+                                        value={formData.latitude}
+                                        InputProps={{
+                                            readOnly: true,
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <LocationOnIcon fontSize="small" color="primary" />
+                                                </InputAdornment>
+                                            ),
+                                        }}
+                                        placeholder="Auto-calculé"
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        size="small"
+                                        label="Longitude"
+                                        value={formData.longitude}
+                                        InputProps={{
+                                            readOnly: true,
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <LocationOnIcon fontSize="small" color="primary" />
+                                                </InputAdornment>
+                                            ),
+                                        }}
+                                        placeholder="Auto-calculé"
+                                    />
+                                </Grid>
+                            </Grid>
+                        </Paper>
+
+                        <Divider sx={{ my: 2 }}>
+                            <Chip label="Parking" />
+                        </Divider>
+
+                        <FormControlLabel
+                            control={
+                                <Checkbox
+                                    checked={formData.has_parking === 1}
+                                    onChange={(e) => handleCheckboxChange('has_parking', e.target.checked)}
+                                />
+                            }
+                            label="Ce lieu dispose d'un parking"
+                        />
+
+                        {formData.has_parking === 1 && (
+                            <Paper elevation={0} sx={{ p: 3, bgcolor: 'action.hover', borderRadius: 2 }}>
+                                <Grid container spacing={2}>
+                                    <Grid size={{ xs: 12, md: 6 }}>
+                                        <TextField
+                                            id="parking_capacity"
+                                            fullWidth
+                                            type="number"
+                                            label="Capacité du parking"
+                                            value={formData.parking_capacity}
+                                            onChange={handleChange}
+                                            placeholder="Nombre de places"
+                                        />
+                                    </Grid>
+                                    <Grid size={{ xs: 12, md: 6 }}>
+                                        <TextField
+                                            id="parking_details"
+                                            fullWidth
+                                            label="Informations d'accès"
+                                            value={formData.parking_details}
+                                            onChange={handleChange}
+                                            placeholder="Code, entrée, indications..."
+                                        />
+                                    </Grid>
+                                    <Grid size={{ xs: 12 }}>
+                                        <FormControlLabel
+                                            control={
+                                                <Checkbox
+                                                    checked={formData.is_parking_free === 1}
+                                                    onChange={(e) => handleCheckboxChange('is_parking_free', e.target.checked)}
+                                                />
+                                            }
+                                            label="Le parking est gratuit"
+                                        />
+                                    </Grid>
+                                </Grid>
+                            </Paper>
+                        )}
+                    </Box>
+                );
+
+            case 3:
+                return (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        <Box sx={{ textAlign: 'center', mb: 2 }}>
+                            <SettingsIcon sx={{ fontSize: 64, color: 'primary.main', mb: 1 }} />
+                            <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+                                Options & Détails
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                Configurez les options avancées de votre événement
+                            </Typography>
+                        </Box>
+
+                        <Grid container spacing={3}>
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <TextField
+                                    id="max_seats"
+                                    fullWidth
+                                    type="number"
+                                    label="Nombre de places maximum"
+                                    value={formData.max_seats}
+                                    onChange={(e) => {
+                                        handleChange(e);
+                                        if (touched.max_seats) {
+                                            const stepErrors = validateStep4();
+                                            setErrors(prev => ({ ...prev, max_seats: stepErrors.max_seats || '' }));
+                                        }
+                                    }}
+                                    onBlur={() => handleFieldBlur('max_seats')}
+                                    error={touched.max_seats && !!errors.max_seats}
+                                    helperText={touched.max_seats && errors.max_seats ? errors.max_seats : "Capacité maximale d'accueil (optionnel)"}
+                                    placeholder="Ex: 100"
+                                />
+                            </Grid>
+
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <TextField
+                                    id="youtube_live"
+                                    fullWidth
+                                    label="Lien YouTube Live"
+                                    value={formData.youtube_live}
+                                    onChange={(e) => {
+                                        handleChange(e);
+                                        if (touched.youtube_live) {
+                                            const stepErrors = validateStep4();
+                                            setErrors(prev => ({ ...prev, youtube_live: stepErrors.youtube_live || '' }));
+                                        }
+                                    }}
+                                    onBlur={() => handleFieldBlur('youtube_live')}
+                                    error={touched.youtube_live && !!errors.youtube_live}
+                                    helperText={touched.youtube_live && errors.youtube_live ? errors.youtube_live : "Pour un événement diffusé en direct"}
+                                    placeholder="https://youtube.com/watch?v=..."
+                                    InputProps={{
+                                        startAdornment: (
+                                            <InputAdornment position="start">
+                                                <YouTubeIcon sx={{ color: 'error.main' }} />
+                                            </InputAdornment>
+                                        ),
+                                    }}
+                                />
+                            </Grid>
+                        </Grid>
+
+                        <Divider sx={{ my: 2 }}>
+                            <Chip label="Tarification" />
+                        </Divider>
+
+                        <FormControlLabel
+                            control={
+                                <Checkbox
+                                    checked={formData.is_free === 1}
+                                    onChange={(e) => handleCheckboxChange('is_free', e.target.checked)}
+                                />
+                            }
+                            label="Entrée gratuite"
+                        />
+
+                        {formData.is_free === 0 && (
+                            <Paper elevation={0} sx={{ p: 3, bgcolor: 'action.hover', borderRadius: 2 }}>
+                                <TextField
+                                    id="registration_link"
+                                    fullWidth
+                                    label="Lien billetterie / inscription"
+                                    value={formData.registration_link}
+                                    onChange={(e) => {
+                                        handleChange(e);
+                                        if (touched.registration_link) {
+                                            const stepErrors = validateStep4();
+                                            setErrors(prev => ({ ...prev, registration_link: stepErrors.registration_link || '' }));
+                                        }
+                                    }}
+                                    onBlur={() => handleFieldBlur('registration_link')}
+                                    error={touched.registration_link && !!errors.registration_link}
+                                    helperText={touched.registration_link && errors.registration_link ? errors.registration_link : "Lien vers la page de réservation ou d'achat de billets"}
+                                    placeholder="https://..."
+                                />
+                            </Paper>
+                        )}
+                    </Box>
+                );
+
+            case 4:
+                return (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        <Box sx={{ textAlign: 'center', mb: 2 }}>
+                            <VisibilityIcon sx={{ fontSize: 64, color: 'success.main', mb: 1 }} />
+                            <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'success.main' }}>
+                                Récapitulatif
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                Vérifiez les informations avant de publier
+                            </Typography>
+                        </Box>
+
+                        <Paper elevation={0} sx={{ p: 3, bgcolor: 'background.default', borderRadius: 2 }}>
+                            <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold', color: 'primary.main' }}>
+                                Informations générales
+                            </Typography>
+                            <Stack spacing={1.5}>
+                                <Box>
+                                    <Typography variant="caption" color="text.secondary">Titre</Typography>
+                                    <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{formData.title || '—'}</Typography>
+                                </Box>
+                                <Box>
+                                    <Typography variant="caption" color="text.secondary">Description</Typography>
+                                    <Typography variant="body2">{formData.description || '—'}</Typography>
+                                </Box>
+                                <Box sx={{ display: 'flex', gap: 3 }}>
+                                    <Box>
+                                        <Typography variant="caption" color="text.secondary">Speaker</Typography>
+                                        <Typography variant="body2">{formData.speaker_name || '—'}</Typography>
+                                    </Box>
+                                    <Box>
+                                        <Typography variant="caption" color="text.secondary">Statut</Typography>
+                                        <Chip
+                                            label={formData.status}
+                                            size="small"
+                                            color={formData.status === 'PUBLISHED' ? 'success' : 'warning'}
+                                        />
+                                    </Box>
+                                </Box>
+                            </Stack>
+                        </Paper>
+
+                        <Paper elevation={0} sx={{ p: 3, bgcolor: 'background.default', borderRadius: 2 }}>
+                            <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold', color: 'primary.main' }}>
+                                Date & Heure
+                            </Typography>
+                            <Stack spacing={1.5}>
+                                <Box>
+                                    <Typography variant="caption" color="text.secondary">Début</Typography>
+                                    <Typography variant="body2">
+                                        {formData.start_datetime ? new Date(formData.start_datetime).toLocaleString('fr-FR') : '—'}
+                                    </Typography>
+                                </Box>
+                                <Box>
+                                    <Typography variant="caption" color="text.secondary">Fin</Typography>
+                                    <Typography variant="body2">
+                                        {formData.end_datetime ? new Date(formData.end_datetime).toLocaleString('fr-FR') : '—'}
+                                    </Typography>
+                                </Box>
+                                <Box>
+                                    <Typography variant="caption" color="text.secondary">Langue</Typography>
+                                    <Typography variant="body2">
+                                        {languages.find(l => l.id.toString() === formData.language_id)?.name_fr || '—'}
+                                    </Typography>
+                                </Box>
+                            </Stack>
+                        </Paper>
+
+                        <Paper elevation={0} sx={{ p: 3, bgcolor: 'background.default', borderRadius: 2 }}>
+                            <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold', color: 'primary.main' }}>
+                                Localisation
+                            </Typography>
+                            <Stack spacing={1.5}>
+                                <Box>
+                                    <Typography variant="caption" color="text.secondary">Adresse</Typography>
+                                    <Typography variant="body2">{formData.address || '—'}</Typography>
+                                </Box>
+                                <Box>
+                                    <Typography variant="caption" color="text.secondary">Ville</Typography>
+                                    <Typography variant="body2">{formData.city || '—'}</Typography>
+                                </Box>
+                                <Box>
+                                    <Typography variant="caption" color="text.secondary">Parking</Typography>
+                                    <Typography variant="body2">
+                                        {formData.has_parking === 1 ? `Oui (${formData.parking_capacity || '—'} places${formData.is_parking_free === 1 ? ', gratuit' : ''})` : 'Non'}
+                                    </Typography>
+                                </Box>
+                            </Stack>
+                        </Paper>
+
+                        <Paper elevation={0} sx={{ p: 3, bgcolor: 'background.default', borderRadius: 2 }}>
+                            <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold', color: 'primary.main' }}>
+                                Options
+                            </Typography>
+                            <Stack spacing={1.5}>
+                                <Box>
+                                    <Typography variant="caption" color="text.secondary">Places maximum</Typography>
+                                    <Typography variant="body2">{formData.max_seats || 'Illimité'}</Typography>
+                                </Box>
+                                <Box>
+                                    <Typography variant="caption" color="text.secondary">Tarification</Typography>
+                                    <Typography variant="body2">{formData.is_free === 1 ? 'Gratuit' : 'Payant'}</Typography>
+                                </Box>
+                                {formData.youtube_live && (
+                                    <Box>
+                                        <Typography variant="caption" color="text.secondary">Diffusion en ligne</Typography>
+                                        <Typography variant="body2">Oui (YouTube Live)</Typography>
+                                    </Box>
+                                )}
+                            </Stack>
+                        </Paper>
+                    </Box>
+                );
+
+            default:
+                return null;
         }
     };
 
@@ -384,7 +1211,6 @@ export default function MyEvents() {
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {/* Back Button (Admin Mode Only) */}
             {isAdminMode && (
                 <Button
                     variant="text"
@@ -415,6 +1241,7 @@ export default function MyEvents() {
                             if (showForm) {
                                 setEditingId(null);
                                 setFormData(initialFormState);
+                                setActiveStep(0);
                             }
                         }}
                         disabled={!isChurchComplete}
@@ -424,14 +1251,13 @@ export default function MyEvents() {
                 )}
             </Box>
 
-            {/* Warning if church is incomplete */}
             {hasChurch && !isChurchComplete && (
                 <Alert severity="warning" icon={<ChurchIcon />}>
                     <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
                         Informations de l'église incomplètes
                     </Typography>
                     <Typography variant="body2" sx={{ mb: 2 }}>
-                        Pour créer des événements, vous devez compléter les informations obligatoires de votre église : nom, dénomination, adresse complète et coordonnées GPS (utilisez la recherche d'adresse dans l'onglet "Mon Église").
+                        Pour créer des événements, vous devez compléter les informations obligatoires de votre église : nom, dénomination, adresse complète et coordonnées GPS.
                     </Typography>
                     <Button
                         variant="contained"
@@ -445,552 +1271,104 @@ export default function MyEvents() {
             )}
 
             {showForm ? (
-                <Box component="form" onSubmit={handleSubmit}>
-                    <Grid container spacing={3}>
-                        {/* FORM SIDEBAR / STEPS */}
-                        <Grid size={{ xs: 0, lg: 3 }} sx={{ display: { xs: 'none', lg: 'block' } }}>
-                            <Card sx={{ position: 'sticky', top: 16 }}>
-                                <CardContent>
-                                    <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
-                                        Étapes
-                                    </Typography>
-                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                        <Button
-                                            fullWidth
-                                            variant={activeTab === 0 ? "contained" : "text"}
-                                            startIcon={<EventIcon />}
-                                            onClick={() => setActiveTab(0)}
-                                            sx={{ justifyContent: 'flex-start' }}
-                                        >
-                                            Général
-                                        </Button>
-                                        <Button
-                                            fullWidth
-                                            variant={activeTab === 1 ? "contained" : "text"}
-                                            startIcon={<LocationOnIcon />}
-                                            onClick={() => setActiveTab(1)}
-                                            sx={{ justifyContent: 'flex-start' }}
-                                        >
-                                            Lieu
-                                        </Button>
-                                        <Button
-                                            fullWidth
-                                            variant={activeTab === 2 ? "contained" : "text"}
-                                            startIcon={<AutoAwesomeIcon />}
-                                            onClick={() => setActiveTab(2)}
-                                            sx={{ justifyContent: 'flex-start' }}
-                                        >
-                                            Options
-                                        </Button>
-                                    </Box>
-                                </CardContent>
-                            </Card>
-                        </Grid>
-
-                        {/* FORM CONTENT */}
-                        <Grid size={{ xs: 12, lg: 9 }}>
-                            <Card>
-                                <CardContent sx={{ p: 3 }}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-                                        <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-                                            {editingId ? "Modification" : "Création"} d'événement
-                                        </Typography>
-                                        {/* Mobile Tabs */}
-                                        <Box sx={{ display: { xs: 'flex', lg: 'none' }, gap: 1 }}>
-                                            <IconButton
-                                                onClick={() => setActiveTab(0)}
-                                                color={activeTab === 0 ? "primary" : "default"}
-                                                sx={{ bgcolor: activeTab === 0 ? 'primary.main' : 'action.hover', color: activeTab === 0 ? 'white' : 'text.primary' }}
-                                            >
-                                                <EventIcon />
-                                            </IconButton>
-                                            <IconButton
-                                                onClick={() => setActiveTab(1)}
-                                                color={activeTab === 1 ? "primary" : "default"}
-                                                sx={{ bgcolor: activeTab === 1 ? 'primary.main' : 'action.hover', color: activeTab === 1 ? 'white' : 'text.primary' }}
-                                            >
-                                                <LocationOnIcon />
-                                            </IconButton>
-                                            <IconButton
-                                                onClick={() => setActiveTab(2)}
-                                                color={activeTab === 2 ? "primary" : "default"}
-                                                sx={{ bgcolor: activeTab === 2 ? 'primary.main' : 'action.hover', color: activeTab === 2 ? 'white' : 'text.primary' }}
-                                            >
-                                                <AutoAwesomeIcon />
-                                            </IconButton>
-                                        </Box>
-                                    </Box>
-
-                                    {/* TAB: GENERAL */}
-                                    {activeTab === 0 && (
-                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                                            <Grid container spacing={2}>
-                                                <Grid size={{ xs: 12, md: 6 }}>
-                                                    <TextField
-                                                        id="title"
-                                                        fullWidth
-                                                        required
-                                                        label="Titre"
-                                                        value={formData.title}
-                                                        onChange={handleChange}
-                                                        placeholder="Ex: Culte de Louange"
-                                                    />
-                                                </Grid>
-                                                <Grid size={{ xs: 12, md: 6 }}>
-                                                    <TextField
-                                                        id="speaker_name"
-                                                        fullWidth
-                                                        label="Intervenant"
-                                                        value={formData.speaker_name}
-                                                        onChange={handleChange}
-                                                        placeholder="Ex: Pasteur John Doe"
-                                                    />
-                                                </Grid>
-                                                <Grid size={{ xs: 12, md: 6 }}>
-                                                    <FormControl fullWidth>
-                                                        <InputLabel>Statut</InputLabel>
-                                                        <Select
-                                                            id="status"
-                                                            value={formData.status}
-                                                            onChange={(e) => setFormData({
-                                                                ...formData,
-                                                                status: e.target.value as string
-                                                            })}
-                                                            label="Statut"
-                                                        >
-                                                            <MenuItem value="PUBLISHED">
-                                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                                    <PublishIcon fontSize="small" color="success" />
-                                                                    Publié
-                                                                </Box>
-                                                            </MenuItem>
-                                                            <MenuItem value="DRAFT">
-                                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                                    <DraftsIcon fontSize="small" color="warning" />
-                                                                    Brouillon
-                                                                </Box>
-                                                            </MenuItem>
-                                                            <MenuItem value="CANCELLED">
-                                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                                    <CancelIcon fontSize="small" color="error" />
-                                                                    Annulé
-                                                                </Box>
-                                                            </MenuItem>
-                                                            <MenuItem value="COMPLETED">
-                                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                                    <CheckCircleIcon fontSize="small" />
-                                                                    Terminé
-                                                                </Box>
-                                                            </MenuItem>
-                                                        </Select>
-                                                        <FormHelperText>
-                                                            Choisissez le statut de l'événement
-                                                        </FormHelperText>
-                                                    </FormControl>
-                                                </Grid>
-                                            </Grid>
-
-                                            <Grid container spacing={2}>
-                                                <Grid size={{ xs: 12, md: 6 }}>
-                                                    <FormControl fullWidth>
-                                                        <InputLabel>Langue du speaker</InputLabel>
-                                                        <Select
-                                                            id="language_id"
-                                                            value={formData.language_id}
-                                                            onChange={(e) => setFormData({
-                                                                ...formData,
-                                                                language_id: e.target.value as string
-                                                            })}
-                                                            label="Langue du speaker"
-                                                        >
-                                                            {languages.map(lang => (
-                                                                <MenuItem key={lang.id} value={lang.id.toString()}>
-                                                                    {lang.flag_emoji} {lang.name_fr}
-                                                                </MenuItem>
-                                                            ))}
-                                                        </Select>
-                                                        <FormHelperText>
-                                                            Langue dans laquelle le speaker parlera
-                                                        </FormHelperText>
-                                                    </FormControl>
-                                                </Grid>
-                                                <Grid size={{ xs: 12, md: 6 }}>
-                                                    <FormControl fullWidth>
-                                                        <InputLabel>Langues de traduction</InputLabel>
-                                                        <Select
-                                                            multiple
-                                                            value={formData.translation_language_ids}
-                                                            onChange={(e) => setFormData({
-                                                                ...formData,
-                                                                translation_language_ids: e.target.value as number[]
-                                                            })}
-                                                            renderValue={(selected) =>
-                                                                languages
-                                                                    .filter(l => selected.includes(l.id))
-                                                                    .map(l => `${l.flag_emoji} ${l.name_fr}`)
-                                                                    .join(', ')
-                                                            }
-                                                            label="Langues de traduction"
-                                                        >
-                                                            {languages
-                                                                .filter(l => l.id.toString() !== formData.language_id)
-                                                                .map(lang => (
-                                                                    <MenuItem key={lang.id} value={lang.id}>
-                                                                        <Checkbox checked={formData.translation_language_ids.includes(lang.id)} />
-                                                                        {lang.flag_emoji} {lang.name_fr}
-                                                                    </MenuItem>
-                                                                ))
-                                                            }
-                                                        </Select>
-                                                        <FormHelperText>
-                                                            Langues dans lesquelles l'événement sera traduit (optionnel)
-                                                        </FormHelperText>
-                                                    </FormControl>
-                                                </Grid>
-                                            </Grid>
-
-                                            <Grid container spacing={2}>
-                                                <Grid size={{ xs: 12, md: 6 }}>
-                                                    <DateTimeInput
-                                                        label="Date de début"
-                                                        value={formData.start_datetime}
-                                                        onChange={(value) => {
-                                                            setFormData(prev => ({ ...prev, start_datetime: value }));
-                                                            // Validate: check if end is before new start
-                                                            if (formData.end_datetime && value && new Date(value) >= new Date(formData.end_datetime)) {
-                                                                setDateError('La date de fin doit être après la date de début');
-                                                            } else {
-                                                                setDateError('');
-                                                            }
-                                                        }}
-                                                        required
-                                                    />
-                                                </Grid>
-
-                                                <Grid size={{ xs: 12, md: 6 }}>
-                                                    <DateTimeInput
-                                                        label="Date de fin"
-                                                        value={formData.end_datetime}
-                                                        onChange={(value) => {
-                                                            setFormData(prev => ({ ...prev, end_datetime: value }));
-                                                            // Validate: check if end is before start
-                                                            if (formData.start_datetime && value && new Date(value) <= new Date(formData.start_datetime)) {
-                                                                setDateError('La date de fin doit être après la date de début');
-                                                            } else {
-                                                                setDateError('');
-                                                            }
-                                                        }}
-                                                        required
-                                                        minDateTime={formData.start_datetime}
-                                                        error={dateError}
-                                                    />
-                                                </Grid>
-                                            </Grid>
-
-                                            <FormControl fullWidth>
-                                                <InputLabel>Statut</InputLabel>
-                                                <Select
-                                                    id="status"
-                                                    value={formData.status}
-                                                    label="Statut"
-                                                    onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
+                <Box
+                    component="form"
+                    onSubmit={handleSubmit}
+                    onKeyDown={(e) => {
+                        // Bloquer complètement la touche "Entrée" pour éviter la soumission accidentelle
+                        // La soumission doit se faire uniquement via le clic sur le bouton "Publier"
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            console.log('⚠️ Touche Entrée bloquée. Utilisez le bouton pour soumettre.');
+                        }
+                    }}
+                >
+                    <Card sx={{ mb: 3 }}>
+                        <CardContent sx={{ p: 4 }}>
+                            {/* Stepper */}
+                            <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 4 }}>
+                                {steps.map((step, index) => (
+                                    <Step key={step.label}>
+                                        <StepLabel
+                                            StepIconComponent={() => (
+                                                <Box
+                                                    sx={{
+                                                        width: 48,
+                                                        height: 48,
+                                                        borderRadius: '50%',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        bgcolor: activeStep === index ? 'primary.main' : activeStep > index ? 'success.main' : 'action.disabledBackground',
+                                                        color: activeStep >= index ? 'white' : 'text.disabled',
+                                                        transition: 'all 0.3s ease',
+                                                        boxShadow: activeStep === index ? 4 : 0
+                                                    }}
                                                 >
-                                                    <MenuItem value="PUBLISHED">Publié</MenuItem>
-                                                    <MenuItem value="DRAFT">Brouillon</MenuItem>
-                                                    <MenuItem value="CANCELLED">Annulé</MenuItem>
-                                                    <MenuItem value="COMPLETED">Terminé</MenuItem>
-                                                </Select>
-                                            </FormControl>
-
-                                            <TextField
-                                                id="description"
-                                                fullWidth
-                                                multiline
-                                                rows={5}
-                                                label="Description"
-                                                value={formData.description}
-                                                onChange={handleChange}
-                                                placeholder="Détails de l'événement..."
-                                            />
-
-                                            <TextField
-                                                id="image_url"
-                                                fullWidth
-                                                label="Image (URL)"
-                                                value={formData.image_url}
-                                                onChange={handleChange}
-                                                placeholder="https://..."
-                                                InputProps={{
-                                                    endAdornment: (
-                                                        <InputAdornment position="end">
-                                                            {formData.image_url ? (
-                                                                <Box
-                                                                    component="img"
-                                                                    src={formData.image_url}
-                                                                    alt="Preview"
-                                                                    sx={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 1 }}
-                                                                />
-                                                            ) : (
-                                                                <ImageIcon sx={{ color: 'text.secondary' }} />
-                                                            )}
-                                                        </InputAdornment>
-                                                    ),
+                                                    {activeStep > index ? <CheckCircleIcon /> : step.icon}
+                                                </Box>
+                                            )}
+                                        >
+                                            <Typography
+                                                variant="caption"
+                                                sx={{
+                                                    fontWeight: activeStep === index ? 'bold' : 'normal',
+                                                    color: activeStep === index ? 'primary.main' : 'text.secondary',
+                                                    display: { xs: 'none', sm: 'block' }
                                                 }}
-                                            />
-                                        </Box>
-                                    )}
+                                            >
+                                                {step.label}
+                                            </Typography>
+                                        </StepLabel>
+                                    </Step>
+                                ))}
+                            </Stepper>
 
-                                    {/* TAB: LOCATION */}
-                                    {activeTab === 1 && (
-                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                                            {/* AddressAutocomplete */}
-                                            <AddressAutocomplete
-                                                defaultValue={formData.address || ''}
-                                                onAddressSelect={(addressData) => {
-                                                    setFormData(prev => ({
-                                                        ...prev,
-                                                        address: addressData.full_address,
-                                                        street_number: addressData.street_number,
-                                                        street_name: addressData.street_name,
-                                                        postal_code: addressData.postal_code,
-                                                        city: addressData.city,
-                                                        latitude: addressData.latitude.toString(),
-                                                        longitude: addressData.longitude.toString()
-                                                    }));
-                                                }}
-                                            />
+                            <Divider sx={{ mb: 4 }} />
 
-                                            {/* Champs d'adresse détaillés (lecture seule, auto-remplis) */}
-                                            <Box sx={{ p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
-                                                <Grid container spacing={2}>
-                                                    <Grid size={{ xs: 12, md: 3 }}>
-                                                        <TextField
-                                                            fullWidth
-                                                            size="small"
-                                                            label="N°"
-                                                            value={formData.street_number}
-                                                            InputProps={{ readOnly: true }}
-                                                            placeholder="Auto"
-                                                        />
-                                                    </Grid>
-                                                    <Grid size={{ xs: 12, md: 9 }}>
-                                                        <TextField
-                                                            fullWidth
-                                                            size="small"
-                                                            label="Rue"
-                                                            value={formData.street_name}
-                                                            InputProps={{ readOnly: true }}
-                                                            placeholder="Auto-rempli"
-                                                        />
-                                                    </Grid>
-                                                    <Grid size={{ xs: 12, md: 3 }}>
-                                                        <TextField
-                                                            fullWidth
-                                                            size="small"
-                                                            label="Code Postal"
-                                                            value={formData.postal_code}
-                                                            InputProps={{ readOnly: true }}
-                                                            placeholder="Auto"
-                                                        />
-                                                    </Grid>
-                                                    <Grid size={{ xs: 12, md: 9 }}>
-                                                        <TextField
-                                                            fullWidth
-                                                            size="small"
-                                                            label="Ville"
-                                                            value={formData.city}
-                                                            InputProps={{ readOnly: true }}
-                                                            placeholder="Auto-remplie"
-                                                        />
-                                                    </Grid>
-                                                </Grid>
-                                            </Box>
+                            {/* Step Content */}
+                            {renderStepContent()}
 
-                                            {/* Coordonnées GPS (lecture seule, auto-remplies) */}
-                                            <Box sx={{ p: 2, bgcolor: 'rgba(33, 150, 243, 0.1)', borderRadius: 1, border: 1, borderColor: 'info.light' }}>
-                                                <Grid container spacing={2}>
-                                                    <Grid size={{ xs: 12, md: 6 }}>
-                                                        <TextField
-                                                            fullWidth
-                                                            size="small"
-                                                            label="Latitude"
-                                                            value={formData.latitude}
-                                                            InputProps={{
-                                                                readOnly: true,
-                                                                startAdornment: (
-                                                                    <InputAdornment position="start">
-                                                                        <LocationOnIcon fontSize="small" />
-                                                                    </InputAdornment>
-                                                                ),
-                                                            }}
-                                                            placeholder="Auto-calculé"
-                                                        />
-                                                    </Grid>
-                                                    <Grid size={{ xs: 12, md: 6 }}>
-                                                        <TextField
-                                                            fullWidth
-                                                            size="small"
-                                                            label="Longitude"
-                                                            value={formData.longitude}
-                                                            InputProps={{
-                                                                readOnly: true,
-                                                                startAdornment: (
-                                                                    <InputAdornment position="start">
-                                                                        <LocationOnIcon fontSize="small" />
-                                                                    </InputAdornment>
-                                                                ),
-                                                            }}
-                                                            placeholder="Auto-calculé"
-                                                        />
-                                                    </Grid>
-                                                </Grid>
-                                            </Box>
+                            {/* Navigation Buttons */}
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 4, mt: 4, borderTop: 1, borderColor: 'divider' }}>
+                                <Button
+                                    type="button"
+                                    variant="outlined"
+                                    onClick={handleBack}
+                                    disabled={activeStep === 0}
+                                    startIcon={<NavigateBeforeIcon />}
+                                >
+                                    Précédent
+                                </Button>
 
-                                            <Box sx={{ p: 2, borderRadius: 1, bgcolor: 'action.hover' }}>
-                                                <FormControlLabel
-                                                    control={
-                                                        <Checkbox
-                                                            checked={formData.has_parking === 1}
-                                                            onChange={(e) => handleCheckboxChange('has_parking', e.target.checked)}
-                                                        />
-                                                    }
-                                                    label="Ce lieu dispose d'un parking"
-                                                />
-
-                                                {formData.has_parking === 1 && (
-                                                    <Box sx={{ pl: 4, pt: 2 }}>
-                                                        <Grid container spacing={2}>
-                                                            <Grid size={{ xs: 12, md: 6 }}>
-                                                                <TextField
-                                                                    id="parking_capacity"
-                                                                    fullWidth
-                                                                    type="number"
-                                                                    label="Capacité"
-                                                                    value={formData.parking_capacity}
-                                                                    onChange={handleChange}
-                                                                />
-                                                            </Grid>
-                                                            <Grid size={{ xs: 12, md: 6 }}>
-                                                                <TextField
-                                                                    id="parking_details"
-                                                                    fullWidth
-                                                                    label="Info Accès"
-                                                                    value={formData.parking_details}
-                                                                    onChange={handleChange}
-                                                                    placeholder="Code, entrée..."
-                                                                />
-                                                            </Grid>
-                                                            <Grid size={{ xs: 12 }}>
-                                                                <FormControlLabel
-                                                                    control={
-                                                                        <Checkbox
-                                                                            checked={formData.is_parking_free === 1}
-                                                                            onChange={(e) => handleCheckboxChange('is_parking_free', e.target.checked)}
-                                                                        />
-                                                                    }
-                                                                    label="Parking Gratuit"
-                                                                />
-                                                            </Grid>
-                                                        </Grid>
-                                                    </Box>
-                                                )}
-                                            </Box>
-                                        </Box>
-                                    )}
-
-                                    {/* TAB: OPTIONS */}
-                                    {activeTab === 2 && (
-                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                                            <Grid container spacing={2}>
-                                                <Grid size={{ xs: 12, md: 6 }}>
-                                                    <TextField
-                                                        id="max_seats"
-                                                        fullWidth
-                                                        type="number"
-                                                        label="Places Max"
-                                                        value={formData.max_seats}
-                                                        onChange={handleChange}
-                                                    />
-                                                </Grid>
-                                                <Grid size={{ xs: 12, md: 6 }}>
-                                                    <TextField
-                                                        id="youtube_live"
-                                                        fullWidth
-                                                        label="YouTube Live"
-                                                        value={formData.youtube_live}
-                                                        onChange={handleChange}
-                                                        placeholder="URL du live..."
-                                                        InputProps={{
-                                                            startAdornment: (
-                                                                <InputAdornment position="start">
-                                                                    <YouTubeIcon sx={{ color: 'error.main' }} />
-                                                                </InputAdornment>
-                                                            ),
-                                                        }}
-                                                    />
-                                                </Grid>
-                                            </Grid>
-
-                                            <Box sx={{ p: 2, borderRadius: 1, bgcolor: 'action.hover' }}>
-                                                <FormControlLabel
-                                                    control={
-                                                        <Checkbox
-                                                            checked={formData.is_free === 1}
-                                                            onChange={(e) => handleCheckboxChange('is_free', e.target.checked)}
-                                                        />
-                                                    }
-                                                    label="Entrée Gratuite"
-                                                />
-                                                {formData.is_free === 0 && (
-                                                    <Box sx={{ pl: 4, pt: 2 }}>
-                                                        <TextField
-                                                            id="registration_link"
-                                                            fullWidth
-                                                            label="Lien Billetterie"
-                                                            value={formData.registration_link}
-                                                            onChange={handleChange}
-                                                            placeholder="https://..."
-                                                        />
-                                                    </Box>
-                                                )}
-                                            </Box>
-
-                                            <Box sx={{ pt: 3, borderTop: 1, borderColor: 'divider', display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-                                                <Button
-                                                    type="submit"
-                                                    variant="contained"
-                                                    color="success"
-                                                    size="large"
-                                                    startIcon={<SaveIcon />}
-                                                    disabled={loading}
-                                                    sx={{ px: 4 }}
-                                                >
-                                                    {loading ? 'Enregistrement...' : "Publier l'événement"}
-                                                </Button>
-                                            </Box>
-                                        </Box>
-                                    )}
-
-                                    {/* Navigation Buttons for Form */}
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 3, borderTop: 1, borderColor: 'divider' }}>
-                                        {activeTab !== 0 && (
-                                            <Button variant="outlined" onClick={() => setActiveTab(activeTab === 2 ? 1 : 0)}>
-                                                Précédent
-                                            </Button>
-                                        )}
-                                        {activeTab !== 2 && (
-                                            <Button variant="outlined" onClick={() => setActiveTab(activeTab === 0 ? 1 : 2)} sx={{ ml: 'auto' }}>
-                                                Suivant
-                                            </Button>
-                                        )}
-                                    </Box>
-                                </CardContent>
-                            </Card>
-                        </Grid>
-                    </Grid>
+                                {activeStep === steps.length - 1 ? (
+                                    <Button
+                                        type="submit"
+                                        variant="contained"
+                                        color="success"
+                                        size="large"
+                                        startIcon={<SaveIcon />}
+                                        disabled={loading || !isStepValid(0) || !isStepValid(1) || !isStepValid(2) || !isStepValid(3)}
+                                        sx={{ px: 4 }}
+                                    >
+                                        {loading ? 'Publication...' : editingId ? 'Enregistrer les modifications' : 'Publier l\'événement'}
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        type="button"
+                                        variant="contained"
+                                        onClick={handleNext}
+                                        disabled={!isStepValid(activeStep)}
+                                        endIcon={<NavigateNextIcon />}
+                                    >
+                                        Suivant
+                                    </Button>
+                                )}
+                            </Box>
+                        </CardContent>
+                    </Card>
                 </Box>
             ) : (
-                /* EVENT LIST GRID */
                 <Grid container spacing={3}>
                     {events.map((event) => (
                         <Grid size={{ xs: 12, md: 6, lg: 4 }} key={event.id}>
@@ -1003,7 +1381,6 @@ export default function MyEvents() {
                                     borderColor: 'primary.main'
                                 }
                             }}>
-                                {/* Image Placeholder or Actual Image */}
                                 <Box sx={{ height: 192, width: '100%', bgcolor: 'grey.900', position: 'relative' }}>
                                     {event.image_url ? (
                                         <Box
@@ -1055,24 +1432,64 @@ export default function MyEvents() {
                                             <MoreVertIcon fontSize="small" />
                                         </IconButton>
                                         {event.status === 'PUBLISHED' && (
-                                            <Box sx={{ px: 1, py: 0.5, borderRadius: 8, fontSize: '0.75rem', fontWeight: 'bold', bgcolor: 'rgba(76, 175, 80, 0.8)', color: 'white', backdropFilter: 'blur(8px)' }}>
-                                                Publié
-                                            </Box>
+                                            <Chip
+                                                label="Publié"
+                                                icon={<PublishIcon />}
+                                                size="small"
+                                                sx={{
+                                                    bgcolor: 'rgba(76, 175, 80, 0.9)',
+                                                    color: 'white',
+                                                    fontWeight: 'bold',
+                                                    backdropFilter: 'blur(8px)',
+                                                    boxShadow: '0 2px 8px rgba(76, 175, 80, 0.4)',
+                                                    '& .MuiChip-icon': { color: 'white' }
+                                                }}
+                                            />
                                         )}
                                         {event.status === 'DRAFT' && (
-                                            <Box sx={{ px: 1, py: 0.5, borderRadius: 8, fontSize: '0.75rem', fontWeight: 'bold', bgcolor: 'rgba(255, 193, 7, 0.8)', color: 'white', backdropFilter: 'blur(8px)' }}>
-                                                Brouillon
-                                            </Box>
-                                        )}
-                                        {event.status === 'COMPLETED' && (
-                                            <Box sx={{ px: 1, py: 0.5, borderRadius: 8, fontSize: '0.75rem', fontWeight: 'bold', bgcolor: 'rgba(158, 158, 158, 0.8)', color: 'white', backdropFilter: 'blur(8px)' }}>
-                                                Terminé
-                                            </Box>
+                                            <Chip
+                                                label="Brouillon"
+                                                icon={<DraftsIcon />}
+                                                size="small"
+                                                sx={{
+                                                    bgcolor: 'rgba(255, 193, 7, 0.9)',
+                                                    color: 'white',
+                                                    fontWeight: 'bold',
+                                                    backdropFilter: 'blur(8px)',
+                                                    boxShadow: '0 2px 8px rgba(255, 193, 7, 0.4)',
+                                                    '& .MuiChip-icon': { color: 'white' }
+                                                }}
+                                            />
                                         )}
                                         {event.status === 'CANCELLED' && (
-                                            <Box sx={{ px: 1, py: 0.5, borderRadius: 8, fontSize: '0.75rem', fontWeight: 'bold', bgcolor: 'rgba(244, 67, 54, 0.8)', color: 'white', backdropFilter: 'blur(8px)' }}>
-                                                Annulé
-                                            </Box>
+                                            <Chip
+                                                label="Annulé"
+                                                icon={<CancelIcon />}
+                                                size="small"
+                                                sx={{
+                                                    bgcolor: 'rgba(244, 67, 54, 0.9)',
+                                                    color: 'white',
+                                                    fontWeight: 'bold',
+                                                    backdropFilter: 'blur(8px)',
+                                                    boxShadow: '0 2px 8px rgba(244, 67, 54, 0.4)',
+                                                    '& .MuiChip-icon': { color: 'white' }
+                                                }}
+                                            />
+                                        )}
+                                        {event.status === 'COMPLETED' && (
+                                            <Chip
+                                                label="Terminé"
+                                                icon={<CheckCircleIcon />}
+                                                size="small"
+                                                sx={{
+                                                    bgcolor: 'rgba(158, 158, 158, 0.9)',
+                                                    color: 'white',
+                                                    fontWeight: 'bold',
+                                                    backdropFilter: 'blur(8px)',
+                                                    boxShadow: '0 2px 8px rgba(158, 158, 158, 0.4)',
+                                                    '& .MuiChip-icon': { color: 'white' }
+                                                }}
+                                            />
                                         )}
                                     </Box>
                                 </Box>
@@ -1099,9 +1516,7 @@ export default function MyEvents() {
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                             <LocationOnIcon sx={{ fontSize: 16, color: 'secondary.main' }} />
                                             <Typography variant="body2" color="text.secondary">
-                                                {event.city ?
-                                                    `${event.street_number || ''} ${event.street_name || ''}, ${event.city}`.trim().replace(/^,\s*/, '')
-                                                    : event.address || "Lieu non précisé"}
+                                                {event.city || event.address || "Lieu non précisé"}
                                             </Typography>
                                         </Box>
                                     </Box>
@@ -1117,10 +1532,9 @@ export default function MyEvents() {
                         </Grid>
                     ))}
 
-                    {/* Add New Card (Empty State) */}
                     <Grid size={{ xs: 12, md: 6, lg: 4 }}>
                         <Box
-                            onClick={() => { setShowForm(true); setEditingId(null); setFormData(initialFormState); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                            onClick={() => { setShowForm(true); setEditingId(null); setFormData(initialFormState); setActiveStep(0); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                             sx={{
                                 height: '100%',
                                 minHeight: 300,
@@ -1166,7 +1580,6 @@ export default function MyEvents() {
                 </Grid>
             )}
 
-            {/* Menu d'actions rapides */}
             <Menu
                 anchorEl={menuAnchor?.element}
                 open={Boolean(menuAnchor)}
