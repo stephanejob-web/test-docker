@@ -271,7 +271,7 @@ router.put('/churches/:id', async (req, res) => {
     const {
         church_name, latitude, longitude, denomination_id,
         description, address, street_number, street_name, postal_code, city,
-        phone, website, pastor_name, has_parking, parking_capacity, is_parking_free, logo_url,
+        phone, website, pastor_first_name, pastor_last_name, has_parking, parking_capacity, is_parking_free, logo_url,
         socials, schedules
     } = req.body;
 
@@ -299,7 +299,8 @@ router.put('/churches/:id', async (req, res) => {
             city || null,
             phone || null,
             website || null,
-            pastor_name || null,
+            pastor_first_name || null,
+            pastor_last_name || null,
             has_parking ? 1 : 0,
             parking_capacity || null,
             is_parking_free ? 1 : 0,
@@ -311,15 +312,15 @@ router.put('/churches/:id', async (req, res) => {
             await connection.query(
                 `UPDATE church_details
                  SET description=?, address=?, street_number=?, street_name=?, postal_code=?, city=?,
-                     phone=?, website=?, pastor_name=?, has_parking=?, parking_capacity=?, is_parking_free=?, logo_url=?, language_id=?
+                     phone=?, website=?, pastor_first_name=?, pastor_last_name=?, has_parking=?, parking_capacity=?, is_parking_free=?, logo_url=?, language_id=?
                  WHERE church_id=?`,
                 [...detailParams, churchId]
             );
         } else {
             await connection.query(
                 `INSERT INTO church_details
-                 (description, address, street_number, street_name, postal_code, city, phone, website, pastor_name, has_parking, parking_capacity, is_parking_free, logo_url, language_id, church_id)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                 (description, address, street_number, street_name, postal_code, city, phone, website, pastor_first_name, pastor_last_name, has_parking, parking_capacity, is_parking_free, logo_url, language_id, church_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [...detailParams, churchId]
             );
         }
