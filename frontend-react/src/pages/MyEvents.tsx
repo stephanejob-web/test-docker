@@ -30,7 +30,11 @@ import {
     Stack,
     Paper,
     ToggleButton,
-    ToggleButtonGroup
+    ToggleButtonGroup,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -55,7 +59,9 @@ import {
     NavigateBefore as NavigateBeforeIcon,
     Info as InfoIcon,
     ViewModule as ViewModuleIcon,
-    ViewList as ViewListIcon
+    ViewList as ViewListIcon,
+    Schedule as ScheduleIcon,
+    PlayCircle as PlayCircleIcon
 } from '@mui/icons-material';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import DateTimeInput from '../components/DateTimeInput';
@@ -85,6 +91,9 @@ interface EventFormData {
     parking_details: string;
     youtube_live: string;
     status: string;
+    cancellation_reason?: string;
+    cancelled_at?: string;
+    cancelled_by?: number;
 }
 
 interface EventData extends EventFormData {
@@ -136,6 +145,10 @@ export default function MyEvents() {
     const [isChurchComplete, setIsChurchComplete] = useState<boolean>(false);
     const [languages, setLanguages] = useState<any[]>([]);
     const [menuAnchor, setMenuAnchor] = useState<{ element: HTMLElement; eventId: number } | null>(null);
+    const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+    const [cancelEventId, setCancelEventId] = useState<number | null>(null);
+    const [cancellationReason, setCancellationReason] = useState('');
+    const [isReadOnly, setIsReadOnly] = useState(false);
 
     // Validation errors state
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -397,7 +410,7 @@ export default function MyEvents() {
         setFormData(prev => ({ ...prev, [id]: checked ? 1 : 0 }));
     };
 
-    const handleEdit = async (id: number) => {
+    const handleEdit = async (id: number, readOnlyMode = false) => {
         try {
             const { data } = await api.get(`/church/events/${id}`);
             setFormData({
@@ -410,6 +423,7 @@ export default function MyEvents() {
                 is_free: data.is_free ? 1 : 0
             });
             setEditingId(id);
+            setIsReadOnly(readOnlyMode);
             setShowForm(true);
             setActiveStep(0);
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -441,8 +455,11 @@ export default function MyEvents() {
 
         setLoading(true);
         try {
+            // Exclude status and cancellation fields as they're computed server-side
+            const { status, cancellation_reason, cancelled_at, cancelled_by, ...eventData } = formData;
+
             const payload = {
-                ...formData,
+                ...eventData,
                 language_id: parseInt(formData.language_id) || 10,
                 translation_language_ids: formData.translation_language_ids || [],
                 latitude: parseFloat(formData.latitude) || 0,
@@ -484,6 +501,7 @@ export default function MyEvents() {
                 setEditingId(null);
                 setFormData(initialFormState);
                 setActiveStep(0);
+                setIsReadOnly(false);
                 checkChurchAndEvents();
             }
         } catch (err: unknown) {
@@ -500,16 +518,32 @@ export default function MyEvents() {
         }
     };
 
-    const handleStatusChange = async (eventId: number, newStatus: string) => {
+    const handleOpenCancelDialog = (eventId: number) => {
+        setCancelEventId(eventId);
+        setCancellationReason('');
+        setMenuAnchor(null);
+        setCancelDialogOpen(true);
+    };
+
+    const handleCancelEvent = async () => {
+        if (!cancelEventId || !cancellationReason.trim() || cancellationReason.trim().length < 10) {
+            alert('Le motif d\'annulation doit contenir au moins 10 caractères');
+            return;
+        }
+
         try {
             setLoading(true);
-            await api.patch(`/church/events/${eventId}/status`, { status: newStatus });
-            alert(`Événement ${newStatus === 'CANCELLED' ? 'annulé' : newStatus === 'PUBLISHED' ? 'publié' : 'mis à jour'} avec succès !`);
-            setMenuAnchor(null);
+            await api.post(`/church/events/${cancelEventId}/cancel`, {
+                cancellation_reason: cancellationReason.trim()
+            });
+            alert('Événement annulé avec succès !');
+            setCancelDialogOpen(false);
+            setCancelEventId(null);
+            setCancellationReason('');
             checkChurchAndEvents();
-        } catch (err) {
-            console.error('Erreur lors du changement de statut:', err);
-            alert('Erreur lors du changement de statut');
+        } catch (err: any) {
+            console.error('Erreur lors de l\'annulation:', err);
+            alert(err.response?.data?.message || 'Erreur lors de l\'annulation de l\'événement');
         } finally {
             setLoading(false);
         }
@@ -1230,10 +1264,10 @@ export default function MyEvents() {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Box>
                     <Typography variant="h3" sx={{ fontWeight: 'bold', background: 'linear-gradient(135deg, #1976d2 0%, #9c27b0 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                        {isAdminMode ? "Modifier l'Événement" : "Mes Événements"}
+                        {isReadOnly ? "Visualiser l'Événement" : isAdminMode ? "Modifier l'Événement" : "Mes Événements"}
                     </Typography>
                     <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-                        {isAdminMode ? "Modifiez les informations de cet événement." : "Gérez votre calendrier et vos publications."}
+                        {isReadOnly ? "Événement terminé - Consultation uniquement" : isAdminMode ? "Modifiez les informations de cet événement." : "Gérez votre calendrier et vos publications."}
                     </Typography>
                 </Box>
                 {!isAdminMode && (
@@ -1285,6 +1319,7 @@ export default function MyEvents() {
                                     setEditingId(null);
                                     setFormData(initialFormState);
                                     setActiveStep(0);
+                                    setIsReadOnly(false);
                                 }
                             }}
                             disabled={!isChurchComplete}
@@ -1329,6 +1364,18 @@ export default function MyEvents() {
                 >
                     <Card sx={{ mb: 3 }}>
                         <CardContent sx={{ p: 4 }}>
+                            {/* Read-only mode alert */}
+                            {isReadOnly && (
+                                <Alert severity="info" icon={<CheckCircleIcon />} sx={{ mb: 3 }}>
+                                    <Typography variant="subtitle1" fontWeight="bold">
+                                        Mode consultation uniquement
+                                    </Typography>
+                                    <Typography variant="body2">
+                                        Cet événement est terminé et ne peut plus être modifié.
+                                    </Typography>
+                                </Alert>
+                            )}
+
                             {/* Stepper */}
                             <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 4 }}>
                                 {steps.map((step, index) => (
@@ -1371,44 +1418,48 @@ export default function MyEvents() {
                             <Divider sx={{ mb: 4 }} />
 
                             {/* Step Content */}
-                            {renderStepContent()}
+                            <Box component="fieldset" disabled={isReadOnly} sx={{ border: 'none', m: 0, p: 0 }}>
+                                {renderStepContent()}
+                            </Box>
 
                             {/* Navigation Buttons */}
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 4, mt: 4, borderTop: 1, borderColor: 'divider' }}>
-                                <Button
-                                    type="button"
-                                    variant="outlined"
-                                    onClick={handleBack}
-                                    disabled={activeStep === 0}
-                                    startIcon={<NavigateBeforeIcon />}
-                                >
-                                    Précédent
-                                </Button>
-
-                                {activeStep === steps.length - 1 ? (
-                                    <Button
-                                        type="submit"
-                                        variant="contained"
-                                        color="success"
-                                        size="large"
-                                        startIcon={<SaveIcon />}
-                                        disabled={loading || !isStepValid(0) || !isStepValid(1) || !isStepValid(2) || !isStepValid(3)}
-                                        sx={{ px: 4 }}
-                                    >
-                                        {loading ? 'Publication...' : editingId ? 'Enregistrer les modifications' : 'Publier l\'événement'}
-                                    </Button>
-                                ) : (
+                            {!isReadOnly && (
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 4, mt: 4, borderTop: 1, borderColor: 'divider' }}>
                                     <Button
                                         type="button"
-                                        variant="contained"
-                                        onClick={handleNext}
-                                        disabled={!isStepValid(activeStep)}
-                                        endIcon={<NavigateNextIcon />}
+                                        variant="outlined"
+                                        onClick={handleBack}
+                                        disabled={activeStep === 0}
+                                        startIcon={<NavigateBeforeIcon />}
                                     >
-                                        Suivant
+                                        Précédent
                                     </Button>
-                                )}
-                            </Box>
+
+                                    {activeStep === steps.length - 1 ? (
+                                        <Button
+                                            type="submit"
+                                            variant="contained"
+                                            color="success"
+                                            size="large"
+                                            startIcon={<SaveIcon />}
+                                            disabled={loading || !isStepValid(0) || !isStepValid(1) || !isStepValid(2) || !isStepValid(3)}
+                                            sx={{ px: 4 }}
+                                        >
+                                            {loading ? 'Publication...' : editingId ? 'Enregistrer les modifications' : 'Publier l\'événement'}
+                                        </Button>
+                                    ) : (
+                                        <Button
+                                            type="button"
+                                            variant="contained"
+                                            onClick={handleNext}
+                                            disabled={!isStepValid(activeStep)}
+                                            endIcon={<NavigateNextIcon />}
+                                        >
+                                            Suivant
+                                        </Button>
+                                    )}
+                                </Box>
+                            )}
                         </CardContent>
                     </Card>
                 </Box>
@@ -1475,10 +1526,25 @@ export default function MyEvents() {
                                         >
                                             <MoreVertIcon fontSize="small" />
                                         </IconButton>
-                                        {event.status === 'PUBLISHED' && (
+                                        {event.status === 'UPCOMING' && (
                                             <Chip
-                                                label="Publié"
-                                                icon={<PublishIcon />}
+                                                label="À venir"
+                                                icon={<ScheduleIcon />}
+                                                size="small"
+                                                sx={{
+                                                    bgcolor: 'rgba(33, 150, 243, 0.9)',
+                                                    color: 'white',
+                                                    fontWeight: 'bold',
+                                                    backdropFilter: 'blur(8px)',
+                                                    boxShadow: '0 2px 8px rgba(33, 150, 243, 0.4)',
+                                                    '& .MuiChip-icon': { color: 'white' }
+                                                }}
+                                            />
+                                        )}
+                                        {event.status === 'ONGOING' && (
+                                            <Chip
+                                                label="En cours"
+                                                icon={<PlayCircleIcon />}
                                                 size="small"
                                                 sx={{
                                                     bgcolor: 'rgba(76, 175, 80, 0.9)',
@@ -1486,21 +1552,6 @@ export default function MyEvents() {
                                                     fontWeight: 'bold',
                                                     backdropFilter: 'blur(8px)',
                                                     boxShadow: '0 2px 8px rgba(76, 175, 80, 0.4)',
-                                                    '& .MuiChip-icon': { color: 'white' }
-                                                }}
-                                            />
-                                        )}
-                                        {event.status === 'DRAFT' && (
-                                            <Chip
-                                                label="Brouillon"
-                                                icon={<DraftsIcon />}
-                                                size="small"
-                                                sx={{
-                                                    bgcolor: 'rgba(255, 193, 7, 0.9)',
-                                                    color: 'white',
-                                                    fontWeight: 'bold',
-                                                    backdropFilter: 'blur(8px)',
-                                                    boxShadow: '0 2px 8px rgba(255, 193, 7, 0.4)',
                                                     '& .MuiChip-icon': { color: 'white' }
                                                 }}
                                             />
@@ -1564,13 +1615,35 @@ export default function MyEvents() {
                                             </Typography>
                                         </Box>
                                     </Box>
-                                    <Button
-                                        fullWidth
-                                        variant="outlined"
-                                        onClick={() => handleEdit(event.id)}
-                                    >
-                                        Modifier
-                                    </Button>
+                                    {event.status === 'CANCELLED' && event.cancellation_reason && (
+                                        <Alert severity="error" sx={{ mb: 2 }} icon={<CancelIcon />}>
+                                            <Typography variant="caption" fontWeight="bold" display="block">
+                                                Motif d'annulation:
+                                            </Typography>
+                                            <Typography variant="body2">
+                                                {event.cancellation_reason}
+                                            </Typography>
+                                        </Alert>
+                                    )}
+                                    {event.status !== 'COMPLETED' ? (
+                                        <Button
+                                            fullWidth
+                                            variant="outlined"
+                                            onClick={() => handleEdit(event.id)}
+                                        >
+                                            Modifier
+                                        </Button>
+                                    ) : (
+                                        <Button
+                                            fullWidth
+                                            variant="outlined"
+                                            color="info"
+                                            startIcon={<CheckCircleIcon />}
+                                            onClick={() => handleEdit(event.id, true)}
+                                        >
+                                            Visualiser
+                                        </Button>
+                                    )}
                                 </CardContent>
                             </Card>
                         </Grid>
@@ -1681,10 +1754,25 @@ export default function MyEvents() {
                                             {event.title}
                                         </Typography>
                                         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', ml: 2 }}>
-                                            {event.status === 'PUBLISHED' && (
+                                            {event.status === 'UPCOMING' && (
                                                 <Chip
-                                                    label="Publié"
-                                                    icon={<PublishIcon />}
+                                                    label="À venir"
+                                                    icon={<ScheduleIcon />}
+                                                    size="small"
+                                                    sx={{
+                                                        bgcolor: 'rgba(33, 150, 243, 0.9)',
+                                                        color: 'white',
+                                                        fontWeight: 'bold',
+                                                        backdropFilter: 'blur(8px)',
+                                                        boxShadow: '0 2px 8px rgba(33, 150, 243, 0.4)',
+                                                        '& .MuiChip-icon': { color: 'white' }
+                                                    }}
+                                                />
+                                            )}
+                                            {event.status === 'ONGOING' && (
+                                                <Chip
+                                                    label="En cours"
+                                                    icon={<PlayCircleIcon />}
                                                     size="small"
                                                     sx={{
                                                         bgcolor: 'rgba(76, 175, 80, 0.9)',
@@ -1692,21 +1780,6 @@ export default function MyEvents() {
                                                         fontWeight: 'bold',
                                                         backdropFilter: 'blur(8px)',
                                                         boxShadow: '0 2px 8px rgba(76, 175, 80, 0.4)',
-                                                        '& .MuiChip-icon': { color: 'white' }
-                                                    }}
-                                                />
-                                            )}
-                                            {event.status === 'DRAFT' && (
-                                                <Chip
-                                                    label="Brouillon"
-                                                    icon={<DraftsIcon />}
-                                                    size="small"
-                                                    sx={{
-                                                        bgcolor: 'rgba(255, 193, 7, 0.9)',
-                                                        color: 'white',
-                                                        fontWeight: 'bold',
-                                                        backdropFilter: 'blur(8px)',
-                                                        boxShadow: '0 2px 8px rgba(255, 193, 7, 0.4)',
                                                         '& .MuiChip-icon': { color: 'white' }
                                                     }}
                                                 />
@@ -1787,14 +1860,37 @@ export default function MyEvents() {
                                         )}
                                     </Box>
 
+                                    {event.status === 'CANCELLED' && event.cancellation_reason && (
+                                        <Alert severity="error" sx={{ mb: 2 }} icon={<CancelIcon />}>
+                                            <Typography variant="caption" fontWeight="bold" display="block">
+                                                Motif d'annulation:
+                                            </Typography>
+                                            <Typography variant="body2">
+                                                {event.cancellation_reason}
+                                            </Typography>
+                                        </Alert>
+                                    )}
+
                                     <Box sx={{ display: 'flex', gap: 1, mt: 'auto' }}>
-                                        <Button
-                                            variant="outlined"
-                                            size="small"
-                                            onClick={() => handleEdit(event.id)}
-                                        >
-                                            Modifier
-                                        </Button>
+                                        {event.status !== 'COMPLETED' ? (
+                                            <Button
+                                                variant="outlined"
+                                                size="small"
+                                                onClick={() => handleEdit(event.id)}
+                                            >
+                                                Modifier
+                                            </Button>
+                                        ) : (
+                                            <Button
+                                                variant="outlined"
+                                                size="small"
+                                                color="info"
+                                                startIcon={<CheckCircleIcon />}
+                                                onClick={() => handleEdit(event.id, true)}
+                                            >
+                                                Visualiser
+                                            </Button>
+                                        )}
                                     </Box>
                                 </Box>
                             </Box>
@@ -1857,34 +1953,72 @@ export default function MyEvents() {
                     }
                 }}
             >
-                <MenuItem
-                    onClick={() => handleStatusChange(menuAnchor?.eventId || 0, 'DRAFT')}
-                    sx={{ py: 1.5, gap: 1.5 }}
-                >
-                    <ListItemIcon>
-                        <DraftsIcon fontSize="small" sx={{ color: '#ff9800' }} />
-                    </ListItemIcon>
-                    <ListItemText>Passer en brouillon</ListItemText>
-                </MenuItem>
-                <MenuItem
-                    onClick={() => handleStatusChange(menuAnchor?.eventId || 0, 'CANCELLED')}
-                    sx={{ py: 1.5, gap: 1.5 }}
-                >
-                    <ListItemIcon>
-                        <CancelIcon fontSize="small" sx={{ color: '#f44336' }} />
-                    </ListItemIcon>
-                    <ListItemText>Annuler l'événement</ListItemText>
-                </MenuItem>
-                <MenuItem
-                    onClick={() => handleStatusChange(menuAnchor?.eventId || 0, 'COMPLETED')}
-                    sx={{ py: 1.5, gap: 1.5 }}
-                >
-                    <ListItemIcon>
-                        <CheckCircleIcon fontSize="small" sx={{ color: '#9e9e9e' }} />
-                    </ListItemIcon>
-                    <ListItemText>Marquer comme terminé</ListItemText>
-                </MenuItem>
+                {/* Only show cancel option for UPCOMING events */}
+                {menuAnchor && events.find(e => e.id === menuAnchor.eventId)?.status === 'UPCOMING' && (
+                    <MenuItem
+                        onClick={() => handleOpenCancelDialog(menuAnchor?.eventId || 0)}
+                        sx={{ py: 1.5, gap: 1.5 }}
+                    >
+                        <ListItemIcon>
+                            <CancelIcon fontSize="small" sx={{ color: '#f44336' }} />
+                        </ListItemIcon>
+                        <ListItemText>Annuler l'événement</ListItemText>
+                    </MenuItem>
+                )}
+                {/* Show message if no actions available */}
+                {menuAnchor && events.find(e => e.id === menuAnchor.eventId)?.status !== 'UPCOMING' && (
+                    <MenuItem disabled sx={{ py: 1.5 }}>
+                        <ListItemText secondary="Aucune action disponible" />
+                    </MenuItem>
+                )}
             </Menu>
+
+            {/* Cancel Event Dialog */}
+            <Dialog
+                open={cancelDialogOpen}
+                onClose={() => setCancelDialogOpen(false)}
+                maxWidth="sm"
+                fullWidth
+            >
+                <DialogTitle>Annuler l'événement</DialogTitle>
+                <DialogContent>
+                    <Box sx={{ pt: 2 }}>
+                        <Alert severity="warning" sx={{ mb: 2 }}>
+                            Cette action est irréversible. L'événement sera marqué comme annulé.
+                        </Alert>
+                        <TextField
+                            autoFocus
+                            fullWidth
+                            multiline
+                            rows={4}
+                            label="Motif d'annulation"
+                            placeholder="Ex: Intempéries, problème logistique, annulation de l'intervenant..."
+                            value={cancellationReason}
+                            onChange={(e) => setCancellationReason(e.target.value)}
+                            error={cancellationReason.length > 0 && cancellationReason.length < 10}
+                            helperText={
+                                cancellationReason.length > 0 && cancellationReason.length < 10
+                                    ? `Minimum 10 caractères (${cancellationReason.length}/10)`
+                                    : "Ce motif sera visible par les participants"
+                            }
+                            required
+                        />
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setCancelDialogOpen(false)}>
+                        Retour
+                    </Button>
+                    <Button
+                        onClick={handleCancelEvent}
+                        color="error"
+                        variant="contained"
+                        disabled={!cancellationReason.trim() || cancellationReason.trim().length < 10 || loading}
+                    >
+                        {loading ? 'Annulation...' : 'Confirmer l\'annulation'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 }

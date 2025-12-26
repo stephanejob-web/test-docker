@@ -5,11 +5,13 @@ services:
     image: mysql:8.0
     container_name: mysql-db
     restart: unless-stopped
+    command: --default-time-zone='+01:00'
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: Europe/Paris
     ports:
       - "3306:3306"
     volumes:
@@ -35,6 +37,7 @@ services:
       DB_NAME: ${MYSQL_DATABASE}
       PORT: 3000
       JWT_SECRET: ${JWT_SECRET:-super_secret_jwt_key}
+      TZ: Europe/Paris
     ports:
       - "3000:3000"
     depends_on:

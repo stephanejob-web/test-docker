@@ -43,15 +43,8 @@ const validateEvent = [
 
   body('start_datetime')
     .notEmpty().withMessage('La date de début est obligatoire')
-    .isISO8601().withMessage('La date de début doit être une date valide (format ISO 8601)')
-    .custom((value) => {
-      const startDate = new Date(value);
-      const now = new Date();
-      if (startDate < now) {
-        throw new Error('La date de début ne peut pas être dans le passé');
-      }
-      return true;
-    }),
+    .isISO8601().withMessage('La date de début doit être une date valide (format ISO 8601)'),
+    // Note: Removed past date validation to allow editing of ongoing/past events
 
   body('end_datetime')
     .notEmpty().withMessage('La date de fin est obligatoire')
@@ -73,10 +66,8 @@ const validateEvent = [
     .notEmpty().withMessage('La longitude est obligatoire')
     .isFloat({ min: -180, max: 180 }).withMessage('La longitude doit être comprise entre -180 et 180'),
 
-  body('status')
-    .optional()
-    .isIn(['PUBLISHED', 'CANCELLED', 'DRAFT', 'COMPLETED', 'ONGOING'])
-    .withMessage('Le statut n\'est pas valide'),
+  // Note: status is now computed automatically based on dates and is not validated/accepted from client
+  // body('status') validation removed as status is calculated server-side
 
   // Détails de l'événement
   body('description')
