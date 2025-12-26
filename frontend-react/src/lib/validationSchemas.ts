@@ -115,11 +115,11 @@ export const churchSchema = z.object({
     .min(1, 'L\'adresse complète est obligatoire')
     .max(500, 'L\'adresse ne doit pas dépasser 500 caractères'),
 
-  // Champs d'adresse détaillés (obligatoires)
+  // Champs d'adresse détaillés
   street_number: z
     .string()
-    .min(1, 'Le numéro de rue est obligatoire')
-    .max(20, 'Le numéro de rue ne doit pas dépasser 20 caractères'),
+    .max(20, 'Le numéro de rue ne doit pas dépasser 20 caractères')
+    .optional(),
 
   street_name: z
     .string()

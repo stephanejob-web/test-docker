@@ -57,10 +57,10 @@ const validateChurch = [
     .notEmpty().withMessage('L\'adresse complète est obligatoire')
     .isLength({ max: 500 }).withMessage('L\'adresse ne doit pas dépasser 500 caractères'),
 
-  // Champs d'adresse détaillés (obligatoires)
+  // Champs d'adresse détaillés
   body('street_number')
+    .optional({ values: 'falsy' })
     .trim()
-    .notEmpty().withMessage('Le numéro de rue est obligatoire')
     .isLength({ max: 20 }).withMessage('Le numéro de rue ne doit pas dépasser 20 caractères'),
 
   body('street_name')
