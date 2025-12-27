@@ -37,7 +37,8 @@ import {
     DialogTitle,
     DialogContent,
     DialogActions,
-    Pagination
+    Pagination,
+    Tooltip
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -64,7 +65,9 @@ import {
     Schedule as ScheduleIcon,
     PlayCircle as PlayCircleIcon,
     Search as SearchIcon,
-    AccessTime as AccessTimeIcon
+    AccessTime as AccessTimeIcon,
+    Sort as SortIcon,
+    DateRange as DateRangeIcon
 } from '@mui/icons-material';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import DateTimeInput from '../components/DateTimeInput';
@@ -157,6 +160,7 @@ export default function MyEvents() {
     const [statusFilter, setStatusFilter] = useState<string>('ALL');
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [currentPage, setCurrentPage] = useState(1);
+    const [sortBy, setSortBy] = useState<'created' | 'event_date'>('created'); // Sort by creation date by default
     const itemsPerPage = 9; // 9 events per page (3x3 grid)
 
     // Validation errors state
@@ -610,6 +614,17 @@ export default function MyEvents() {
                 event.description?.toLowerCase().includes(query) ||
                 event.address?.toLowerCase().includes(query)
             );
+        })
+        .sort((a, b) => {
+            if (sortBy === 'created') {
+                // Sort by ID in descending order (newest events first)
+                return b.id - a.id;
+            } else {
+                // Sort by start_datetime in ascending order (closest event first)
+                const dateA = new Date(a.start_datetime.replace(' ', 'T'));
+                const dateB = new Date(b.start_datetime.replace(' ', 'T'));
+                return dateA.getTime() - dateB.getTime();
+            }
         });
 
     // Pagination logic
@@ -738,7 +753,42 @@ export default function MyEvents() {
                                 <TextField
                                     id="image_url"
                                     fullWidth
-                                    label="Image de couverture (URL)"
+                                    label={
+                                        <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                            Image de couverture (URL)
+                                            <Tooltip
+                                                title={
+                                                    <Box>
+                                                        <Typography variant="body2" sx={{ mb: 1, fontWeight: 'bold' }}>
+                                                            Comment mettre votre image en ligne ?
+                                                        </Typography>
+                                                        <Typography variant="caption" sx={{ display: 'block', mb: 0.5 }}>
+                                                            1. Téléchargez votre image sur un service gratuit :
+                                                        </Typography>
+                                                        <Typography variant="caption" sx={{ display: 'block', ml: 2, mb: 0.5 }}>
+                                                            • ImgBB (imgbb.com) - Recommandé
+                                                        </Typography>
+                                                        <Typography variant="caption" sx={{ display: 'block', ml: 2, mb: 0.5 }}>
+                                                            • Imgur (imgur.com)
+                                                        </Typography>
+                                                        <Typography variant="caption" sx={{ display: 'block', ml: 2, mb: 1 }}>
+                                                            • Postimages (postimages.org)
+                                                        </Typography>
+                                                        <Typography variant="caption" sx={{ display: 'block' }}>
+                                                            2. Copiez le lien direct de l'image
+                                                        </Typography>
+                                                        <Typography variant="caption" sx={{ display: 'block' }}>
+                                                            3. Collez le lien dans ce champ
+                                                        </Typography>
+                                                    </Box>
+                                                }
+                                                arrow
+                                                placement="right"
+                                            >
+                                                <InfoIcon sx={{ fontSize: 18, color: 'primary.main', cursor: 'help' }} />
+                                            </Tooltip>
+                                        </Box>
+                                    }
                                     value={formData.image_url}
                                     onChange={handleChange}
                                     placeholder="https://exemple.com/image.jpg"
@@ -758,6 +808,9 @@ export default function MyEvents() {
                                                 )}
                                             </InputAdornment>
                                         ),
+                                    }}
+                                    InputLabelProps={{
+                                        shrink: true,
                                     }}
                                 />
                             </Grid>
@@ -1420,41 +1473,79 @@ export default function MyEvents() {
                 {!isAdminMode && (
                     <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                         {!showForm && (
-                            <ToggleButtonGroup
-                                value={viewMode}
-                                exclusive
-                                onChange={(_e, newMode) => {
-                                    if (newMode !== null) {
-                                        setViewMode(newMode);
-                                    }
-                                }}
-                                size="small"
-                                sx={{
-                                    bgcolor: 'background.paper',
-                                    '& .MuiToggleButton-root': {
-                                        px: 2,
-                                        py: 1,
-                                        border: '1px solid',
-                                        borderColor: 'divider',
-                                        '&.Mui-selected': {
-                                            bgcolor: 'primary.main',
-                                            color: 'white',
-                                            '&:hover': {
-                                                bgcolor: 'primary.dark',
+                            <>
+                                <ToggleButtonGroup
+                                    value={sortBy}
+                                    exclusive
+                                    onChange={(_e, newSort) => {
+                                        if (newSort !== null) {
+                                            setSortBy(newSort);
+                                            setCurrentPage(1); // Reset to first page when changing sort
+                                        }
+                                    }}
+                                    size="small"
+                                    sx={{
+                                        bgcolor: 'background.paper',
+                                        '& .MuiToggleButton-root': {
+                                            px: 2,
+                                            py: 1,
+                                            border: '1px solid',
+                                            borderColor: 'divider',
+                                            '&.Mui-selected': {
+                                                bgcolor: 'primary.main',
+                                                color: 'white',
+                                                '&:hover': {
+                                                    bgcolor: 'primary.dark',
+                                                }
                                             }
                                         }
-                                    }
-                                }}
-                            >
-                                <ToggleButton value="grid" aria-label="vue en grille">
-                                    <ViewModuleIcon sx={{ mr: 1 }} />
-                                    Cartes
-                                </ToggleButton>
-                                <ToggleButton value="list" aria-label="vue en liste">
-                                    <ViewListIcon sx={{ mr: 1 }} />
-                                    Liste
-                                </ToggleButton>
-                            </ToggleButtonGroup>
+                                    }}
+                                >
+                                    <ToggleButton value="created" aria-label="trier par date d'ajout">
+                                        <SortIcon sx={{ mr: 1 }} />
+                                        Récents
+                                    </ToggleButton>
+                                    <ToggleButton value="event_date" aria-label="trier par date d'événement">
+                                        <DateRangeIcon sx={{ mr: 1 }} />
+                                        À venir
+                                    </ToggleButton>
+                                </ToggleButtonGroup>
+                                <ToggleButtonGroup
+                                    value={viewMode}
+                                    exclusive
+                                    onChange={(_e, newMode) => {
+                                        if (newMode !== null) {
+                                            setViewMode(newMode);
+                                        }
+                                    }}
+                                    size="small"
+                                    sx={{
+                                        bgcolor: 'background.paper',
+                                        '& .MuiToggleButton-root': {
+                                            px: 2,
+                                            py: 1,
+                                            border: '1px solid',
+                                            borderColor: 'divider',
+                                            '&.Mui-selected': {
+                                                bgcolor: 'primary.main',
+                                                color: 'white',
+                                                '&:hover': {
+                                                    bgcolor: 'primary.dark',
+                                                }
+                                            }
+                                        }
+                                    }}
+                                >
+                                    <ToggleButton value="grid" aria-label="vue en grille">
+                                        <ViewModuleIcon sx={{ mr: 1 }} />
+                                        Cartes
+                                    </ToggleButton>
+                                    <ToggleButton value="list" aria-label="vue en liste">
+                                        <ViewListIcon sx={{ mr: 1 }} />
+                                        Liste
+                                    </ToggleButton>
+                                </ToggleButtonGroup>
+                            </>
                         )}
                         <Button
                             variant={showForm ? "outlined" : "contained"}
@@ -1871,7 +1962,11 @@ export default function MyEvents() {
                                                             ? ` - ${new Date(event.end_datetime).toLocaleDateString()}`
                                                             : ''
                                                     } (Toute la journée)`
-                                                    : `${new Date(event.start_datetime).toLocaleDateString()} à ${new Date(event.start_datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                                                    : `${new Date(event.start_datetime).toLocaleDateString()} à ${new Date(event.start_datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}${
+                                                        event.end_datetime
+                                                            ? ` → ${new Date(event.end_datetime).toLocaleDateString()} à ${new Date(event.end_datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                                                            : ''
+                                                    }`
                                                 }
                                             </Typography>
                                         </Box>
@@ -2172,6 +2267,17 @@ export default function MyEvents() {
                                                     month: 'long',
                                                     day: 'numeric'
                                                 })} à {new Date(event.start_datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                {event.end_datetime && (
+                                                    <>
+                                                        {' → '}
+                                                        {new Date(event.end_datetime).toLocaleDateString('fr-FR', {
+                                                            weekday: 'long',
+                                                            year: 'numeric',
+                                                            month: 'long',
+                                                            day: 'numeric'
+                                                        })} à {new Date(event.end_datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    </>
+                                                )}
                                             </Typography>
                                             <Box sx={{
                                                 display: 'inline-flex',
