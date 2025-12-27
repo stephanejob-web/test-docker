@@ -48,8 +48,6 @@ import {
     ArrowBack as ArrowBackIcon,
     MoreVert as MoreVertIcon,
     Cancel as CancelIcon,
-    Publish as PublishIcon,
-    Drafts as DraftsIcon,
     CheckCircle as CheckCircleIcon,
     Description as DescriptionIcon,
     CalendarMonth as CalendarMonthIcon,
@@ -61,7 +59,8 @@ import {
     ViewModule as ViewModuleIcon,
     ViewList as ViewListIcon,
     Schedule as ScheduleIcon,
-    PlayCircle as PlayCircleIcon
+    PlayCircle as PlayCircleIcon,
+    Search as SearchIcon
 } from '@mui/icons-material';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import DateTimeInput from '../components/DateTimeInput';
@@ -149,6 +148,8 @@ export default function MyEvents() {
     const [cancelEventId, setCancelEventId] = useState<number | null>(null);
     const [cancellationReason, setCancellationReason] = useState('');
     const [isReadOnly, setIsReadOnly] = useState(false);
+    const [statusFilter, setStatusFilter] = useState<string>('ALL');
+    const [searchQuery, setSearchQuery] = useState<string>('');
 
     // Validation errors state
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -549,6 +550,39 @@ export default function MyEvents() {
         }
     };
 
+    const handleReactivateEvent = async (eventId: number) => {
+        if (!window.confirm('Voulez-vous vraiment réactiver cet événement ?')) {
+            return;
+        }
+
+        try {
+            setLoading(true);
+            setMenuAnchor(null);
+            await api.post(`/church/events/${eventId}/reactivate`);
+            alert('Événement réactivé avec succès !');
+            checkChurchAndEvents();
+        } catch (err: any) {
+            console.error('Erreur lors de la réactivation:', err);
+            alert(err.response?.data?.message || 'Erreur lors de la réactivation de l\'événement');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Filter events by status and search query
+    const filteredEvents = events
+        .filter(event => statusFilter === 'ALL' || event.status === statusFilter)
+        .filter(event => {
+            if (!searchQuery.trim()) return true;
+            const query = searchQuery.toLowerCase();
+            return (
+                event.title?.toLowerCase().includes(query) ||
+                event.city?.toLowerCase().includes(query) ||
+                event.description?.toLowerCase().includes(query) ||
+                event.address?.toLowerCase().includes(query)
+            );
+        });
+
     // Step content renderers
     const renderStepContent = () => {
         switch (activeStep) {
@@ -606,34 +640,6 @@ export default function MyEvents() {
                                     helperText={touched.speaker_name && errors.speaker_name ? errors.speaker_name : "Le nom de la personne qui interviendra"}
                                     placeholder="Ex: Pasteur Jean Dupont"
                                 />
-                            </Grid>
-
-                            <Grid size={{ xs: 12, md: 6 }}>
-                                <FormControl fullWidth required>
-                                    <InputLabel>Statut de publication</InputLabel>
-                                    <Select
-                                        id="status"
-                                        value={formData.status}
-                                        label="Statut de publication"
-                                        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                                    >
-                                        <MenuItem value="PUBLISHED">
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                <PublishIcon fontSize="small" color="success" />
-                                                Publié - Visible par tous
-                                            </Box>
-                                        </MenuItem>
-                                        <MenuItem value="DRAFT">
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                <DraftsIcon fontSize="small" color="warning" />
-                                                Brouillon - Non visible
-                                            </Box>
-                                        </MenuItem>
-                                    </Select>
-                                    <FormHelperText>
-                                        Choisissez "Publié" pour rendre l'événement visible immédiatement
-                                    </FormHelperText>
-                                </FormControl>
                             </Grid>
 
                             <Grid size={{ xs: 12 }}>
@@ -1349,6 +1355,81 @@ export default function MyEvents() {
                 </Alert>
             )}
 
+            {/* Search Bar */}
+            {!showForm && events.length > 0 && (
+                <Box sx={{ mb: 2 }}>
+                    <TextField
+                        fullWidth
+                        placeholder="Rechercher un événement (titre, ville, adresse...)"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <SearchIcon />
+                                </InputAdornment>
+                            ),
+                            endAdornment: searchQuery && (
+                                <InputAdornment position="end">
+                                    <IconButton
+                                        size="small"
+                                        onClick={() => setSearchQuery('')}
+                                        edge="end"
+                                    >
+                                        <CloseIcon />
+                                    </IconButton>
+                                </InputAdornment>
+                            )
+                        }}
+                        sx={{
+                            '& .MuiOutlinedInput-root': {
+                                borderRadius: 3
+                            }
+                        }}
+                    />
+                </Box>
+            )}
+
+            {/* Status Filter */}
+            {!showForm && events.length > 0 && (
+                <Box sx={{ mb: 3, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    <Chip
+                        label={`Tous (${events.length})`}
+                        onClick={() => setStatusFilter('ALL')}
+                        color={statusFilter === 'ALL' ? 'primary' : 'default'}
+                        variant={statusFilter === 'ALL' ? 'filled' : 'outlined'}
+                    />
+                    <Chip
+                        label={`À venir (${events.filter(e => e.status === 'UPCOMING').length})`}
+                        icon={<ScheduleIcon />}
+                        onClick={() => setStatusFilter('UPCOMING')}
+                        color={statusFilter === 'UPCOMING' ? 'primary' : 'default'}
+                        variant={statusFilter === 'UPCOMING' ? 'filled' : 'outlined'}
+                    />
+                    <Chip
+                        label={`En cours (${events.filter(e => e.status === 'ONGOING').length})`}
+                        icon={<PlayCircleIcon />}
+                        onClick={() => setStatusFilter('ONGOING')}
+                        color={statusFilter === 'ONGOING' ? 'success' : 'default'}
+                        variant={statusFilter === 'ONGOING' ? 'filled' : 'outlined'}
+                    />
+                    <Chip
+                        label={`Terminés (${events.filter(e => e.status === 'COMPLETED').length})`}
+                        icon={<CheckCircleIcon />}
+                        onClick={() => setStatusFilter('COMPLETED')}
+                        color={statusFilter === 'COMPLETED' ? 'default' : 'default'}
+                        variant={statusFilter === 'COMPLETED' ? 'filled' : 'outlined'}
+                    />
+                    <Chip
+                        label={`Annulés (${events.filter(e => e.status === 'CANCELLED').length})`}
+                        icon={<CancelIcon />}
+                        onClick={() => setStatusFilter('CANCELLED')}
+                        color={statusFilter === 'CANCELLED' ? 'error' : 'default'}
+                        variant={statusFilter === 'CANCELLED' ? 'filled' : 'outlined'}
+                    />
+                </Box>
+            )}
+
             {showForm ? (
                 <Box
                     component="form"
@@ -1465,7 +1546,33 @@ export default function MyEvents() {
                 </Box>
             ) : viewMode === 'grid' ? (
                 <Grid container spacing={3}>
-                    {events.map((event) => (
+                    {filteredEvents.length === 0 ? (
+                        <Grid size={{ xs: 12 }}>
+                            <Box sx={{ textAlign: 'center', py: 8 }}>
+                                <SearchIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+                                <Typography variant="h6" color="text.secondary">
+                                    {searchQuery.trim()
+                                        ? `Aucun événement trouvé pour "${searchQuery}"`
+                                        : `Aucun événement ${statusFilter !== 'ALL' ? `avec le statut "${
+                                            statusFilter === 'UPCOMING' ? 'À venir' :
+                                            statusFilter === 'ONGOING' ? 'En cours' :
+                                            statusFilter === 'COMPLETED' ? 'Terminé' :
+                                            statusFilter === 'CANCELLED' ? 'Annulé' : ''
+                                        }"` : ''}`
+                                    }
+                                </Typography>
+                                {searchQuery.trim() && (
+                                    <Button
+                                        variant="outlined"
+                                        onClick={() => setSearchQuery('')}
+                                        sx={{ mt: 2 }}
+                                    >
+                                        Effacer la recherche
+                                    </Button>
+                                )}
+                            </Box>
+                        </Grid>
+                    ) : filteredEvents.map((event) => (
                         <Grid size={{ xs: 12, md: 6, lg: 4 }} key={event.id}>
                             <Card sx={{
                                 overflow: 'hidden',
@@ -1625,7 +1732,7 @@ export default function MyEvents() {
                                             </Typography>
                                         </Alert>
                                     )}
-                                    {event.status !== 'COMPLETED' ? (
+                                    {!['COMPLETED', 'CANCELLED'].includes(event.status) ? (
                                         <Button
                                             fullWidth
                                             variant="outlined"
@@ -1698,7 +1805,31 @@ export default function MyEvents() {
             ) : (
                 // List View
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {events.map((event) => (
+                    {filteredEvents.length === 0 ? (
+                        <Box sx={{ textAlign: 'center', py: 8 }}>
+                            <SearchIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+                            <Typography variant="h6" color="text.secondary">
+                                {searchQuery.trim()
+                                    ? `Aucun événement trouvé pour "${searchQuery}"`
+                                    : `Aucun événement ${statusFilter !== 'ALL' ? `avec le statut "${
+                                        statusFilter === 'UPCOMING' ? 'À venir' :
+                                        statusFilter === 'ONGOING' ? 'En cours' :
+                                        statusFilter === 'COMPLETED' ? 'Terminé' :
+                                        statusFilter === 'CANCELLED' ? 'Annulé' : ''
+                                    }"` : ''}`
+                                }
+                            </Typography>
+                            {searchQuery.trim() && (
+                                <Button
+                                    variant="outlined"
+                                    onClick={() => setSearchQuery('')}
+                                    sx={{ mt: 2 }}
+                                >
+                                    Effacer la recherche
+                                </Button>
+                            )}
+                        </Box>
+                    ) : filteredEvents.map((event) => (
                         <Card key={event.id} sx={{
                             overflow: 'hidden',
                             transition: 'all 0.2s',
@@ -1872,7 +2003,7 @@ export default function MyEvents() {
                                     )}
 
                                     <Box sx={{ display: 'flex', gap: 1, mt: 'auto' }}>
-                                        {event.status !== 'COMPLETED' ? (
+                                        {!['COMPLETED', 'CANCELLED'].includes(event.status) ? (
                                             <Button
                                                 variant="outlined"
                                                 size="small"
@@ -1965,8 +2096,43 @@ export default function MyEvents() {
                         <ListItemText>Annuler l'événement</ListItemText>
                     </MenuItem>
                 )}
-                {/* Show message if no actions available */}
-                {menuAnchor && events.find(e => e.id === menuAnchor.eventId)?.status !== 'UPCOMING' && (
+                {/* Show reactivate option for CANCELLED events that haven't ended yet */}
+                {menuAnchor && (() => {
+                    const event = events.find(e => e.id === menuAnchor.eventId);
+                    if (!event || event.status !== 'CANCELLED') return false;
+                    // Convert MySQL datetime format to ISO 8601 for consistent parsing
+                    const endDateTime = new Date(event.end_datetime.replace(' ', 'T'));
+                    return endDateTime > new Date();
+                })() && (
+                    <MenuItem
+                        onClick={() => handleReactivateEvent(menuAnchor?.eventId || 0)}
+                        sx={{ py: 1.5, gap: 1.5 }}
+                    >
+                        <ListItemIcon>
+                            <CheckCircleIcon fontSize="small" sx={{ color: '#4caf50' }} />
+                        </ListItemIcon>
+                        <ListItemText>Réactiver l'événement</ListItemText>
+                    </MenuItem>
+                )}
+                {/* Show message if no actions available (ONGOING, COMPLETED, or CANCELLED with expired date) */}
+                {menuAnchor && (() => {
+                    const event = events.find(e => e.id === menuAnchor.eventId);
+                    if (!event) return false;
+
+                    // Show for ONGOING or COMPLETED events
+                    if (['ONGOING', 'COMPLETED'].includes(event.status)) return true;
+
+                    // Show for CANCELLED events whose date has passed (cannot be reactivated)
+                    if (event.status === 'CANCELLED') {
+                        const endDateStr = typeof event.end_datetime === 'string'
+                            ? event.end_datetime.replace(' ', 'T')
+                            : event.end_datetime;
+                        const endDateTime = new Date(endDateStr);
+                        return endDateTime <= new Date();
+                    }
+
+                    return false;
+                })() && (
                     <MenuItem disabled sx={{ py: 1.5 }}>
                         <ListItemText secondary="Aucune action disponible" />
                     </MenuItem>

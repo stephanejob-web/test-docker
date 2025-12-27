@@ -331,6 +331,50 @@ router.post('/events/:id/cancel', async (req, res) => {
     }
 });
 
+// Réactiver un événement annulé
+router.post('/events/:id/reactivate', async (req, res) => {
+    const eventId = req.params.id;
+
+    try {
+        // Check ownership and current status
+        const [events] = await db.query(
+            'SELECT start_datetime, end_datetime, cancelled_at FROM events WHERE id = ? AND admin_id = ?',
+            [eventId, req.user.id]
+        );
+
+        if (events.length === 0) {
+            return res.status(403).json({ message: 'Non autorisé' });
+        }
+
+        const event = events[0];
+
+        // Check if event is cancelled
+        if (!event.cancelled_at) {
+            return res.status(400).json({ message: 'Cet événement n\'est pas annulé' });
+        }
+
+        // Check if event is not already completed
+        const now = new Date();
+        const endDate = new Date(event.end_datetime);
+        if (now > endDate) {
+            return res.status(400).json({ message: 'Impossible de réactiver un événement déjà terminé' });
+        }
+
+        // Reactivate the event by clearing cancellation fields
+        await db.query(
+            'UPDATE events SET cancelled_at = NULL, cancellation_reason = NULL, cancelled_by = NULL WHERE id = ?',
+            [eventId]
+        );
+
+        res.json({
+            message: 'Événement réactivé avec succès'
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erreur serveur lors de la réactivation de l\'événement' });
+    }
+});
+
 // Mettre à jour un événement
 router.put('/events/:id', validateEvent, async (req, res) => {
     const eventId = req.params.id;
@@ -349,7 +393,7 @@ router.put('/events/:id', validateEvent, async (req, res) => {
 
         // 1. Check ownership and event dates
         const [event] = await connection.query(
-            'SELECT id, start_datetime, end_datetime FROM events WHERE id = ? AND admin_id = ?',
+            'SELECT id, start_datetime, end_datetime, cancelled_at FROM events WHERE id = ? AND admin_id = ?',
             [eventId, req.user.id]
         );
 
@@ -358,12 +402,18 @@ router.put('/events/:id', validateEvent, async (req, res) => {
             return res.status(403).json({ message: 'Non autorisé' });
         }
 
-        // 2. Check if event is COMPLETED (cannot modify completed events)
+        // 2. Check if event is COMPLETED or CANCELLED after completion (cannot modify)
         const now = new Date();
         const endDate = new Date(event[0].end_datetime);
         if (now > endDate) {
             await connection.rollback();
             return res.status(400).json({ message: 'Impossible de modifier un événement terminé' });
+        }
+
+        // Also check if event is CANCELLED (cancelled events cannot be modified, only reactivated)
+        if (event[0].cancelled_at) {
+            await connection.rollback();
+            return res.status(400).json({ message: 'Impossible de modifier un événement annulé. Veuillez d\'abord le réactiver.' });
         }
 
         // 3. Update Event Core (excluding status - it's computed automatically)
