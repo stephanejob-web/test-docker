@@ -94,6 +94,7 @@ interface EventFormData {
     parking_details: string;
     youtube_live: string;
     status: string;
+    is_all_day: boolean;
     cancellation_reason?: string;
     cancelled_at?: string;
     cancelled_by?: number;
@@ -139,7 +140,8 @@ export default function MyEvents() {
         is_parking_free: 1,
         parking_details: '',
         youtube_live: '',
-        status: 'PUBLISHED'
+        status: 'PUBLISHED',
+        is_all_day: false
     };
 
     const [formData, setFormData] = useState<EventFormData>(initialFormState);
@@ -357,6 +359,11 @@ export default function MyEvents() {
         setLoading(true);
         try {
             const { data } = await api.get(`/admin/events/${id}`);
+            // Detect if the event is all-day based on times (00:00 to 23:59)
+            const isAllDay = data.start_datetime && data.end_datetime
+                ? isAllDayEvent(data.start_datetime, data.end_datetime)
+                : false;
+
             setFormData({
                 ...initialFormState,
                 ...data,
@@ -366,7 +373,8 @@ export default function MyEvents() {
                 translation_language_ids: data.translation_language_ids || [],
                 has_parking: data.has_parking ? 1 : 0,
                 is_parking_free: data.is_parking_free ? 1 : 0,
-                is_free: data.is_free ? 1 : 0
+                is_free: data.is_free ? 1 : 0,
+                is_all_day: isAllDay
             });
             setLoading(false);
         } catch (err) {
@@ -420,6 +428,20 @@ export default function MyEvents() {
     const handleEdit = async (id: number, readOnlyMode = false) => {
         try {
             const { data } = await api.get(`/church/events/${id}`);
+
+            // Debug: log the datetime values
+            console.log('🔍 Loading event for edit:', {
+                start_datetime: data.start_datetime,
+                end_datetime: data.end_datetime
+            });
+
+            // Detect if the event is all-day based on times (00:00 to 23:59)
+            const isAllDay = data.start_datetime && data.end_datetime
+                ? isAllDayEvent(data.start_datetime, data.end_datetime)
+                : false;
+
+            console.log('🔍 Is all-day event?', isAllDay);
+
             setFormData({
                 ...initialFormState,
                 ...data,
@@ -427,7 +449,8 @@ export default function MyEvents() {
                 end_datetime: data.end_datetime ? new Date(data.end_datetime).toISOString().slice(0, 16) : '',
                 has_parking: data.has_parking ? 1 : 0,
                 is_parking_free: data.is_parking_free ? 1 : 0,
-                is_free: data.is_free ? 1 : 0
+                is_free: data.is_free ? 1 : 0,
+                is_all_day: isAllDay
             });
             setEditingId(id);
             setIsReadOnly(readOnlyMode);
@@ -611,6 +634,13 @@ export default function MyEvents() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
+    // Helper function to check if event is all-day
+    const isAllDayEvent = (startDateTime: string, endDateTime: string) => {
+        const startTime = startDateTime.split('T')[1] || startDateTime.split(' ')[1];
+        const endTime = endDateTime.split('T')[1] || endDateTime.split(' ')[1];
+        return startTime?.startsWith('00:00') && endTime?.startsWith('23:59');
+    };
+
     // Helper function to get relative time
     const getRelativeTime = (dateTimeString: string) => {
         const dateStr = typeof dateTimeString === 'string'
@@ -748,30 +778,87 @@ export default function MyEvents() {
                             </Typography>
                         </Box>
 
+                        <Box sx={{ mb: 3 }}>
+                            <FormControlLabel
+                                control={
+                                    <Checkbox
+                                        checked={formData.is_all_day}
+                                        onChange={(e) => {
+                                            const isAllDay = e.target.checked;
+                                            setFormData(prev => {
+                                                const newData = { ...prev, is_all_day: isAllDay };
+
+                                                // Si "toute la journée" est coché, ajuster les heures
+                                                if (isAllDay && prev.start_datetime) {
+                                                    // Garder la date mais mettre l'heure à 00:00
+                                                    const startDate = prev.start_datetime.split('T')[0] || prev.start_datetime.split(' ')[0];
+                                                    const endDate = prev.end_datetime ? (prev.end_datetime.split('T')[0] || prev.end_datetime.split(' ')[0]) : startDate;
+                                                    newData.start_datetime = `${startDate}T00:00`;
+                                                    newData.end_datetime = `${endDate}T23:59`;
+                                                }
+
+                                                return newData;
+                                            });
+                                        }}
+                                        sx={{ '& .MuiSvgIcon-root': { fontSize: 28 } }}
+                                    />
+                                }
+                                label={
+                                    <Box>
+                                        <Typography variant="body1" fontWeight={600} sx={{ color: 'text.primary', mb: 0.5 }}>
+                                            Événement toute la journée
+                                        </Typography>
+                                        <Typography variant="caption" sx={{ color: 'grey.700', fontWeight: 500 }}>
+                                            L'événement se déroule sur une ou plusieurs journées complètes (00:00 à 23:59)
+                                        </Typography>
+                                    </Box>
+                                }
+                                sx={{
+                                    bgcolor: 'rgba(33, 150, 243, 0.08)',
+                                    p: 2,
+                                    borderRadius: 2,
+                                    border: 1,
+                                    borderColor: formData.is_all_day ? 'primary.main' : 'grey.300',
+                                    m: 0,
+                                    width: '100%',
+                                    transition: 'all 0.3s'
+                                }}
+                            />
+                        </Box>
+
                         <Grid container spacing={3}>
                             <Grid size={{ xs: 12, md: 6 }}>
                                 <DateTimeInput
-                                    label="Date et heure de début"
+                                    label={formData.is_all_day ? "Date de début" : "Date et heure de début"}
                                     value={formData.start_datetime}
                                     onChange={(value) => {
-                                        setFormData(prev => ({ ...prev, start_datetime: value }));
-                                        if (formData.end_datetime && value && new Date(value) >= new Date(formData.end_datetime)) {
+                                        // Si "toute la journée", ajouter T00:00 si seulement la date
+                                        const finalValue = formData.is_all_day && !value.includes('T')
+                                            ? `${value}T00:00`
+                                            : value;
+                                        setFormData(prev => ({ ...prev, start_datetime: finalValue }));
+                                        if (formData.end_datetime && finalValue && new Date(finalValue) >= new Date(formData.end_datetime)) {
                                             setDateError('La date de fin doit être après la date de début');
                                         } else {
                                             setDateError('');
                                         }
                                     }}
                                     required
+                                    dateOnly={formData.is_all_day}
                                 />
                             </Grid>
 
                             <Grid size={{ xs: 12, md: 6 }}>
                                 <DateTimeInput
-                                    label="Date et heure de fin"
+                                    label={formData.is_all_day ? "Date de fin" : "Date et heure de fin"}
                                     value={formData.end_datetime}
                                     onChange={(value) => {
-                                        setFormData(prev => ({ ...prev, end_datetime: value }));
-                                        if (formData.start_datetime && value && new Date(value) <= new Date(formData.start_datetime)) {
+                                        // Si "toute la journée", ajouter T23:59 si seulement la date
+                                        const finalValue = formData.is_all_day && !value.includes('T')
+                                            ? `${value}T23:59`
+                                            : value;
+                                        setFormData(prev => ({ ...prev, end_datetime: finalValue }));
+                                        if (formData.start_datetime && finalValue && new Date(finalValue) <= new Date(formData.start_datetime)) {
                                             setDateError('La date de fin doit être après la date de début');
                                         } else {
                                             setDateError('');
@@ -780,6 +867,7 @@ export default function MyEvents() {
                                     required
                                     minDateTime={formData.start_datetime}
                                     error={dateError}
+                                    dateOnly={formData.is_all_day}
                                 />
                             </Grid>
                         </Grid>
@@ -1167,19 +1255,9 @@ export default function MyEvents() {
                                     <Typography variant="caption" color="text.secondary">Description</Typography>
                                     <Typography variant="body2">{formData.description || '—'}</Typography>
                                 </Box>
-                                <Box sx={{ display: 'flex', gap: 3 }}>
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary">Speaker</Typography>
-                                        <Typography variant="body2">{formData.speaker_name || '—'}</Typography>
-                                    </Box>
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary">Statut</Typography>
-                                        <Chip
-                                            label={formData.status}
-                                            size="small"
-                                            color={formData.status === 'PUBLISHED' ? 'success' : 'warning'}
-                                        />
-                                    </Box>
+                                <Box>
+                                    <Typography variant="caption" color="text.secondary">Speaker</Typography>
+                                    <Typography variant="body2">{formData.speaker_name || '—'}</Typography>
                                 </Box>
                             </Stack>
                         </Paper>
@@ -1190,17 +1268,41 @@ export default function MyEvents() {
                             </Typography>
                             <Stack spacing={1.5}>
                                 <Box>
-                                    <Typography variant="caption" color="text.secondary">Début</Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        {formData.is_all_day ? "Date de début" : "Début"}
+                                    </Typography>
                                     <Typography variant="body2">
-                                        {formData.start_datetime ? new Date(formData.start_datetime).toLocaleString('fr-FR') : '—'}
+                                        {formData.start_datetime
+                                            ? (formData.is_all_day
+                                                ? new Date(formData.start_datetime).toLocaleDateString('fr-FR')
+                                                : new Date(formData.start_datetime).toLocaleString('fr-FR')
+                                            )
+                                            : '—'}
                                     </Typography>
                                 </Box>
                                 <Box>
-                                    <Typography variant="caption" color="text.secondary">Fin</Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        {formData.is_all_day ? "Date de fin" : "Fin"}
+                                    </Typography>
                                     <Typography variant="body2">
-                                        {formData.end_datetime ? new Date(formData.end_datetime).toLocaleString('fr-FR') : '—'}
+                                        {formData.end_datetime
+                                            ? (formData.is_all_day
+                                                ? new Date(formData.end_datetime).toLocaleDateString('fr-FR')
+                                                : new Date(formData.end_datetime).toLocaleString('fr-FR')
+                                            )
+                                            : '—'}
                                     </Typography>
                                 </Box>
+                                {formData.is_all_day && (
+                                    <Box>
+                                        <Chip
+                                            label="Événement toute la journée"
+                                            size="small"
+                                            color="primary"
+                                            variant="outlined"
+                                        />
+                                    </Box>
+                                )}
                                 <Box>
                                     <Typography variant="caption" color="text.secondary">Langue</Typography>
                                     <Typography variant="body2">
@@ -1763,7 +1865,14 @@ export default function MyEvents() {
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                             <EventIcon sx={{ fontSize: 16, color: 'primary.main' }} />
                                             <Typography variant="body2" color="text.secondary">
-                                                {new Date(event.start_datetime).toLocaleDateString()} à {new Date(event.start_datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                {isAllDayEvent(event.start_datetime, event.end_datetime)
+                                                    ? `${new Date(event.start_datetime).toLocaleDateString()}${
+                                                        event.start_datetime.split('T')[0] !== event.end_datetime.split('T')[0]
+                                                            ? ` - ${new Date(event.end_datetime).toLocaleDateString()}`
+                                                            : ''
+                                                    } (Toute la journée)`
+                                                    : `${new Date(event.start_datetime).toLocaleDateString()} à ${new Date(event.start_datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                                                }
                                             </Typography>
                                         </Box>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 3, mt: 0.5 }}>
