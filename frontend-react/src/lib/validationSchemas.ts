@@ -174,6 +174,9 @@ export const churchSchema = z.object({
 
   logo_url: z.string().optional(),
 
+  // Visibilité réseau pastoral (opt-in RGPD)
+  allow_network_visibility: z.boolean().optional(),
+
   // Relations
   schedules: z
     .array(scheduleSchema)

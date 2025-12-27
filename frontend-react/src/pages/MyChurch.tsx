@@ -134,10 +134,12 @@ export default function MyChurch() {
                 api.get('/settings/denominations'),
                 api.get('/settings/activity_types')
             ]);
-            setDenominations(denoms.data);
-            setActivityTypes(types.data);
+            setDenominations(Array.isArray(denoms.data) ? denoms.data : []);
+            setActivityTypes(Array.isArray(types.data) ? types.data : []);
         } catch (err) {
             console.error('Error fetching refs', err);
+            setDenominations([]);
+            setActivityTypes([]);
         }
     };
 
@@ -177,6 +179,7 @@ export default function MyChurch() {
                     parking_capacity: data.details.parking_capacity || null,
                     is_parking_free: !!data.details.is_parking_free,
                     logo_url: data.details.logo_url || '',
+                    allow_network_visibility: !!data.allow_network_visibility,
                     socials: data.socials || [],
                     schedules: normalizedSchedules,
                 });
@@ -600,6 +603,29 @@ export default function MyChurch() {
                                                 </Grid>
                                             </Box>
                                         )}
+                                    </Box>
+                                </Box>
+
+                                <Box sx={{ pt: 3, borderTop: 1, borderColor: 'divider' }}>
+                                    <Typography variant="h6" sx={{ mb: 2 }}>
+                                        Réseau Pastoral
+                                    </Typography>
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
+                                            <input
+                                                type="checkbox"
+                                                {...register('allow_network_visibility')}
+                                                style={{ width: 20, height: 20, marginRight: 8, marginTop: 2 }}
+                                            />
+                                            <Box>
+                                                <Typography sx={{ fontWeight: 500 }}>
+                                                    Apparaître dans le réseau pastoral
+                                                </Typography>
+                                                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                                                    En activant cette option, votre nom, prénom, email, téléphone et les informations de votre église seront visibles par les autres pasteurs du réseau. Vous pouvez désactiver cette option à tout moment.
+                                                </Typography>
+                                            </Box>
+                                        </Box>
                                     </Box>
                                 </Box>
                             </Box>

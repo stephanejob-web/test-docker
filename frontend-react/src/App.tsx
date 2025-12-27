@@ -9,6 +9,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import DashboardHome from './pages/DashboardHome';
 import MyChurch from './pages/MyChurch';
 import MyEvents from './pages/MyEvents';
+import PastorNetwork from './pages/PastorNetwork';
 import AdminUsers from './pages/AdminUsers';
 import AdminSettings from './pages/AdminSettings';
 import AdminChurches from './pages/AdminChurches';
@@ -35,6 +36,7 @@ function App() {
                 <Route element={<ProtectedRoute allowedRoles={['PASTOR', 'SUPER_ADMIN']} />}>
                   <Route path="my-church" element={<MyChurch />} />
                   <Route path="events" element={<MyEvents />} />
+                  <Route path="pastor-network" element={<PastorNetwork />} />
                 </Route>
 
                 {/* Admin Routes */}

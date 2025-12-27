@@ -389,9 +389,10 @@ export default function MyEvents() {
         const loadLanguages = async () => {
             try {
                 const { data } = await api.get('/settings/languages');
-                setLanguages(data.filter((lang: any) => lang.is_active));
+                setLanguages(Array.isArray(data) ? data.filter((lang: any) => lang.is_active) : []);
             } catch (err) {
                 console.error('Failed to load languages:', err);
+                setLanguages([]);
             }
         };
         loadLanguages();
@@ -506,9 +507,10 @@ export default function MyEvents() {
                 }
             }
             const response = await api.get('/church/my-events');
-            setEvents(response.data);
+            setEvents(Array.isArray(response.data) ? response.data : []);
         } catch (err) {
             console.error(err);
+            setEvents([]);
         } finally {
             setLoading(false);
         }
