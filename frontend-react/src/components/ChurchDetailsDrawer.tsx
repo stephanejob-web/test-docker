@@ -127,7 +127,8 @@ const ChurchDetailsDrawer: React.FC<ChurchDetailsDrawerProps> = ({
             PaperProps={{
                 sx: {
                     width: { xs: '100%', sm: 500 },
-                    maxWidth: '100%'
+                    maxWidth: '100%',
+                    height: '100%'
                 }
             }}
         >
@@ -135,7 +136,7 @@ const ChurchDetailsDrawer: React.FC<ChurchDetailsDrawerProps> = ({
                 {/* Header */}
                 <Box
                     sx={{
-                        p: 3,
+                        p: { xs: 2, sm: 3 },
                         borderBottom: 1,
                         borderColor: 'divider',
                         backgroundColor: 'primary.main',
@@ -145,8 +146,8 @@ const ChurchDetailsDrawer: React.FC<ChurchDetailsDrawerProps> = ({
                     <Stack direction="row" alignItems="flex-start" justifyContent="space-between">
                         <Box sx={{ flex: 1, mr: 2 }}>
                             <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-                                <ChurchIcon />
-                                <Typography variant="h6" fontWeight={600}>
+                                <ChurchIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />
+                                <Typography variant="h6" fontWeight={600} sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
                                     {churchData.church_name}
                                 </Typography>
                             </Stack>
@@ -171,7 +172,7 @@ const ChurchDetailsDrawer: React.FC<ChurchDetailsDrawerProps> = ({
                 </Box>
 
                 {/* Content */}
-                <Box sx={{ flex: 1, overflow: 'auto', p: 3 }}>
+                <Box sx={{ flex: 1, overflow: 'auto', p: { xs: 2, sm: 3 } }}>
                     {loading ? (
                         <Stack spacing={2}>
                             <Skeleton variant="rectangular" height={100} />
@@ -271,6 +272,10 @@ const ChurchDetailsDrawer: React.FC<ChurchDetailsDrawerProps> = ({
                                                         href={`https://www.google.com/maps?q=${churchData.latitude},${churchData.longitude}`}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
+                                                        fullWidth
+                                                        sx={{
+                                                            width: { xs: '100%', sm: 'auto' }
+                                                        }}
                                                     >
                                                         Ouvrir dans Google Maps
                                                     </Button>

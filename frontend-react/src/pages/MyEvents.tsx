@@ -1558,18 +1558,18 @@ export default function MyEvents() {
 
     if (hasChurch === false) {
         return (
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 3, textAlign: 'center' }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 3, textAlign: 'center', px: 2 }}>
                 <Box sx={{ position: 'relative' }}>
                     <Box sx={{ position: 'absolute', inset: 0, bgcolor: 'primary.main', filter: 'blur(60px)', opacity: 0.2, borderRadius: '50%' }}></Box>
                     <Box sx={{ position: 'relative', p: 2, bgcolor: 'linear-gradient(135deg, #1976d2 0%, #9c27b0 100%)', borderRadius: 4, boxShadow: 8 }}>
-                        <ChurchIcon sx={{ fontSize: 96, color: 'white' }} />
+                        <ChurchIcon sx={{ fontSize: { xs: 64, sm: 80, md: 96 }, color: 'white' }} />
                     </Box>
                 </Box>
-                <Box sx={{ maxWidth: 'md' }}>
-                    <Typography variant="h3" sx={{ fontWeight: 'bold', mb: 1 }}>
+                <Box sx={{ maxWidth: 'md', px: 2 }}>
+                    <Typography variant="h3" sx={{ fontWeight: 'bold', mb: 1, fontSize: { xs: '1.75rem', sm: '2.5rem', md: '3rem' } }}>
                         Bienvenue !
                     </Typography>
-                    <Typography color="text.secondary">
+                    <Typography color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                         Pour commencer à publier des événements, vous devez d'abord créer la fiche de votre église.
                     </Typography>
                 </Box>
@@ -1578,7 +1578,15 @@ export default function MyEvents() {
                     size="large"
                     startIcon={<AddIcon />}
                     onClick={() => window.location.href = '/dashboard/my-church'}
-                    sx={{ px: 4, py: 1.5, fontSize: '1.1rem', fontWeight: 'bold', borderRadius: 8 }}
+                    sx={{
+                        px: { xs: 3, sm: 4 },
+                        py: 1.5,
+                        fontSize: { xs: '1rem', sm: '1.1rem' },
+                        fontWeight: 'bold',
+                        borderRadius: 8,
+                        width: { xs: '100%', sm: 'auto' },
+                        maxWidth: { xs: '300px', sm: 'none' }
+                    }}
                 >
                     Créer mon Église
                 </Button>
@@ -1587,7 +1595,7 @@ export default function MyEvents() {
     }
 
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, sm: 3, md: 4 } }}>
             {isAdminMode && (
                 <Button
                     variant="text"
@@ -1599,17 +1607,34 @@ export default function MyEvents() {
                 </Button>
             )}
 
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box sx={{
+                display: 'flex',
+                flexDirection: { xs: 'column', md: 'row' },
+                justifyContent: 'space-between',
+                alignItems: { xs: 'stretch', md: 'center' },
+                gap: 2
+            }}>
                 <Box>
-                    <Typography variant="h3" sx={{ fontWeight: 'bold', background: 'linear-gradient(135deg, #1976d2 0%, #9c27b0 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                    <Typography variant="h3" sx={{
+                        fontWeight: 'bold',
+                        background: 'linear-gradient(135deg, #1976d2 0%, #9c27b0 100%)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        fontSize: { xs: '1.75rem', sm: '2.5rem', md: '3rem' }
+                    }}>
                         {isReadOnly ? "Visualiser l'Événement" : isAdminMode ? "Modifier l'Événement" : "Mes Événements"}
                     </Typography>
-                    <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+                    <Typography color="text.secondary" sx={{ mt: 0.5, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                         {isReadOnly ? "Événement terminé - Consultation uniquement" : isAdminMode ? "Modifiez les informations de cet événement." : "Gérez votre calendrier et vos publications."}
                     </Typography>
                 </Box>
                 {!isAdminMode && (
-                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                    <Box sx={{
+                        display: 'flex',
+                        flexDirection: { xs: 'column', sm: 'row' },
+                        gap: 2,
+                        alignItems: 'center'
+                    }}>
                         {!showForm && (
                             <>
                                 <ToggleButtonGroup
@@ -1625,7 +1650,7 @@ export default function MyEvents() {
                                     sx={{
                                         bgcolor: 'background.paper',
                                         '& .MuiToggleButton-root': {
-                                            px: 2,
+                                            px: { xs: 1, sm: 2 },
                                             py: 1,
                                             border: '1px solid',
                                             borderColor: 'divider',
@@ -1640,12 +1665,12 @@ export default function MyEvents() {
                                     }}
                                 >
                                     <ToggleButton value="created" aria-label="trier par date d'ajout">
-                                        <SortIcon sx={{ mr: 1 }} />
-                                        Récents
+                                        <SortIcon sx={{ mr: { xs: 0, sm: 1 } }} />
+                                        <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Récents</Box>
                                     </ToggleButton>
                                     <ToggleButton value="event_date" aria-label="trier par date d'événement">
-                                        <DateRangeIcon sx={{ mr: 1 }} />
-                                        À venir
+                                        <DateRangeIcon sx={{ mr: { xs: 0, sm: 1 } }} />
+                                        <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>À venir</Box>
                                     </ToggleButton>
                                 </ToggleButtonGroup>
                                 <ToggleButtonGroup
@@ -1660,7 +1685,7 @@ export default function MyEvents() {
                                     sx={{
                                         bgcolor: 'background.paper',
                                         '& .MuiToggleButton-root': {
-                                            px: 2,
+                                            px: { xs: 1, sm: 2 },
                                             py: 1,
                                             border: '1px solid',
                                             borderColor: 'divider',
@@ -1675,12 +1700,12 @@ export default function MyEvents() {
                                     }}
                                 >
                                     <ToggleButton value="grid" aria-label="vue en grille">
-                                        <ViewModuleIcon sx={{ mr: 1 }} />
-                                        Cartes
+                                        <ViewModuleIcon sx={{ mr: { xs: 0, sm: 1 } }} />
+                                        <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Cartes</Box>
                                     </ToggleButton>
                                     <ToggleButton value="list" aria-label="vue en liste">
-                                        <ViewListIcon sx={{ mr: 1 }} />
-                                        Liste
+                                        <ViewListIcon sx={{ mr: { xs: 0, sm: 1 } }} />
+                                        <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Liste</Box>
                                     </ToggleButton>
                                 </ToggleButtonGroup>
                             </>
@@ -1699,6 +1724,8 @@ export default function MyEvents() {
                                 }
                             }}
                             disabled={!isChurchComplete}
+                            fullWidth
+                            sx={{ width: { xs: '100%', sm: 'auto' } }}
                         >
                             {showForm ? 'Annuler' : 'Nouvel Événement'}
                         </Button>
@@ -1813,7 +1840,7 @@ export default function MyEvents() {
                     }}
                 >
                     <Card sx={{ mb: 3 }}>
-                        <CardContent sx={{ p: 4 }}>
+                        <CardContent sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
                             {/* Information importante pour la création d'événement */}
                             {!editingId && !isReadOnly && (
                                 <Alert severity="info" icon={<InfoIcon />} sx={{ mb: 3 }}>
@@ -1858,8 +1885,8 @@ export default function MyEvents() {
                                             StepIconComponent={() => (
                                                 <Box
                                                     sx={{
-                                                        width: 48,
-                                                        height: 48,
+                                                        width: { xs: 36, sm: 48 },
+                                                        height: { xs: 36, sm: 48 },
                                                         borderRadius: '50%',
                                                         display: 'flex',
                                                         alignItems: 'center',
@@ -1898,13 +1925,24 @@ export default function MyEvents() {
 
                             {/* Navigation Buttons */}
                             {!isReadOnly && (
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 4, mt: 4, borderTop: 1, borderColor: 'divider' }}>
+                                <Box sx={{
+                                    display: 'flex',
+                                    flexDirection: { xs: 'column', sm: 'row' },
+                                    justifyContent: 'space-between',
+                                    gap: 2,
+                                    pt: 4,
+                                    mt: 4,
+                                    borderTop: 1,
+                                    borderColor: 'divider'
+                                }}>
                                     <Button
                                         type="button"
                                         variant="outlined"
                                         onClick={handleBack}
                                         disabled={activeStep === 0}
                                         startIcon={<NavigateBeforeIcon />}
+                                        fullWidth
+                                        sx={{ width: { xs: '100%', sm: 'auto' } }}
                                     >
                                         Précédent
                                     </Button>
@@ -1917,7 +1955,8 @@ export default function MyEvents() {
                                             size="large"
                                             startIcon={<SaveIcon />}
                                             disabled={loading || !isStepValid(0) || !isStepValid(1) || !isStepValid(2) || !isStepValid(3)}
-                                            sx={{ px: 4 }}
+                                            fullWidth
+                                            sx={{ width: { xs: '100%', sm: 'auto' }, px: { sm: 4 } }}
                                         >
                                             {loading ? 'Publication...' : editingId ? 'Enregistrer les modifications' : 'Publier l\'événement'}
                                         </Button>
@@ -1928,6 +1967,8 @@ export default function MyEvents() {
                                             onClick={handleNext}
                                             disabled={!isStepValid(activeStep)}
                                             endIcon={<NavigateNextIcon />}
+                                            fullWidth
+                                            sx={{ width: { xs: '100%', sm: 'auto' } }}
                                         >
                                             Suivant
                                         </Button>

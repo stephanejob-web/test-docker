@@ -18,7 +18,12 @@ import {
     TableHead,
     TableRow,
     Paper,
-    IconButton
+    IconButton,
+    useTheme,
+    useMediaQuery,
+    Stack,
+    Divider,
+    Avatar
 } from '@mui/material';
 import {
     CheckCircle as CheckCircleIcon,
@@ -40,6 +45,8 @@ interface Registration {
 }
 
 export default function AdminRegistrations() {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const [registrations, setRegistrations] = useState<Registration[]>([]);
     const [loading, setLoading] = useState(true);
     const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
@@ -123,12 +130,12 @@ export default function AdminRegistrations() {
     }
 
     return (
-        <Box sx={{ p: 4 }}>
-            <Typography variant="h4" sx={{ mb: 3, fontWeight: 'bold' }}>
+        <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+            <Typography variant="h4" sx={{ mb: 3, fontWeight: 'bold', fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
                 Demandes d'inscription
             </Typography>
 
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                 Liste des comptes en attente de validation ou rejetés. Les comptes validés apparaissent dans l'onglet Utilisateurs.
             </Typography>
 
@@ -140,7 +147,94 @@ export default function AdminRegistrations() {
                         </Typography>
                     </CardContent>
                 </Card>
+            ) : isMobile ? (
+                /* Vue Mobile - Cartes */
+                <Stack spacing={2}>
+                    {registrations.map((registration) => (
+                        <Card key={registration.id} elevation={2}>
+                            <CardContent>
+                                <Stack spacing={2}>
+                                    {/* En-tête */}
+                                    <Stack direction="row" spacing={2} alignItems="center">
+                                        <Avatar sx={{ bgcolor: 'primary.main', width: 48, height: 48 }}>
+                                            {registration.first_name.charAt(0)}{registration.last_name.charAt(0)}
+                                        </Avatar>
+                                        <Box sx={{ flex: 1 }}>
+                                            <Typography variant="subtitle1" fontWeight={600}>
+                                                {registration.first_name} {registration.last_name}
+                                            </Typography>
+                                            <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
+                                                {registration.email}
+                                            </Typography>
+                                        </Box>
+                                    </Stack>
+
+                                    <Divider />
+
+                                    {/* Informations */}
+                                    <Stack spacing={1}>
+                                        <Stack direction="row" spacing={1} alignItems="center">
+                                            <Typography variant="caption" color="text.secondary">Rôle:</Typography>
+                                            <Chip label={registration.role} size="small" color="primary" />
+                                        </Stack>
+                                        <Stack direction="row" spacing={1} alignItems="center">
+                                            <Typography variant="caption" color="text.secondary">Statut:</Typography>
+                                            {getStatusChip(registration.status)}
+                                        </Stack>
+                                        <Stack direction="row" spacing={1} alignItems="center">
+                                            <Typography variant="caption" color="text.secondary">Date:</Typography>
+                                            <Typography variant="body2">
+                                                {new Date(registration.created_at).toLocaleDateString('fr-FR')}
+                                            </Typography>
+                                        </Stack>
+                                        {registration.document_sirene_path && (
+                                            <Button
+                                                size="small"
+                                                variant="outlined"
+                                                startIcon={<VisibilityIcon />}
+                                                onClick={() => window.open(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}${registration.document_sirene_path}`, '_blank')}
+                                                fullWidth
+                                            >
+                                                Voir le document
+                                            </Button>
+                                        )}
+                                    </Stack>
+
+                                    {/* Actions */}
+                                    {registration.status === 'PENDING' && (
+                                        <>
+                                            <Divider />
+                                            <Stack direction="row" spacing={1}>
+                                                <Button
+                                                    variant="contained"
+                                                    color="success"
+                                                    size="small"
+                                                    startIcon={<CheckCircleIcon />}
+                                                    onClick={() => handleValidate(registration.id)}
+                                                    fullWidth
+                                                >
+                                                    Valider
+                                                </Button>
+                                                <Button
+                                                    variant="outlined"
+                                                    color="error"
+                                                    size="small"
+                                                    startIcon={<CancelIcon />}
+                                                    onClick={() => openRejectDialog(registration)}
+                                                    fullWidth
+                                                >
+                                                    Rejeter
+                                                </Button>
+                                            </Stack>
+                                        </>
+                                    )}
+                                </Stack>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </Stack>
             ) : (
+                /* Vue Desktop - Table */
                 <TableContainer component={Paper}>
                     <Table>
                         <TableHead>

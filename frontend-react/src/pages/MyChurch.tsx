@@ -249,8 +249,14 @@ export default function MyChurch() {
                 </Button>
             )}
 
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
+            <Box sx={{
+                display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
+                justifyContent: 'space-between',
+                alignItems: { xs: 'stretch', sm: 'center' },
+                gap: 2
+            }}>
+                <Typography variant="h3" sx={{ fontWeight: 'bold', fontSize: { xs: '1.75rem', sm: '2.5rem', md: '3rem' } }}>
                     {isAdminMode ? "Modifier l'Église" : "Mon Église"}
                 </Typography>
                 <Button
@@ -260,7 +266,8 @@ export default function MyChurch() {
                     color="success"
                     size="large"
                     startIcon={<SaveIcon />}
-                    sx={{ px: 4 }}
+                    fullWidth
+                    sx={{ px: { sm: 4 }, width: { xs: '100%', sm: 'auto' } }}
                 >
                     {isSubmitting ? 'Sauvegarde...' : 'Tout Sauvegarder'}
                 </Button>
@@ -276,7 +283,13 @@ export default function MyChurch() {
 
             {/* Tabs Header */}
             <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)}>
+                <Tabs
+                    value={activeTab}
+                    onChange={(_, newValue) => setActiveTab(newValue)}
+                    variant="scrollable"
+                    scrollButtons="auto"
+                    allowScrollButtonsMobile
+                >
                     <Tab
                         label={
                             <Badge
@@ -328,7 +341,7 @@ export default function MyChurch() {
                 {/* GENERAL TAB */}
                 {activeTab === 0 && (
                     <Card>
-                        <CardContent sx={{ p: 4 }}>
+                        <CardContent sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                                 {/* SECTION 1: ADRESSE (PRIORITAIRE) */}
                                 <Box sx={{ pb: 4, borderBottom: 1, borderColor: 'divider' }}>
@@ -509,7 +522,7 @@ export default function MyChurch() {
                 {/* DETAILS TAB */}
                 {activeTab === 1 && (
                     <Card>
-                        <CardContent sx={{ p: 4 }}>
+                        <CardContent sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                                 <Typography variant="h6" sx={{ mb: 2, color: 'text.primary' }}>
                                     Pasteur Principal
@@ -636,7 +649,7 @@ export default function MyChurch() {
                 {/* SOCIALS TAB */}
                 {activeTab === 2 && (
                     <Card>
-                        <CardContent sx={{ p: 4 }}>
+                        <CardContent sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                 {socialFields.map((field, idx) => (
                                     <Box key={field.id} sx={{ display: 'flex', gap: 2, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
@@ -684,7 +697,7 @@ export default function MyChurch() {
                 {/* SCHEDULES TAB */}
                 {activeTab === 3 && (
                     <Card>
-                        <CardContent sx={{ p: 4 }}>
+                        <CardContent sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
                             <Alert severity="info" sx={{ mb: 3 }}>
                                 Au moins un horaire est obligatoire pour votre église.
                             </Alert>
