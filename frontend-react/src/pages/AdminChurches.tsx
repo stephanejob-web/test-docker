@@ -334,14 +334,14 @@ export default function AdminChurches() {
     }
 
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, md: 3 } }}>
+            <Typography variant="h3" sx={{ fontWeight: 'bold', fontSize: { xs: '1.75rem', sm: '2.5rem', md: '3rem' } }}>
                 Gestion des Églises
             </Typography>
 
             {/* Filters and Search */}
             <Card sx={{ bgcolor: 'background.paper' }}>
-                <CardContent sx={{ pt: 3 }}>
+                <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
                     <Grid container spacing={2}>
                         {/* Search */}
                         <Grid size={{ xs: 12, md: 4 }}>

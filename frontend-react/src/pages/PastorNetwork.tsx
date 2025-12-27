@@ -23,7 +23,12 @@ import {
     Card,
     CardContent,
     Skeleton,
-    Alert
+    Alert,
+    Divider,
+    useTheme,
+    useMediaQuery,
+    Avatar,
+    Button
 } from '@mui/material';
 import {
     Search as SearchIcon,
@@ -56,6 +61,9 @@ interface PaginationData {
 }
 
 const PastorNetwork = () => {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
     const [pastors, setPastors] = useState<Pastor[]>([]);
     const [loading, setLoading] = useState(true);
     const [pagination, setPagination] = useState<PaginationData>({
@@ -235,107 +243,221 @@ const PastorNetwork = () => {
                 </Typography>
             )}
 
-            {/* Table des pasteurs */}
-            <TableContainer component={Paper} elevation={1}>
-                <Table>
-                    <TableHead>
-                        <TableRow sx={{ backgroundColor: 'primary.main' }}>
-                            <TableCell sx={{ color: 'white', fontWeight: 600 }}>Nom</TableCell>
-                            <TableCell sx={{ color: 'white', fontWeight: 600 }}>Prénom</TableCell>
-                            <TableCell sx={{ color: 'white', fontWeight: 600 }}>Église</TableCell>
-                            <TableCell sx={{ color: 'white', fontWeight: 600 }}>Ville</TableCell>
-                            <TableCell sx={{ color: 'white', fontWeight: 600 }}>Dénomination</TableCell>
-                            <TableCell sx={{ color: 'white', fontWeight: 600 }}>Contact</TableCell>
-                            <TableCell sx={{ color: 'white', fontWeight: 600 }} align="center">Actions</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {loading ? (
-                            Array.from({ length: 5 }).map((_, index) => (
-                                <TableRow key={index}>
-                                    <TableCell><Skeleton /></TableCell>
-                                    <TableCell><Skeleton /></TableCell>
-                                    <TableCell><Skeleton /></TableCell>
-                                    <TableCell><Skeleton /></TableCell>
-                                    <TableCell><Skeleton /></TableCell>
-                                    <TableCell><Skeleton /></TableCell>
-                                    <TableCell><Skeleton /></TableCell>
-                                </TableRow>
-                            ))
-                        ) : pastors.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
-                                    <Typography color="text.secondary">
-                                        Aucun pasteur trouvé avec ces critères
-                                    </Typography>
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            pastors.map((pastor) => (
-                                <TableRow
-                                    key={pastor.id}
-                                    hover
-                                    sx={{ '&:hover': { backgroundColor: 'action.hover', cursor: 'pointer' } }}
-                                >
-                                    <TableCell>{pastor.last_name}</TableCell>
-                                    <TableCell>{pastor.first_name}</TableCell>
-                                    <TableCell>
-                                        <Stack direction="row" spacing={1} alignItems="center">
-                                            <ChurchIcon fontSize="small" color="action" />
-                                            <Typography variant="body2">{pastor.church_name}</Typography>
+            {/* Liste des pasteurs - Vue responsive */}
+            {isMobile ? (
+                /* Vue Mobile - Cartes */
+                <Stack spacing={2}>
+                    {loading ? (
+                        Array.from({ length: 5 }).map((_, index) => (
+                            <Card key={index}>
+                                <CardContent>
+                                    <Skeleton variant="text" width="60%" height={30} />
+                                    <Skeleton variant="text" width="80%" />
+                                    <Skeleton variant="text" width="40%" />
+                                </CardContent>
+                            </Card>
+                        ))
+                    ) : pastors.length === 0 ? (
+                        <Card>
+                            <CardContent sx={{ py: 4, textAlign: 'center' }}>
+                                <Typography color="text.secondary">
+                                    Aucun pasteur trouvé avec ces critères
+                                </Typography>
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        pastors.map((pastor) => (
+                            <Card key={pastor.id} elevation={2}>
+                                <CardContent>
+                                    <Stack spacing={2}>
+                                        {/* En-tête de la carte */}
+                                        <Stack direction="row" spacing={2} alignItems="center">
+                                            <Avatar
+                                                sx={{
+                                                    bgcolor: 'primary.main',
+                                                    width: 50,
+                                                    height: 50
+                                                }}
+                                            >
+                                                {pastor.first_name.charAt(0)}{pastor.last_name.charAt(0)}
+                                            </Avatar>
+                                            <Box sx={{ flex: 1 }}>
+                                                <Typography variant="h6" fontWeight={600}>
+                                                    {pastor.first_name} {pastor.last_name}
+                                                </Typography>
+                                                <Stack direction="row" spacing={0.5} alignItems="center">
+                                                    <ChurchIcon fontSize="small" color="action" />
+                                                    <Typography variant="body2" color="text.secondary">
+                                                        {pastor.church_name}
+                                                    </Typography>
+                                                </Stack>
+                                            </Box>
                                         </Stack>
-                                    </TableCell>
-                                    <TableCell>
-                                        {pastor.city && (
-                                            <Chip
-                                                label={`${pastor.city} (${pastor.postal_code})`}
+
+                                        <Divider />
+
+                                        {/* Informations */}
+                                        <Stack spacing={1}>
+                                            {pastor.city && (
+                                                <Stack direction="row" spacing={1} alignItems="center">
+                                                    <LocationOnIcon fontSize="small" color="action" />
+                                                    <Typography variant="body2">
+                                                        {pastor.city} ({pastor.postal_code})
+                                                    </Typography>
+                                                </Stack>
+                                            )}
+
+                                            {pastor.denomination_name && (
+                                                <Chip
+                                                    label={pastor.denomination_name}
+                                                    size="small"
+                                                    color="primary"
+                                                    variant="outlined"
+                                                    sx={{ alignSelf: 'flex-start' }}
+                                                />
+                                            )}
+                                        </Stack>
+
+                                        {/* Actions */}
+                                        <Stack direction="row" spacing={1} justifyContent="space-between">
+                                            <Stack direction="row" spacing={1}>
+                                                {pastor.email && (
+                                                    <IconButton
+                                                        size="small"
+                                                        href={`mailto:${pastor.email}`}
+                                                        sx={{ bgcolor: 'action.hover' }}
+                                                    >
+                                                        <EmailIcon fontSize="small" />
+                                                    </IconButton>
+                                                )}
+                                                {pastor.phone_number && (
+                                                    <IconButton
+                                                        size="small"
+                                                        href={`tel:${pastor.phone_number}`}
+                                                        sx={{ bgcolor: 'action.hover' }}
+                                                    >
+                                                        <PhoneIcon fontSize="small" />
+                                                    </IconButton>
+                                                )}
+                                            </Stack>
+                                            <Button
+                                                variant="contained"
                                                 size="small"
-                                                variant="outlined"
-                                            />
-                                        )}
-                                    </TableCell>
-                                    <TableCell>
-                                        {pastor.denomination_name && (
-                                            <Chip label={pastor.denomination_name} size="small" color="primary" variant="outlined" />
-                                        )}
-                                    </TableCell>
-                                    <TableCell>
-                                        <Stack direction="row" spacing={1}>
-                                            {pastor.email && (
-                                                <IconButton
-                                                    size="small"
-                                                    href={`mailto:${pastor.email}`}
-                                                    title={pastor.email}
-                                                >
-                                                    <EmailIcon fontSize="small" />
-                                                </IconButton>
-                                            )}
-                                            {pastor.phone_number && (
-                                                <IconButton
-                                                    size="small"
-                                                    href={`tel:${pastor.phone_number}`}
-                                                    title={pastor.phone_number}
-                                                >
-                                                    <PhoneIcon fontSize="small" />
-                                                </IconButton>
-                                            )}
+                                                startIcon={<InfoIcon />}
+                                                onClick={() => handleViewDetails(pastor.id)}
+                                            >
+                                                Voir
+                                            </Button>
                                         </Stack>
-                                    </TableCell>
-                                    <TableCell align="center">
-                                        <IconButton
-                                            color="primary"
-                                            onClick={() => handleViewDetails(pastor.id)}
-                                            title="Voir les détails"
-                                        >
-                                            <InfoIcon />
-                                        </IconButton>
+                                    </Stack>
+                                </CardContent>
+                            </Card>
+                        ))
+                    )}
+                </Stack>
+            ) : (
+                /* Vue Desktop - Table */
+                <TableContainer component={Paper} elevation={1}>
+                    <Table>
+                        <TableHead>
+                            <TableRow sx={{ backgroundColor: 'primary.main' }}>
+                                <TableCell sx={{ color: 'white', fontWeight: 600 }}>Nom</TableCell>
+                                <TableCell sx={{ color: 'white', fontWeight: 600 }}>Prénom</TableCell>
+                                <TableCell sx={{ color: 'white', fontWeight: 600 }}>Église</TableCell>
+                                <TableCell sx={{ color: 'white', fontWeight: 600 }}>Ville</TableCell>
+                                <TableCell sx={{ color: 'white', fontWeight: 600 }}>Dénomination</TableCell>
+                                <TableCell sx={{ color: 'white', fontWeight: 600 }}>Contact</TableCell>
+                                <TableCell sx={{ color: 'white', fontWeight: 600 }} align="center">Actions</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {loading ? (
+                                Array.from({ length: 5 }).map((_, index) => (
+                                    <TableRow key={index}>
+                                        <TableCell><Skeleton /></TableCell>
+                                        <TableCell><Skeleton /></TableCell>
+                                        <TableCell><Skeleton /></TableCell>
+                                        <TableCell><Skeleton /></TableCell>
+                                        <TableCell><Skeleton /></TableCell>
+                                        <TableCell><Skeleton /></TableCell>
+                                        <TableCell><Skeleton /></TableCell>
+                                    </TableRow>
+                                ))
+                            ) : pastors.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                                        <Typography color="text.secondary">
+                                            Aucun pasteur trouvé avec ces critères
+                                        </Typography>
                                     </TableCell>
                                 </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+                            ) : (
+                                pastors.map((pastor) => (
+                                    <TableRow
+                                        key={pastor.id}
+                                        hover
+                                        sx={{ '&:hover': { backgroundColor: 'action.hover', cursor: 'pointer' } }}
+                                    >
+                                        <TableCell>{pastor.last_name}</TableCell>
+                                        <TableCell>{pastor.first_name}</TableCell>
+                                        <TableCell>
+                                            <Stack direction="row" spacing={1} alignItems="center">
+                                                <ChurchIcon fontSize="small" color="action" />
+                                                <Typography variant="body2">{pastor.church_name}</Typography>
+                                            </Stack>
+                                        </TableCell>
+                                        <TableCell>
+                                            {pastor.city && (
+                                                <Chip
+                                                    label={`${pastor.city} (${pastor.postal_code})`}
+                                                    size="small"
+                                                    variant="outlined"
+                                                />
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            {pastor.denomination_name && (
+                                                <Chip label={pastor.denomination_name} size="small" color="primary" variant="outlined" />
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Stack direction="row" spacing={1}>
+                                                {pastor.email && (
+                                                    <IconButton
+                                                        size="small"
+                                                        href={`mailto:${pastor.email}`}
+                                                        title={pastor.email}
+                                                    >
+                                                        <EmailIcon fontSize="small" />
+                                                    </IconButton>
+                                                )}
+                                                {pastor.phone_number && (
+                                                    <IconButton
+                                                        size="small"
+                                                        href={`tel:${pastor.phone_number}`}
+                                                        title={pastor.phone_number}
+                                                    >
+                                                        <PhoneIcon fontSize="small" />
+                                                    </IconButton>
+                                                )}
+                                            </Stack>
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            <IconButton
+                                                color="primary"
+                                                onClick={() => handleViewDetails(pastor.id)}
+                                                title="Voir les détails"
+                                            >
+                                                <InfoIcon />
+                                            </IconButton>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            )}
 
             {/* Pagination */}
             {pagination.totalPages > 1 && (

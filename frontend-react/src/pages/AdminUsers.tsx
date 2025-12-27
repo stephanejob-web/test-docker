@@ -26,7 +26,12 @@ import {
     FormControl,
     InputLabel,
     InputAdornment,
-    Grid
+    Grid,
+    useTheme,
+    useMediaQuery,
+    Stack,
+    Divider,
+    Avatar
 } from '@mui/material';
 import {
     Check as CheckIcon,
@@ -78,6 +83,8 @@ interface Church {
 
 export default function AdminUsers() {
     const { user: currentUser } = useAuth();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -169,19 +176,19 @@ export default function AdminUsers() {
     };
 
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, md: 3 } }}>
             <Box>
-                <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
+                <Typography variant="h3" sx={{ fontWeight: 'bold', fontSize: { xs: '1.75rem', sm: '2.5rem', md: '3rem' } }}>
                     Utilisateurs
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                     Liste des utilisateurs validés. Les demandes en attente ou rejetées sont dans l'onglet "Demandes d'inscription".
                 </Typography>
             </Box>
 
             {/* Filters and Search */}
             <Card sx={{ bgcolor: 'background.paper' }}>
-                <CardContent sx={{ pt: 3 }}>
+                <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
                     <Grid container spacing={2}>
                         {/* Search */}
                         <Grid size={{ xs: 12, md: 6 }}>
@@ -222,13 +229,131 @@ export default function AdminUsers() {
             </Card>
 
             <Card>
-                <CardContent>
-                    <Typography variant="h6" sx={{ mb: 2 }}>
+                <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+                    <Typography variant="h6" sx={{ mb: 2, fontSize: { xs: '1.125rem', sm: '1.25rem' } }}>
                         Liste Complète ({total})
                     </Typography>
                     {loading ? (
                         <TableSkeleton rows={itemsPerPage} />
+                    ) : isMobile ? (
+                        /* Vue Mobile - Cartes */
+                        <Stack spacing={2}>
+                            {users.map(user => {
+                                const isOwnAccount = currentUser?.id === user.id;
+                                return (
+                                    <Card key={user.id} elevation={2}>
+                                        <CardContent>
+                                            <Stack spacing={2}>
+                                                {/* En-tête */}
+                                                <Stack direction="row" spacing={2} alignItems="center">
+                                                    <Avatar sx={{ bgcolor: 'primary.main', width: 48, height: 48 }}>
+                                                        {user.first_name.charAt(0)}{user.last_name.charAt(0)}
+                                                    </Avatar>
+                                                    <Box sx={{ flex: 1 }}>
+                                                        <Typography variant="subtitle1" fontWeight={600}>
+                                                            {user.first_name} {user.last_name}
+                                                        </Typography>
+                                                        <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
+                                                            {user.email}
+                                                        </Typography>
+                                                    </Box>
+                                                </Stack>
+
+                                                <Divider />
+
+                                                {/* Informations */}
+                                                <Stack spacing={1}>
+                                                    <Stack direction="row" spacing={1} alignItems="center">
+                                                        <Typography variant="caption" color="text.secondary">Rôle:</Typography>
+                                                        <Chip label={user.role} color="primary" size="small" sx={{ fontFamily: 'monospace' }} />
+                                                    </Stack>
+                                                    <Stack direction="row" spacing={1} alignItems="center">
+                                                        <Typography variant="caption" color="text.secondary">Statut:</Typography>
+                                                        {getStatusBadge(user.status)}
+                                                    </Stack>
+                                                    {user.role === 'PASTOR' && user.church_id && (
+                                                        <Button
+                                                            size="small"
+                                                            variant="outlined"
+                                                            startIcon={<ChurchIcon />}
+                                                            onClick={() => handleViewChurch(user.church_id!)}
+                                                            fullWidth
+                                                        >
+                                                            Voir l'église
+                                                        </Button>
+                                                    )}
+                                                </Stack>
+
+                                                {/* Actions */}
+                                                {!isOwnAccount && (
+                                                    <>
+                                                        <Divider />
+                                                        <Stack direction="row" spacing={1} justifyContent="center" flexWrap="wrap">
+                                                            {user.status === 'PENDING' && (
+                                                                <>
+                                                                    <IconButton
+                                                                        size="small"
+                                                                        sx={{ bgcolor: 'success.main', color: 'white', '&:hover': { bgcolor: 'success.dark' } }}
+                                                                        onClick={() => updateUserStatus(user.id, 'VALIDATED')}
+                                                                    >
+                                                                        <CheckIcon fontSize="small" />
+                                                                    </IconButton>
+                                                                    <IconButton
+                                                                        size="small"
+                                                                        color="error"
+                                                                        onClick={() => updateUserStatus(user.id, 'REJECTED')}
+                                                                    >
+                                                                        <CloseIcon fontSize="small" />
+                                                                    </IconButton>
+                                                                </>
+                                                            )}
+                                                            {user.status === 'VALIDATED' && (
+                                                                <IconButton
+                                                                    size="small"
+                                                                    sx={{ bgcolor: 'orange', color: 'white', '&:hover': { bgcolor: 'darkorange' } }}
+                                                                    onClick={() => updateUserStatus(user.id, 'SUSPENDED')}
+                                                                    title="Suspendre"
+                                                                >
+                                                                    <BlockIcon fontSize="small" />
+                                                                </IconButton>
+                                                            )}
+                                                            {(user.status === 'SUSPENDED' || user.status === 'REJECTED') && (
+                                                                <IconButton
+                                                                    size="small"
+                                                                    sx={{ bgcolor: 'success.main', color: 'white', '&:hover': { bgcolor: 'success.dark' } }}
+                                                                    onClick={() => updateUserStatus(user.id, 'VALIDATED')}
+                                                                    title="Réactiver"
+                                                                >
+                                                                    <RefreshIcon fontSize="small" />
+                                                                </IconButton>
+                                                            )}
+                                                            <IconButton
+                                                                size="small"
+                                                                color="error"
+                                                                onClick={() => handleDelete(user.id)}
+                                                                title="Supprimer"
+                                                            >
+                                                                <DeleteIcon fontSize="small" />
+                                                            </IconButton>
+                                                        </Stack>
+                                                    </>
+                                                )}
+                                                {isOwnAccount && (
+                                                    <>
+                                                        <Divider />
+                                                        <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic', textAlign: 'center' }}>
+                                                            Votre compte
+                                                        </Typography>
+                                                    </>
+                                                )}
+                                            </Stack>
+                                        </CardContent>
+                                    </Card>
+                                );
+                            })}
+                        </Stack>
                     ) : (
+                        /* Vue Desktop - Table */
                         <TableContainer component={Paper} sx={{ bgcolor: 'transparent' }}>
                             <Table>
                                 <TableHead>
