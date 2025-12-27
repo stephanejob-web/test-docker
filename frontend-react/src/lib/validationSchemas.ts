@@ -86,7 +86,10 @@ export const churchSchema = z.object({
     .max(255, 'Le nom ne doit pas dépasser 255 caractères'),
 
   denomination_id: z
-    .number({ required_error: 'La dénomination est obligatoire' })
+    .number({
+      required_error: 'La dénomination est obligatoire',
+      invalid_type_error: 'La dénomination est obligatoire'
+    })
     .int()
     .positive('La dénomination doit être valide'),
 
@@ -106,10 +109,11 @@ export const churchSchema = z.object({
     .max(2000, 'La description ne doit pas dépasser 2000 caractères')
     .optional(),
 
+  // Adresse complète (obligatoire)
   address: z
     .string()
-    .max(500, 'L\'adresse ne doit pas dépasser 500 caractères')
-    .optional(),
+    .min(1, 'L\'adresse complète est obligatoire')
+    .max(500, 'L\'adresse ne doit pas dépasser 500 caractères'),
 
   // Champs d'adresse détaillés
   street_number: z
@@ -119,27 +123,26 @@ export const churchSchema = z.object({
 
   street_name: z
     .string()
-    .max(255, 'Le nom de rue ne doit pas dépasser 255 caractères')
-    .optional(),
+    .min(1, 'Le nom de rue est obligatoire')
+    .max(255, 'Le nom de rue ne doit pas dépasser 255 caractères'),
 
   postal_code: z
     .string()
-    .regex(/^[0-9]{5}$/, 'Le code postal doit contenir 5 chiffres')
-    .optional(),
+    .min(1, 'Le code postal est obligatoire')
+    .regex(/^[0-9]{5}$/, 'Le code postal doit contenir 5 chiffres'),
 
   city: z
     .string()
     .min(2, 'Le nom de la ville doit contenir au moins 2 caractères')
-    .max(100, 'Le nom de la ville ne doit pas dépasser 100 caractères')
-    .optional(),
+    .max(100, 'Le nom de la ville ne doit pas dépasser 100 caractères'),
 
+  // Contact (obligatoire)
   phone: z
     .string()
-    .optional()
-    .refine((val) => !val || /^[0-9+\s()-]{10,20}$/.test(val), {
-      message: 'Le numéro de téléphone n\'est pas valide'
-    }),
+    .min(1, 'Le numéro de téléphone est obligatoire')
+    .regex(/^[0-9+\s()-]{10,20}$/, 'Le numéro de téléphone n\'est pas valide'),
 
+  // Site web (optionnel)
   website: z
     .string()
     .optional()
@@ -147,10 +150,18 @@ export const churchSchema = z.object({
       message: 'L\'URL du site web n\'est pas valide'
     }),
 
-  pastor_name: z
+  // Prénom et nom du pasteur (obligatoires)
+  pastor_first_name: z
     .string()
-    .max(100, 'Le nom du pasteur ne doit pas dépasser 100 caractères')
-    .optional(),
+    .min(2, 'Le prénom du pasteur est obligatoire')
+    .max(50, 'Le prénom ne doit pas dépasser 50 caractères')
+    .regex(/^[a-zA-ZÀ-ÿ\s-]+$/, 'Le prénom ne doit contenir que des lettres'),
+
+  pastor_last_name: z
+    .string()
+    .min(2, 'Le nom du pasteur est obligatoire')
+    .max(50, 'Le nom ne doit pas dépasser 50 caractères')
+    .regex(/^[a-zA-ZÀ-ÿ\s-]+$/, 'Le nom ne doit contenir que des lettres'),
 
   has_parking: z.boolean().optional(),
 
@@ -164,7 +175,9 @@ export const churchSchema = z.object({
   logo_url: z.string().optional(),
 
   // Relations
-  schedules: z.array(scheduleSchema).optional(),
+  schedules: z
+    .array(scheduleSchema)
+    .min(1, 'Au moins un horaire est obligatoire'),
   socials: z.array(socialSchema).optional(),
 });
 

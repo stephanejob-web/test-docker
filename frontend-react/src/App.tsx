@@ -13,6 +13,7 @@ import AdminUsers from './pages/AdminUsers';
 import AdminSettings from './pages/AdminSettings';
 import AdminChurches from './pages/AdminChurches';
 import AdminEvents from './pages/AdminEvents';
+import AdminRegistrations from './pages/AdminRegistrations';
 
 function App() {
   return (
@@ -38,10 +39,12 @@ function App() {
 
                 {/* Admin Routes */}
                 <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']} />}>
+                  <Route path="admin/registrations" element={<AdminRegistrations />} />
                   <Route path="admin/users" element={<AdminUsers />} />
                   <Route path="admin/churches" element={<AdminChurches />} />
                   <Route path="admin/churches/:churchId/edit" element={<MyChurch />} />
                   <Route path="admin/events" element={<AdminEvents />} />
+                  <Route path="admin/events/:eventId" element={<MyEvents />} />
                   <Route path="admin/events/:eventId/edit" element={<MyEvents />} />
                   <Route path="admin/settings" element={<AdminSettings />} />
                 </Route>

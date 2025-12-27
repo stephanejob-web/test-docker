@@ -3,9 +3,8 @@ const { body, validationResult } = require('express-validator');
 // Middleware pour gérer les erreurs de validation
 const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
+
   if (!errors.isEmpty()) {
-    console.error('Erreurs de validation événement:', JSON.stringify(errors.array(), null, 2));
-    console.error('Données reçues:', JSON.stringify(req.body, null, 2));
     return res.status(400).json({
       message: 'Erreurs de validation',
       errors: errors.array().map(err => ({
@@ -14,6 +13,7 @@ const handleValidationErrors = (req, res, next) => {
       }))
     });
   }
+
   next();
 };
 
@@ -26,20 +26,25 @@ const validateEvent = [
     .isLength({ min: 3, max: 255 }).withMessage('Le titre doit contenir entre 3 et 255 caractères'),
 
   body('language_id')
-    .notEmpty().withMessage('La langue est obligatoire')
-    .isInt({ min: 1 }).withMessage('La langue doit être un nombre valide'),
+    .notEmpty().withMessage('La langue du speaker est obligatoire')
+    .isInt({ min: 1 }).withMessage('La langue du speaker doit être un nombre valide'),
 
-  body('start_datetime')
-    .notEmpty().withMessage('La date de début est obligatoire')
-    .isISO8601().withMessage('La date de début doit être une date valide (format ISO 8601)')
+  body('translation_language_ids')
+    .optional()
+    .isArray().withMessage('Les langues de traduction doivent être un tableau')
     .custom((value) => {
-      const startDate = new Date(value);
-      const now = new Date();
-      if (startDate < now) {
-        throw new Error('La date de début ne peut pas être dans le passé');
+      if (value && value.length > 0) {
+        if (!value.every(id => Number.isInteger(id) && id > 0)) {
+          throw new Error('Les IDs de langues de traduction doivent être des nombres valides');
+        }
       }
       return true;
     }),
+
+  body('start_datetime')
+    .notEmpty().withMessage('La date de début est obligatoire')
+    .isISO8601().withMessage('La date de début doit être une date valide (format ISO 8601)'),
+    // Note: Removed past date validation to allow editing of ongoing/past events
 
   body('end_datetime')
     .notEmpty().withMessage('La date de fin est obligatoire')
@@ -61,10 +66,8 @@ const validateEvent = [
     .notEmpty().withMessage('La longitude est obligatoire')
     .isFloat({ min: -180, max: 180 }).withMessage('La longitude doit être comprise entre -180 et 180'),
 
-  body('status')
-    .optional()
-    .isIn(['PUBLISHED', 'CANCELLED', 'DRAFT', 'COMPLETED', 'ONGOING'])
-    .withMessage('Le statut n\'est pas valide'),
+  // Note: status is now computed automatically based on dates and is not validated/accepted from client
+  // body('status') validation removed as status is calculated server-side
 
   // Détails de l'événement
   body('description')

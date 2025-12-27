@@ -2,13 +2,14 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const { verifyToken, requireSuperAdmin } = require('../middleware/authMiddleware');
+const { enrichEventsWithStatus, enrichEventWithStatus } = require('../utils/eventStatus');
 
 router.use(verifyToken);
 router.use(requireSuperAdmin);
 
 // --- UTILISATEURS ---
 
-// Lister tous les utilisateurs (avec pagination, recherche, filtres)
+// Lister tous les utilisateurs validés (VALIDATED + SUSPENDED)
 router.get('/users', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -16,22 +17,16 @@ router.get('/users', async (req, res) => {
         const offset = (page - 1) * limit;
         const search = req.query.search || '';
         const roleFilter = req.query.role || '';
-        const statusFilter = req.query.status || '';
 
-        // Build WHERE clause
-        let whereClause = 'WHERE 1=1';
+        // Build WHERE clause - IMPORTANT: Utilisateurs validés (actifs ou suspendus)
+        // Les comptes PENDING et REJECTED restent dans "Demandes d'inscription"
+        let whereClause = 'WHERE a.status IN ("VALIDATED", "SUSPENDED")';
         const params = [];
 
         // Filter by Role
         if (roleFilter && roleFilter !== 'ALL') {
             whereClause += ' AND a.role = ?';
             params.push(roleFilter);
-        }
-
-        // Filter by Status
-        if (statusFilter && statusFilter !== 'ALL') {
-            whereClause += ' AND a.status = ?';
-            params.push(statusFilter);
         }
 
         // Filter by Search (Name or Email)
@@ -93,7 +88,14 @@ router.get('/pending-users', async (req, res) => {
 router.put('/users/:id', async (req, res) => {
     console.log('PUT /users/:id body:', req.body);
     const { status, role } = req.body;
+    const targetUserId = parseInt(req.params.id);
+
     try {
+        // Protection: Empêcher de modifier son propre compte
+        if (req.user.id === targetUserId) {
+            return res.status(403).json({ message: 'Vous ne pouvez pas modifier votre propre compte' });
+        }
+
         let updateQuery = 'UPDATE admins SET ';
         const updateParams = [];
 
@@ -118,7 +120,14 @@ router.put('/users/:id', async (req, res) => {
 
 // Supprimer un utilisateur
 router.delete('/users/:id', async (req, res) => {
+    const targetUserId = parseInt(req.params.id);
+
     try {
+        // Protection: Empêcher de supprimer son propre compte
+        if (req.user.id === targetUserId) {
+            return res.status(403).json({ message: 'Vous ne pouvez pas supprimer votre propre compte' });
+        }
+
         await db.query('DELETE FROM admins WHERE id = ?', [req.params.id]);
         res.json({ message: 'Utilisateur supprimé' });
     } catch (error) {
@@ -236,7 +245,9 @@ router.get('/churches/:id', async (req, res) => {
         const [socials] = await db.query('SELECT * FROM church_socials WHERE church_id = ?', [church.id]);
         const [schedules] = await db.query('SELECT * FROM church_schedules WHERE church_id = ?', [church.id]);
         const [events] = await db.query(
-            `SELECT e.id, e.title, e.start_datetime, e.end_datetime, e.status, ed.description
+            `SELECT e.id, e.title, e.start_datetime, e.end_datetime,
+                    e.cancelled_at, e.cancellation_reason, e.cancelled_by,
+                    ed.description
              FROM events e
              LEFT JOIN event_details ed ON e.id = ed.event_id
              WHERE e.church_id = ?
@@ -244,12 +255,15 @@ router.get('/churches/:id', async (req, res) => {
             [church.id]
         );
 
+        // Enrich events with computed status
+        const enrichedEvents = enrichEventsWithStatus(events);
+
         res.json({
             ...church,
             details: details[0] || {},
             socials: socials || [],
             schedules: schedules || [],
-            events: events || []
+            events: enrichedEvents || []
         });
     } catch (error) {
         console.error(error);
@@ -263,7 +277,7 @@ router.put('/churches/:id', async (req, res) => {
     const {
         church_name, latitude, longitude, denomination_id,
         description, address, street_number, street_name, postal_code, city,
-        phone, website, pastor_name, has_parking, parking_capacity, is_parking_free, logo_url,
+        phone, website, pastor_first_name, pastor_last_name, has_parking, parking_capacity, is_parking_free, logo_url,
         socials, schedules
     } = req.body;
 
@@ -291,7 +305,8 @@ router.put('/churches/:id', async (req, res) => {
             city || null,
             phone || null,
             website || null,
-            pastor_name || null,
+            pastor_first_name || null,
+            pastor_last_name || null,
             has_parking ? 1 : 0,
             parking_capacity || null,
             is_parking_free ? 1 : 0,
@@ -303,15 +318,15 @@ router.put('/churches/:id', async (req, res) => {
             await connection.query(
                 `UPDATE church_details
                  SET description=?, address=?, street_number=?, street_name=?, postal_code=?, city=?,
-                     phone=?, website=?, pastor_name=?, has_parking=?, parking_capacity=?, is_parking_free=?, logo_url=?, language_id=?
+                     phone=?, website=?, pastor_first_name=?, pastor_last_name=?, has_parking=?, parking_capacity=?, is_parking_free=?, logo_url=?, language_id=?
                  WHERE church_id=?`,
                 [...detailParams, churchId]
             );
         } else {
             await connection.query(
                 `INSERT INTO church_details
-                 (description, address, street_number, street_name, postal_code, city, phone, website, pastor_name, has_parking, parking_capacity, is_parking_free, logo_url, language_id, church_id)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                 (description, address, street_number, street_name, postal_code, city, phone, website, pastor_first_name, pastor_last_name, has_parking, parking_capacity, is_parking_free, logo_url, language_id, church_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [...detailParams, churchId]
             );
         }
@@ -356,11 +371,8 @@ router.get('/events', async (req, res) => {
         let whereClause = 'WHERE 1=1';
         const params = [];
 
-        // Filter by Status
-        if (status && status !== 'ALL') {
-            whereClause += ' AND e.status = ?';
-            params.push(status);
-        }
+        // Note: Status filtering removed - status is now computed dynamically
+        // TODO: Implement status filtering in JavaScript after enriching events with computed status
 
         // Filter by Search (Title, Church Name, Creator Name)
         if (search) {
@@ -382,7 +394,9 @@ router.get('/events', async (req, res) => {
 
         // 2. Get Data
         const [events] = await db.query(
-            `SELECT e.id, e.title, e.start_datetime, e.end_datetime, e.status, c.church_name, a.first_name, a.last_name
+            `SELECT e.id, e.title, e.start_datetime, e.end_datetime,
+                    e.cancelled_at, e.cancellation_reason, e.cancelled_by,
+                    c.church_name, a.first_name, a.last_name
              FROM events e
              LEFT JOIN churches c ON e.church_id = c.id
              LEFT JOIN admins a ON e.admin_id = a.id
@@ -392,8 +406,11 @@ router.get('/events', async (req, res) => {
             [...params, limit, offset]
         );
 
+        // Enrich events with computed status
+        const enrichedEvents = enrichEventsWithStatus(events);
+
         res.json({
-            data: events,
+            data: enrichedEvents,
             meta: {
                 total,
                 page,
@@ -411,7 +428,8 @@ router.get('/events', async (req, res) => {
 router.get('/events/:id', async (req, res) => {
     try {
         const [events] = await db.query(
-            `SELECT id, title, start_datetime, end_datetime, status, church_id,
+            `SELECT id, title, start_datetime, end_datetime, church_id, language_id,
+                    cancelled_at, cancellation_reason, cancelled_by, admin_id,
                     ST_X(event_location) as longitude, ST_Y(event_location) as latitude
              FROM events WHERE id = ?`,
             [req.params.id]
@@ -420,13 +438,22 @@ router.get('/events/:id', async (req, res) => {
 
         const [details] = await db.query('SELECT * FROM event_details WHERE event_id = ?', [req.params.id]);
 
+        const [translations] = await db.query(
+            'SELECT language_id FROM event_translations WHERE event_id = ?',
+            [req.params.id]
+        );
+
         // Flatten details into the main object for easier consumption
         const eventData = { ...events[0] };
         if (details[0]) {
             Object.assign(eventData, details[0]);
         }
+        eventData.translation_language_ids = translations.map(t => t.language_id);
 
-        res.json(eventData);
+        // Enrich with computed status
+        const enrichedEvent = enrichEventWithStatus(eventData);
+
+        res.json(enrichedEvent);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Erreur serveur' });
@@ -436,17 +463,19 @@ router.get('/events/:id', async (req, res) => {
 // Modifier un événement (Admin)
 router.put('/events/:id', async (req, res) => {
     const {
-        title, start_datetime, end_datetime, latitude, longitude, status,
+        title, start_datetime, end_datetime, latitude, longitude,
         description, address, street_number, street_name, postal_code, city,
         speaker_name, max_seats, image_url, is_free, registration_link,
-        youtube_live, has_parking, parking_capacity, is_parking_free, parking_details
+        youtube_live, has_parking, parking_capacity, is_parking_free, parking_details,
+        translation_language_ids
     } = req.body;
+    // Note: status is NOT included as it's computed automatically based on dates
 
     const connection = await db.getConnection();
     try {
         await connection.beginTransaction();
 
-        // Update events table
+        // Update events table (excluding status - it's computed automatically)
         let updateQuery = 'UPDATE events SET ';
         const updateParams = [];
 
@@ -457,7 +486,6 @@ router.put('/events/:id', async (req, res) => {
             updateQuery += 'event_location = ST_GeomFromText(?), ';
             updateParams.push(`POINT(${longitude} ${latitude})`);
         }
-        if (status !== undefined) { updateQuery += 'status = ?, '; updateParams.push(status); }
 
         if (updateParams.length > 0) {
             updateQuery = updateQuery.slice(0, -2); // Remove trailing comma
@@ -512,6 +540,13 @@ router.put('/events/:id', async (req, res) => {
             );
         }
 
+        // Update translations
+        await connection.query('DELETE FROM event_translations WHERE event_id = ?', [req.params.id]);
+        if (translation_language_ids && Array.isArray(translation_language_ids) && translation_language_ids.length > 0) {
+            const translationValues = translation_language_ids.map(langId => [req.params.id, langId]);
+            await connection.query('INSERT INTO event_translations (event_id, language_id) VALUES ?', [translationValues]);
+        }
+
         await connection.commit();
         res.json({ message: 'Événement mis à jour' });
     } catch (error) {
@@ -531,6 +566,50 @@ router.delete('/events/:id', async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Erreur serveur' });
+    }
+});
+
+// Réactiver un événement annulé (Admin)
+router.post('/events/:id/reactivate', async (req, res) => {
+    const eventId = req.params.id;
+
+    try {
+        // Récupérer l'événement
+        const [events] = await db.query(
+            'SELECT start_datetime, end_datetime, cancelled_at FROM events WHERE id = ?',
+            [eventId]
+        );
+
+        if (events.length === 0) {
+            return res.status(404).json({ message: 'Événement non trouvé' });
+        }
+
+        const event = events[0];
+
+        // Vérifier que l'événement est annulé
+        if (!event.cancelled_at) {
+            return res.status(400).json({ message: 'Cet événement n\'est pas annulé' });
+        }
+
+        // Vérifier que l'événement n'est pas déjà terminé
+        const now = new Date();
+        const endDate = new Date(event.end_datetime);
+        if (now > endDate) {
+            return res.status(400).json({ message: 'Impossible de réactiver un événement déjà terminé' });
+        }
+
+        // Réactiver l'événement en effaçant les champs d'annulation
+        await db.query(
+            'UPDATE events SET cancelled_at = NULL, cancellation_reason = NULL, cancelled_by = NULL WHERE id = ?',
+            [eventId]
+        );
+
+        res.json({
+            message: 'Événement réactivé avec succès'
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erreur serveur lors de la réactivation de l\'événement' });
     }
 });
 
@@ -637,6 +716,108 @@ router.get('/stats', async (req, res) => {
                     churches: churchGrowth
                 }
             }
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erreur serveur' });
+    }
+});
+
+// ========================================
+// GESTION DES DEMANDES D'INSCRIPTION
+// ========================================
+
+// Lister toutes les demandes d'inscription (PENDING + REJECTED)
+router.get('/pending-registrations', async (req, res) => {
+    try {
+        const [registrationRequests] = await db.query(
+            `SELECT id, email, first_name, last_name, role, status, document_sirene_path, rejection_reason, created_at
+             FROM admins
+             WHERE status IN ('PENDING', 'REJECTED')
+             ORDER BY
+                CASE status
+                    WHEN 'PENDING' THEN 1
+                    WHEN 'REJECTED' THEN 2
+                END,
+                created_at DESC`
+        );
+
+        res.json(registrationRequests);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erreur serveur' });
+    }
+});
+
+// Lister toutes les demandes (tous statuts)
+router.get('/all-registrations', async (req, res) => {
+    try {
+        const [allAdmins] = await db.query(
+            `SELECT id, email, first_name, last_name, role, status, document_sirene_path, rejection_reason, created_at
+             FROM admins
+             ORDER BY created_at DESC`
+        );
+
+        res.json(allAdmins);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erreur serveur' });
+    }
+});
+
+// Valider une demande d'inscription (PENDING ou REJECTED)
+router.post('/validate-registration/:id', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const [admin] = await db.query('SELECT * FROM admins WHERE id = ?', [id]);
+
+        if (admin.length === 0) {
+            return res.status(404).json({ message: 'Demande non trouvée' });
+        }
+
+        if (admin[0].status !== 'PENDING' && admin[0].status !== 'REJECTED') {
+            return res.status(400).json({ message: 'Seuls les comptes en attente ou rejetés peuvent être validés' });
+        }
+
+        await db.query(
+            'UPDATE admins SET status = ?, rejection_reason = NULL WHERE id = ?',
+            ['VALIDATED', id]
+        );
+
+        res.json({
+            message: `Le compte de ${admin[0].first_name} ${admin[0].last_name} a été validé avec succès.`
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erreur serveur' });
+    }
+});
+
+// Rejeter une demande d'inscription
+router.post('/reject-registration/:id', async (req, res) => {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    try {
+        const [admin] = await db.query('SELECT * FROM admins WHERE id = ?', [id]);
+
+        if (admin.length === 0) {
+            return res.status(404).json({ message: 'Demande non trouvée' });
+        }
+
+        if (admin[0].status !== 'PENDING') {
+            return res.status(400).json({ message: 'Cette demande a déjà été traitée' });
+        }
+
+        await db.query(
+            'UPDATE admins SET status = ?, rejection_reason = ? WHERE id = ?',
+            ['REJECTED', reason || 'Document non conforme', id]
+        );
+
+        res.json({
+            message: `La demande de ${admin[0].first_name} ${admin[0].last_name} a été rejetée.`,
+            reason: reason || 'Document non conforme'
         });
     } catch (error) {
         console.error(error);

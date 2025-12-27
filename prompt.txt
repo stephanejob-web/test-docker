@@ -1,0 +1,137 @@
+
+a chaque fin de tache fait un commit avec ce que tu a réalisé
+ceci est important
+
+🎯 CONTEXTE GÉNÉRAL
+
+Application de gestion d’églises avec COMPTE PASTOR et COMPTE ADMIN.
+Plusieurs bugs et améliorations UX/UI sont à corriger, notamment sur la gestion des horaires, la validation des champs et la gestion des documents.
+
+🧑‍💼 COMPTE PASTOR — BUG SUR LES HORAIRES
+❌ Problème actuel
+
+Lorsqu’un pasteur modifie son église (exemple : coche dispose d’un parking), la sauvegarde échoue avec l’erreur suivante :
+
+Erreurs de validation
+schedules[0].start_time : L'heure doit être au format HH:MM
+schedules[1].start_time : L'heure doit être au format HH:MM
+
+
+➡️ Ce bug apparaît même quand les horaires n’ont pas été modifiés.
+➡️ Les horaires ont toujours posé problème dans l’application.
+
+✅ Comportement attendu
+
+Les horaires existants doivent être correctement revalidés lors de chaque mise à jour.
+
+Le format doit être automatiquement normalisé en HH:MM côté frontend et backend.
+
+Aucune erreur ne doit apparaître si l’utilisateur ne modifie pas les horaires.
+
+Empêcher l’envoi de valeurs invalides (null, "", HH:MM:SS, etc.).
+
+🏛️ COMPTE PASTOR — CRÉATION D’ÉGLISE (VALIDATIONS)
+🔒 Champs obligatoires
+
+Lors de la création d’une église, tous les champs doivent être obligatoires,
+SAUF les champs suivants :
+
+🗂️ Onglet Général
+
+Description courte de l’église ❌ obligatoire
+
+Logo de l’église ❌ obligatoire
+
+🗂️ Onglet Détails & Infos
+
+Site web ❌ obligatoire
+
+Dispose d’un parking ❌ obligatoire
+
+🗂️ Onglet Réseaux sociaux
+
+Tous les champs sont optionnels
+
+➡️ Tous les autres champs doivent être obligatoires.
+
+🎨 UX / UI — GESTION DES ERREURS
+✅ Comportement attendu
+
+Lorsqu’un champ est invalide :
+
+L’input devient rouge
+
+Un message d’erreur clair s’affiche sous le champ
+
+Tant qu’il existe au moins une erreur :
+
+Le bouton Sauvegarder est désactivé
+
+Le comportement doit être :
+
+Intuitif
+
+Clair
+
+Compréhensible immédiatement par l’utilisateur
+
+La validation doit être :
+
+En temps réel (onChange / onBlur)
+
+Cohérente frontend + backend
+
+📄 COMPTE PASTOR — DOCUMENT OBLIGATOIRE À L’INSCRIPTION
+📍 Route concernée
+http://localhost/register
+
+❗ Règles
+
+Lors de la création d’un compte pasteur :
+
+L’upload d’un document obligatoire est requis
+
+Le document est stocké dans :
+
+table: admins
+champ: document_sirene_path
+
+🔐 Restrictions côté pasteur
+
+Le document doit être :
+
+Visible sur son compte
+
+Le pasteur n’a PAS le droit de :
+
+Modifier le document
+
+Supprimer le document
+
+🛠️ COMPTE ADMIN — VISUALISATION DES DOCUMENTS
+📍 Page concernée
+http://localhost/dashboard/admin/users
+
+✅ Comportement attendu
+
+L’administrateur (admin@gmail.com) doit pouvoir :
+
+Voir la liste des utilisateurs
+
+Accéder et consulter le document uploadé par chaque pasteur
+
+Le document doit être :
+
+Téléchargeable ou consultable
+
+Correctement sécurisé (accès admin uniquement)
+
+✅ OBJECTIF FINAL
+
+Corriger définitivement les bugs d’horaires
+
+Mettre en place une validation stricte et intuitive
+
+Améliorer fortement l’expérience utilisateur
+
+Sécuriser et centraliser la gestion des documents pasteurs

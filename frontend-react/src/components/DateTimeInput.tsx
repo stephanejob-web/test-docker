@@ -20,6 +20,7 @@ interface DateTimeInputProps {
     required?: boolean;
     minDateTime?: string;
     error?: string;
+    dateOnly?: boolean;
 }
 
 export default function DateTimeInput({
@@ -28,7 +29,8 @@ export default function DateTimeInput({
     onChange,
     required = false,
     minDateTime,
-    error
+    error,
+    dateOnly = false
 }: DateTimeInputProps) {
     const [date, setDate] = useState('');
     const [time, setTime] = useState('');
@@ -44,12 +46,19 @@ export default function DateTimeInput({
 
     // Combine date and time when either changes
     useEffect(() => {
-        if (date && time) {
-            onChange(`${date}T${time}`);
-        } else if (date || time) {
-            onChange(date && time ? `${date}T${time}` : '');
+        if (dateOnly) {
+            // In date-only mode, just pass the date
+            if (date) {
+                onChange(date);
+            }
+        } else {
+            if (date && time) {
+                onChange(`${date}T${time}`);
+            } else if (date || time) {
+                onChange(date && time ? `${date}T${time}` : '');
+            }
         }
-    }, [date, time]);
+    }, [date, time, dateOnly]);
 
     const handleQuickAction = (action: 'today' | 'tomorrow' | 'next-week') => {
         const now = new Date();
@@ -151,7 +160,7 @@ export default function DateTimeInput({
 
             {/* Date and Time Inputs */}
             <Grid container spacing={1.5}>
-                <Grid size={{ xs: 12, sm: 6 }}>
+                <Grid size={dateOnly ? { xs: 12 } : { xs: 12, sm: 6 }}>
                     <TextField
                         fullWidth
                         type="date"
@@ -171,27 +180,29 @@ export default function DateTimeInput({
                         }}
                     />
                 </Grid>
-                <Grid size={{ xs: 12, sm: 6 }}>
-                    <TextField
-                        fullWidth
-                        type="time"
-                        value={time}
-                        onChange={(e) => setTime(e.target.value)}
-                        required={required}
-                        error={!!error}
-                        InputProps={{
-                            startAdornment: (
-                                <InputAdornment position="start">
-                                    <ClockIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                                </InputAdornment>
-                            ),
-                        }}
-                    />
-                </Grid>
+                {!dateOnly && (
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                        <TextField
+                            fullWidth
+                            type="time"
+                            value={time}
+                            onChange={(e) => setTime(e.target.value)}
+                            required={required}
+                            error={!!error}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <ClockIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                                    </InputAdornment>
+                                ),
+                            }}
+                        />
+                    </Grid>
+                )}
             </Grid>
 
             {/* Display Formatted Date */}
-            {date && time && (
+            {date && (dateOnly || time) && (
                 <Paper
                     sx={{
                         p: 1.5,
@@ -208,7 +219,7 @@ export default function DateTimeInput({
                             textTransform: 'capitalize'
                         }}
                     >
-                        {formatDisplayDate()} à {time}
+                        {dateOnly ? formatDisplayDate() : `${formatDisplayDate()} à ${time}`}
                     </Typography>
                 </Paper>
             )}
