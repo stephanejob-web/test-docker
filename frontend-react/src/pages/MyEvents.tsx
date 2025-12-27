@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../lib/axios';
 import { formatDistanceToNow } from 'date-fns';
@@ -107,6 +107,34 @@ interface EventData extends EventFormData {
     id: number;
 }
 
+const initialFormState: EventFormData = {
+    title: '',
+    start_datetime: '',
+    end_datetime: '',
+    description: '',
+    latitude: '',
+    longitude: '',
+    address: '',
+    street_number: '',
+    street_name: '',
+    postal_code: '',
+    city: '',
+    speaker_name: '',
+    language_id: '10',
+    translation_language_ids: [],
+    max_seats: '',
+    image_url: '',
+    is_free: 1,
+    registration_link: '',
+    has_parking: 0,
+    parking_capacity: '',
+    is_parking_free: 1,
+    parking_details: '',
+    youtube_live: '',
+    status: 'PUBLISHED',
+    is_all_day: false
+};
+
 export default function MyEvents() {
     const { eventId } = useParams<{ eventId: string }>();
     const navigate = useNavigate();
@@ -118,34 +146,6 @@ export default function MyEvents() {
     const [editingId, setEditingId] = useState<number | null>(eventId ? parseInt(eventId) : null);
     const [activeStep, setActiveStep] = useState(0);
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-
-    const initialFormState: EventFormData = {
-        title: '',
-        start_datetime: '',
-        end_datetime: '',
-        description: '',
-        latitude: '',
-        longitude: '',
-        address: '',
-        street_number: '',
-        street_name: '',
-        postal_code: '',
-        city: '',
-        speaker_name: '',
-        language_id: '10',
-        translation_language_ids: [],
-        max_seats: '',
-        image_url: '',
-        is_free: 1,
-        registration_link: '',
-        has_parking: 0,
-        parking_capacity: '',
-        is_parking_free: 1,
-        parking_details: '',
-        youtube_live: '',
-        status: 'PUBLISHED',
-        is_all_day: false
-    };
 
     const [formData, setFormData] = useState<EventFormData>(initialFormState);
     const [dateError, setDateError] = useState('');
@@ -169,6 +169,16 @@ export default function MyEvents() {
 
     // Protection contre la soumission immédiate après changement de step
     const [lastStepChangeTime, setLastStepChangeTime] = useState<number>(0);
+
+    // Ref to store timeouts for cleanup
+    const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
+
+    // Cleanup timeouts on unmount
+    useEffect(() => {
+        return () => {
+            timeoutsRef.current.forEach(timeout => clearTimeout(timeout));
+        };
+    }, []);
 
     // Stepper configuration
     const steps = [
@@ -351,15 +361,7 @@ export default function MyEvents() {
         loadLanguages();
     }, []);
 
-    useEffect(() => {
-        if (isAdminMode && eventId) {
-            loadEventForEdit(parseInt(eventId));
-        } else {
-            checkChurchAndEvents();
-        }
-    }, [isAdminMode, eventId]);
-
-    const loadEventForEdit = async (id: number) => {
+    const loadEventForEdit = useCallback(async (id: number) => {
         setLoading(true);
         try {
             const { data } = await api.get(`/admin/events/${id}`);
@@ -386,9 +388,9 @@ export default function MyEvents() {
             alert("Impossible de charger l'événement");
             setLoading(false);
         }
-    };
+    }, []);
 
-    const checkChurchAndEvents = async () => {
+    const checkChurchAndEvents = useCallback(async () => {
         setLoading(true);
         try {
             try {
@@ -418,7 +420,15 @@ export default function MyEvents() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        if (isAdminMode && eventId) {
+            loadEventForEdit(parseInt(eventId));
+        } else {
+            checkChurchAndEvents();
+        }
+    }, [isAdminMode, eventId, loadEventForEdit, checkChurchAndEvents]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { id, value } = e.target;
@@ -514,7 +524,8 @@ export default function MyEvents() {
             if (isAdminMode) {
                 await api.put(`/admin/events/${editingId}`, payload);
                 alert('Événement mis à jour avec succès !');
-                setTimeout(() => navigate('/dashboard/admin/events'), 1500);
+                const timeoutId = setTimeout(() => navigate('/dashboard/admin/events'), 1500);
+                timeoutsRef.current.push(timeoutId);
             } else {
                 const churchRes = await api.get('/church/my-church');
                 const churchId = churchRes.data.id;
@@ -602,36 +613,52 @@ export default function MyEvents() {
         }
     };
 
-    // Filter events by status and search query
-    const filteredEvents = events
-        .filter(event => statusFilter === 'ALL' || event.status === statusFilter)
-        .filter(event => {
-            if (!searchQuery.trim()) return true;
-            const query = searchQuery.toLowerCase();
-            return (
-                event.title?.toLowerCase().includes(query) ||
-                event.city?.toLowerCase().includes(query) ||
-                event.description?.toLowerCase().includes(query) ||
-                event.address?.toLowerCase().includes(query)
-            );
-        })
-        .sort((a, b) => {
-            if (sortBy === 'created') {
-                // Sort by ID in descending order (newest events first)
-                return b.id - a.id;
-            } else {
-                // Sort by start_datetime in ascending order (closest event first)
-                const dateA = new Date(a.start_datetime.replace(' ', 'T'));
-                const dateB = new Date(b.start_datetime.replace(' ', 'T'));
-                return dateA.getTime() - dateB.getTime();
-            }
-        });
+    // Filter events by status and search query (memoized for performance)
+    const filteredEvents = useMemo(() => {
+        return events
+            .filter(event => statusFilter === 'ALL' || event.status === statusFilter)
+            .filter(event => {
+                if (!searchQuery.trim()) return true;
+                const query = searchQuery.toLowerCase();
+                return (
+                    event.title?.toLowerCase().includes(query) ||
+                    event.city?.toLowerCase().includes(query) ||
+                    event.description?.toLowerCase().includes(query) ||
+                    event.address?.toLowerCase().includes(query)
+                );
+            })
+            .sort((a, b) => {
+                if (sortBy === 'created') {
+                    // Sort by ID in descending order (newest events first)
+                    return b.id - a.id;
+                } else {
+                    // Sort by start_datetime in ascending order (closest event first)
+                    try {
+                        const dateStrA = a.start_datetime?.replace?.(' ', 'T') || '';
+                        const dateStrB = b.start_datetime?.replace?.(' ', 'T') || '';
+                        if (!dateStrA || !dateStrB) return 0;
+                        const dateA = new Date(dateStrA);
+                        const dateB = new Date(dateStrB);
+                        if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) return 0;
+                        return dateA.getTime() - dateB.getTime();
+                    } catch {
+                        return 0;
+                    }
+                }
+            });
+    }, [events, statusFilter, searchQuery, sortBy]);
 
-    // Pagination logic
-    const totalPages = Math.ceil(filteredEvents.length / itemsPerPage);
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    const paginatedEvents = filteredEvents.slice(startIndex, endIndex);
+    // Pagination logic (memoized for performance)
+    const totalPages = useMemo(
+        () => Math.ceil(filteredEvents.length / itemsPerPage),
+        [filteredEvents.length, itemsPerPage]
+    );
+
+    const paginatedEvents = useMemo(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        return filteredEvents.slice(startIndex, endIndex);
+    }, [filteredEvents, currentPage, itemsPerPage]);
 
     // Reset to page 1 when filters change
     const handleStatusFilterChange = (status: string) => {
@@ -650,21 +677,33 @@ export default function MyEvents() {
     };
 
     // Helper function to check if event is all-day
-    const isAllDayEvent = (startDateTime: string, endDateTime: string) => {
-        const startTime = startDateTime.split('T')[1] || startDateTime.split(' ')[1];
-        const endTime = endDateTime.split('T')[1] || endDateTime.split(' ')[1];
-        return startTime?.startsWith('00:00') && endTime?.startsWith('23:59');
+    const isAllDayEvent = (startDateTime: string | null | undefined, endDateTime: string | null | undefined) => {
+        if (!startDateTime || !endDateTime) return false;
+        try {
+            const startTime = startDateTime.split('T')[1] || startDateTime.split(' ')[1];
+            const endTime = endDateTime.split('T')[1] || endDateTime.split(' ')[1];
+            return startTime?.startsWith('00:00') && endTime?.startsWith('23:59');
+        } catch {
+            return false;
+        }
     };
 
     // Helper function to get relative time
-    const getRelativeTime = (dateTimeString: string) => {
-        const dateStr = typeof dateTimeString === 'string'
-            ? dateTimeString.replace(' ', 'T')
-            : dateTimeString;
-        return formatDistanceToNow(new Date(dateStr), {
-            addSuffix: true,
-            locale: fr
-        });
+    const getRelativeTime = (dateTimeString: string | null | undefined) => {
+        if (!dateTimeString) return 'Date inconnue';
+        try {
+            const dateStr = typeof dateTimeString === 'string'
+                ? dateTimeString.replace(' ', 'T')
+                : String(dateTimeString);
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return 'Date invalide';
+            return formatDistanceToNow(date, {
+                addSuffix: true,
+                locale: fr
+            });
+        } catch {
+            return 'Date invalide';
+        }
     };
 
     // Step content renderers

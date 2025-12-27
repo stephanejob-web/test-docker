@@ -1,2 +1,9 @@
 // Configuration globale pour les tests
-// Pour l'instant, on teste uniquement les schémas Zod (pas les composants React)
+import '@testing-library/jest-dom';
+import { cleanup } from '@testing-library/react';
+import { afterEach } from 'vitest';
+
+// Cleanup after each test
+afterEach(() => {
+    cleanup();
+});
