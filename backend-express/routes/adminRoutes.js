@@ -428,8 +428,8 @@ router.get('/events', async (req, res) => {
 router.get('/events/:id', async (req, res) => {
     try {
         const [events] = await db.query(
-            `SELECT id, title, start_datetime, end_datetime, status, church_id, language_id,
-                    cancelled_at, cancellation_reason, cancelled_by,
+            `SELECT id, title, start_datetime, end_datetime, church_id, language_id,
+                    cancelled_at, cancellation_reason, cancelled_by, admin_id,
                     ST_X(event_location) as longitude, ST_Y(event_location) as latitude
              FROM events WHERE id = ?`,
             [req.params.id]
@@ -566,6 +566,50 @@ router.delete('/events/:id', async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Erreur serveur' });
+    }
+});
+
+// Réactiver un événement annulé (Admin)
+router.post('/events/:id/reactivate', async (req, res) => {
+    const eventId = req.params.id;
+
+    try {
+        // Récupérer l'événement
+        const [events] = await db.query(
+            'SELECT start_datetime, end_datetime, cancelled_at FROM events WHERE id = ?',
+            [eventId]
+        );
+
+        if (events.length === 0) {
+            return res.status(404).json({ message: 'Événement non trouvé' });
+        }
+
+        const event = events[0];
+
+        // Vérifier que l'événement est annulé
+        if (!event.cancelled_at) {
+            return res.status(400).json({ message: 'Cet événement n\'est pas annulé' });
+        }
+
+        // Vérifier que l'événement n'est pas déjà terminé
+        const now = new Date();
+        const endDate = new Date(event.end_datetime);
+        if (now > endDate) {
+            return res.status(400).json({ message: 'Impossible de réactiver un événement déjà terminé' });
+        }
+
+        // Réactiver l'événement en effaçant les champs d'annulation
+        await db.query(
+            'UPDATE events SET cancelled_at = NULL, cancellation_reason = NULL, cancelled_by = NULL WHERE id = ?',
+            [eventId]
+        );
+
+        res.json({
+            message: 'Événement réactivé avec succès'
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erreur serveur lors de la réactivation de l\'événement' });
     }
 });
 

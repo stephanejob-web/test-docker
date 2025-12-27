@@ -157,6 +157,8 @@ export default function MyEvents() {
     const [cancelEventId, setCancelEventId] = useState<number | null>(null);
     const [cancellationReason, setCancellationReason] = useState('');
     const [isReadOnly, setIsReadOnly] = useState(false);
+    const [eventStatus, setEventStatus] = useState<string>('');
+    const [showReactivateButton, setShowReactivateButton] = useState(false);
     const [statusFilter, setStatusFilter] = useState<string>('ALL');
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [currentPage, setCurrentPage] = useState(1);
@@ -361,6 +363,37 @@ export default function MyEvents() {
         loadLanguages();
     }, []);
 
+    /**
+     * Calcule le statut dynamique d'un événement basé sur les dates
+     */
+    const calculateEventStatus = useCallback((event: { cancelled_at?: string | null; start_datetime: string; end_datetime: string }): string => {
+        // Si l'événement est annulé, retourner CANCELLED
+        if (event.cancelled_at) {
+            return 'CANCELLED';
+        }
+
+        const now = new Date();
+        const startDate = new Date(event.start_datetime);
+        const endDate = new Date(event.end_datetime);
+
+        // Si la date de fin est passée
+        if (now > endDate) {
+            return 'COMPLETED';
+        }
+
+        // Si l'événement est en cours (entre start et end)
+        if (now >= startDate && now <= endDate) {
+            return 'ONGOING';
+        }
+
+        // Si l'événement est à venir
+        if (now < startDate) {
+            return 'UPCOMING';
+        }
+
+        return 'UPCOMING';
+    }, []);
+
     const loadEventForEdit = useCallback(async (id: number) => {
         setLoading(true);
         try {
@@ -382,13 +415,49 @@ export default function MyEvents() {
                 is_free: data.is_free ? 1 : 0,
                 is_all_day: isAllDay
             });
+
+            // Calculer le statut de l'événement
+            const status = calculateEventStatus({
+                cancelled_at: data.cancelled_at,
+                start_datetime: data.start_datetime,
+                end_datetime: data.end_datetime
+            });
+
+            console.log('📊 Statut calculé:', status);
+            console.log('📅 Données événement:', {
+                cancelled_at: data.cancelled_at,
+                start_datetime: data.start_datetime,
+                end_datetime: data.end_datetime,
+                now: new Date().toISOString()
+            });
+
+            setEventStatus(status);
+
+            // Déterminer le mode d'affichage
+            if (status === 'COMPLETED') {
+                // Événements terminés : lecture seule
+                console.log('🔒 Mode lecture seule (COMPLETED)');
+                setIsReadOnly(true);
+                setShowReactivateButton(false);
+            } else if (status === 'CANCELLED') {
+                // Événements annulés : afficher le bouton de réactivation
+                console.log('⚠️ Mode lecture seule avec réactivation (CANCELLED)');
+                setIsReadOnly(true);
+                setShowReactivateButton(true);
+            } else {
+                // Événements à venir ou en cours : mode édition
+                console.log('✏️ Mode édition (UPCOMING/ONGOING)');
+                setIsReadOnly(false);
+                setShowReactivateButton(false);
+            }
+
             setLoading(false);
         } catch (err) {
             console.error(err);
             alert("Impossible de charger l'événement");
             setLoading(false);
         }
-    }, []);
+    }, [calculateEventStatus]);
 
     const checkChurchAndEvents = useCallback(async () => {
         setLoading(true);
@@ -594,7 +663,11 @@ export default function MyEvents() {
         }
     };
 
-    const handleReactivateEvent = async (eventId: number) => {
+    const handleReactivateEvent = async (eventId?: number) => {
+        const targetEventId = eventId || editingId;
+
+        if (!targetEventId) return;
+
         if (!window.confirm('Voulez-vous vraiment réactiver cet événement ?')) {
             return;
         }
@@ -602,9 +675,22 @@ export default function MyEvents() {
         try {
             setLoading(true);
             setMenuAnchor(null);
-            await api.post(`/church/events/${eventId}/reactivate`);
+
+            // Utiliser l'endpoint admin si on est en mode admin (editing), sinon utiliser l'endpoint church
+            const endpoint = editingId && !eventId
+                ? `/admin/events/${targetEventId}/reactivate`
+                : `/church/events/${targetEventId}/reactivate`;
+
+            await api.post(endpoint);
             alert('Événement réactivé avec succès !');
-            checkChurchAndEvents();
+
+            // Si on édite l'événement, recharger les données
+            if (editingId && !eventId) {
+                await loadEventForEdit(targetEventId);
+            } else {
+                // Sinon, recharger la liste des événements
+                checkChurchAndEvents();
+            }
         } catch (err: any) {
             console.error('Erreur lors de la réactivation:', err);
             alert(err.response?.data?.message || 'Erreur lors de la réactivation de l\'événement');
@@ -1729,13 +1815,25 @@ export default function MyEvents() {
                             )}
 
                             {/* Read-only mode alert */}
-                            {isReadOnly && (
+                            {isReadOnly && eventStatus === 'COMPLETED' && (
                                 <Alert severity="info" icon={<CheckCircleIcon />} sx={{ mb: 3 }}>
                                     <Typography variant="subtitle1" fontWeight="bold">
                                         Mode consultation uniquement
                                     </Typography>
                                     <Typography variant="body2">
                                         Cet événement est terminé et ne peut plus être modifié.
+                                    </Typography>
+                                </Alert>
+                            )}
+
+                            {isReadOnly && eventStatus === 'CANCELLED' && (
+                                <Alert severity="warning" icon={<CancelIcon />} sx={{ mb: 3 }}>
+                                    <Typography variant="subtitle1" fontWeight="bold">
+                                        Événement annulé
+                                    </Typography>
+                                    <Typography variant="body2">
+                                        Cet événement a été annulé. Utilisez le bouton "Réactiver l'événement" ci-dessous pour le modifier à nouveau.
+                                        {formData.cancellation_reason && ` Motif d'annulation : ${formData.cancellation_reason}`}
                                     </Typography>
                                 </Alert>
                             )}
@@ -1822,6 +1920,47 @@ export default function MyEvents() {
                                             Suivant
                                         </Button>
                                     )}
+                                </Box>
+                            )}
+
+                            {/* Read-only Mode Buttons */}
+                            {isReadOnly && (
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pt: 4, mt: 4, borderTop: 1, borderColor: 'divider' }}>
+                                    {eventStatus === 'COMPLETED' && (
+                                        <Alert severity="info" sx={{ flex: 1, mr: 2 }}>
+                                            Cet événement est terminé et ne peut plus être modifié.
+                                        </Alert>
+                                    )}
+
+                                    {eventStatus === 'CANCELLED' && (
+                                        <Alert severity="warning" sx={{ flex: 1, mr: 2 }}>
+                                            Cet événement a été annulé. Réactivez-le pour pouvoir le modifier.
+                                        </Alert>
+                                    )}
+
+                                    <Box sx={{ display: 'flex', gap: 2 }}>
+                                        {showReactivateButton && (
+                                            <Button
+                                                type="button"
+                                                variant="contained"
+                                                color="warning"
+                                                onClick={() => handleReactivateEvent()}
+                                                disabled={loading}
+                                                startIcon={<CheckCircleIcon />}
+                                            >
+                                                Réactiver l'événement
+                                            </Button>
+                                        )}
+
+                                        <Button
+                                            type="button"
+                                            variant="outlined"
+                                            onClick={() => navigate('/dashboard/admin/events')}
+                                            startIcon={<ArrowBackIcon />}
+                                        >
+                                            Retour à la liste
+                                        </Button>
+                                    </Box>
                                 </Box>
                             )}
                         </CardContent>

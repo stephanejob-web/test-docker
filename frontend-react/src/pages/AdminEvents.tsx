@@ -86,32 +86,6 @@ export default function AdminEvents() {
     }, []);
 
     /**
-     * Calcule le compte à rebours avant un événement
-     */
-    const getCountdown = useCallback((startDatetime: string): string => {
-        const now = new Date();
-        const startDate = new Date(startDatetime);
-        const diffMs = startDate.getTime() - now.getTime();
-
-        // Si l'événement est déjà commencé ou passé
-        if (diffMs <= 0) {
-            return 'Commencé';
-        }
-
-        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-        const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-
-        if (diffDays > 0) {
-            return `Dans ${diffDays} jour${diffDays > 1 ? 's' : ''}`;
-        } else if (diffHours > 0) {
-            return `Dans ${diffHours}h ${diffMinutes}min`;
-        } else {
-            return `Dans ${diffMinutes} min`;
-        }
-    }, []);
-
-    /**
      * Récupère tous les événements depuis l'API
      */
     const fetchEvents = useCallback(async () => {
@@ -235,38 +209,16 @@ export default function AdminEvents() {
 
         const startDateStr = formatDate(startDate);
         const endDateStr = formatDate(endDate);
+        const startTimeStr = formatTime(startDate);
+        const endTimeStr = formatTime(endDate);
 
         // Si même jour
         if (startDateStr === endDateStr) {
-            return (
-                <Box>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                        {startDateStr}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                        {formatTime(startDate)} → {formatTime(endDate)}
-                    </Typography>
-                </Box>
-            );
+            return `${startDateStr} (${startTimeStr} - ${endTimeStr})`;
         }
 
         // Si jours différents
-        return (
-            <Box>
-                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                    {startDateStr}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                    {formatTime(startDate)}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ mx: 0.5 }}>
-                    →
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                    {endDateStr} {formatTime(endDate)}
-                </Typography>
-            </Box>
-        );
+        return `${startDateStr} ${startTimeStr} au ${endDateStr} ${endTimeStr}`;
     };
 
     return (
@@ -329,7 +281,6 @@ export default function AdminEvents() {
                                     <TableRow>
                                         <TableCell sx={{ fontWeight: 'bold', color: 'text.secondary' }}>Titre</TableCell>
                                         <TableCell sx={{ fontWeight: 'bold', color: 'text.secondary' }}>Dates</TableCell>
-                                        <TableCell sx={{ fontWeight: 'bold', color: 'text.secondary' }}>Compte à rebours</TableCell>
                                         <TableCell sx={{ fontWeight: 'bold', color: 'text.secondary' }}>Statut</TableCell>
                                         <TableCell sx={{ fontWeight: 'bold', color: 'text.secondary' }}>Église</TableCell>
                                         <TableCell sx={{ fontWeight: 'bold', color: 'text.secondary' }}>Créateur</TableCell>
@@ -339,7 +290,7 @@ export default function AdminEvents() {
                                 <TableBody>
                                     {filteredAndPaginatedEvents.events.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                                            <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
                                                 <Typography color="text.secondary">
                                                     Aucun événement trouvé
                                                 </Typography>
@@ -374,17 +325,6 @@ export default function AdminEvents() {
                                                 </TableCell>
                                                 <TableCell sx={{ minWidth: 180 }}>
                                                     {formatDateRange(ev.start_datetime, ev.end_datetime)}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Chip
-                                                        label={getCountdown(ev.start_datetime)}
-                                                        size="small"
-                                                        sx={{
-                                                            bgcolor: ev.status === 'UPCOMING' ? 'primary.light' : 'grey.300',
-                                                            color: ev.status === 'UPCOMING' ? 'primary.contrastText' : 'text.secondary',
-                                                            fontWeight: 'bold'
-                                                        }}
-                                                    />
                                                 </TableCell>
                                                 <TableCell>
                                                     {getStatusChip(ev.status || 'UPCOMING')}
