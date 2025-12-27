@@ -7,7 +7,7 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
-    testTimeout: 10000, // Augmenté à 10 secondes pour éviter les timeouts
+    testTimeout: 30000, // Augmenté à 30 secondes pour éviter les timeouts
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

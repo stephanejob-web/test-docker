@@ -38,7 +38,8 @@ import {
     DialogContent,
     DialogActions,
     Pagination,
-    Tooltip
+    Tooltip,
+    Snackbar
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -157,11 +158,24 @@ export default function MyEvents() {
     const [cancelEventId, setCancelEventId] = useState<number | null>(null);
     const [cancellationReason, setCancellationReason] = useState('');
     const [isReadOnly, setIsReadOnly] = useState(false);
+    const [eventStatus, setEventStatus] = useState<string>('');
+    const [showReactivateButton, setShowReactivateButton] = useState(false);
     const [statusFilter, setStatusFilter] = useState<string>('ALL');
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [currentPage, setCurrentPage] = useState(1);
     const [sortBy, setSortBy] = useState<'created' | 'event_date'>('created'); // Sort by creation date by default
     const itemsPerPage = 9; // 9 events per page (3x3 grid)
+
+    // Snackbar state
+    const [snackbarOpen, setSnackbarOpen] = useState(false);
+    const [snackbarMessage, setSnackbarMessage] = useState('');
+    const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'warning' | 'info'>('info');
+
+    // Confirmation dialog state
+    const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+    const [confirmDialogTitle, setConfirmDialogTitle] = useState('');
+    const [confirmDialogMessage, setConfirmDialogMessage] = useState('');
+    const [confirmDialogOnConfirm, setConfirmDialogOnConfirm] = useState<(() => void) | null>(null);
 
     // Validation errors state
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -298,9 +312,36 @@ export default function MyEvents() {
         }
     };
 
-    const handleNext = () => {
-        console.log('🔵 handleNext appelé. Step actuel:', activeStep);
+    // Helper functions for Snackbar and Confirmation Dialog
+    const showSnackbar = (message: string, severity: 'success' | 'error' | 'warning' | 'info' = 'info') => {
+        setSnackbarMessage(message);
+        setSnackbarSeverity(severity);
+        setSnackbarOpen(true);
+    };
 
+    const handleCloseSnackbar = () => {
+        setSnackbarOpen(false);
+    };
+
+    const showConfirmDialog = (title: string, message: string, onConfirm: () => void) => {
+        setConfirmDialogTitle(title);
+        setConfirmDialogMessage(message);
+        setConfirmDialogOnConfirm(() => onConfirm);
+        setConfirmDialogOpen(true);
+    };
+
+    const handleConfirmDialogClose = () => {
+        setConfirmDialogOpen(false);
+    };
+
+    const handleConfirmDialogConfirm = () => {
+        if (confirmDialogOnConfirm) {
+            confirmDialogOnConfirm();
+        }
+        setConfirmDialogOpen(false);
+    };
+
+    const handleNext = () => {
         // Validate current step before proceeding
         let stepErrors = {};
         switch (activeStep) {
@@ -318,18 +359,13 @@ export default function MyEvents() {
                 break;
         }
 
-        console.log('🔵 Erreurs de validation:', stepErrors);
-        console.log('🔵 Nombre d\'erreurs:', Object.keys(stepErrors).length);
-
         if (Object.keys(stepErrors).length === 0) {
             setErrors({});
             const newStep = activeStep + 1;
-            console.log('✅ Passage au step:', newStep);
             setActiveStep(newStep);
             setLastStepChangeTime(Date.now()); // Enregistrer le moment du changement
             window.scrollTo({ top: 0, behavior: 'smooth' });
         } else {
-            console.log('❌ Validation échouée, affichage des erreurs');
             setErrors(stepErrors);
             // Mark all fields as touched to show errors
             const touchedFields: Record<string, boolean> = {};
@@ -361,6 +397,37 @@ export default function MyEvents() {
         loadLanguages();
     }, []);
 
+    /**
+     * Calcule le statut dynamique d'un événement basé sur les dates
+     */
+    const calculateEventStatus = useCallback((event: { cancelled_at?: string | null; start_datetime: string; end_datetime: string }): string => {
+        // Si l'événement est annulé, retourner CANCELLED
+        if (event.cancelled_at) {
+            return 'CANCELLED';
+        }
+
+        const now = new Date();
+        const startDate = new Date(event.start_datetime);
+        const endDate = new Date(event.end_datetime);
+
+        // Si la date de fin est passée
+        if (now > endDate) {
+            return 'COMPLETED';
+        }
+
+        // Si l'événement est en cours (entre start et end)
+        if (now >= startDate && now <= endDate) {
+            return 'ONGOING';
+        }
+
+        // Si l'événement est à venir
+        if (now < startDate) {
+            return 'UPCOMING';
+        }
+
+        return 'UPCOMING';
+    }, []);
+
     const loadEventForEdit = useCallback(async (id: number) => {
         setLoading(true);
         try {
@@ -382,13 +449,38 @@ export default function MyEvents() {
                 is_free: data.is_free ? 1 : 0,
                 is_all_day: isAllDay
             });
+
+            // Calculer le statut de l'événement
+            const status = calculateEventStatus({
+                cancelled_at: data.cancelled_at,
+                start_datetime: data.start_datetime,
+                end_datetime: data.end_datetime
+            });
+
+            setEventStatus(status);
+
+            // Déterminer le mode d'affichage
+            if (status === 'COMPLETED') {
+                // Événements terminés : lecture seule
+                setIsReadOnly(true);
+                setShowReactivateButton(false);
+            } else if (status === 'CANCELLED') {
+                // Événements annulés : afficher le bouton de réactivation
+                setIsReadOnly(true);
+                setShowReactivateButton(true);
+            } else {
+                // Événements à venir ou en cours : mode édition
+                setIsReadOnly(false);
+                setShowReactivateButton(false);
+            }
+
             setLoading(false);
         } catch (err) {
             console.error(err);
-            alert("Impossible de charger l'événement");
+            showSnackbar("Impossible de charger l'événement", 'error');
             setLoading(false);
         }
-    }, []);
+    }, [calculateEventStatus]);
 
     const checkChurchAndEvents = useCallback(async () => {
         setLoading(true);
@@ -443,18 +535,10 @@ export default function MyEvents() {
         try {
             const { data } = await api.get(`/church/events/${id}`);
 
-            // Debug: log the datetime values
-            console.log('🔍 Loading event for edit:', {
-                start_datetime: data.start_datetime,
-                end_datetime: data.end_datetime
-            });
-
             // Detect if the event is all-day based on times (00:00 to 23:59)
             const isAllDay = data.start_datetime && data.end_datetime
                 ? isAllDayEvent(data.start_datetime, data.end_datetime)
                 : false;
-
-            console.log('🔍 Is all-day event?', isAllDay);
 
             setFormData({
                 ...initialFormState,
@@ -473,29 +557,23 @@ export default function MyEvents() {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         } catch (err) {
             console.error(err);
-            alert("Impossible de charger l'événement");
+            showSnackbar("Impossible de charger l'événement", 'error');
         }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        console.log('🔴 handleSubmit appelé. Step actuel:', activeStep, 'Dernier step:', steps.length - 1);
-
         // Ne soumettre que si on est au dernier step (Récapitulatif)
         if (activeStep !== steps.length - 1) {
-            console.log('❌ Submit bloqué - pas au dernier step. Step actuel:', activeStep);
             return;
         }
 
         // Bloquer la soumission si le step vient juste de changer (protection contre les événements en cascade)
         const timeSinceStepChange = Date.now() - lastStepChangeTime;
         if (timeSinceStepChange < 500) {
-            console.log('❌ Submit bloqué - step vient de changer il y a', timeSinceStepChange, 'ms. Attente de 500ms minimum.');
             return;
         }
-
-        console.log('✅ Submit autorisé - au dernier step et délai respecté');
 
         setLoading(true);
         try {
@@ -523,24 +601,24 @@ export default function MyEvents() {
 
             if (isAdminMode) {
                 await api.put(`/admin/events/${editingId}`, payload);
-                alert('Événement mis à jour avec succès !');
+                showSnackbar('Événement mis à jour avec succès !', 'success');
                 const timeoutId = setTimeout(() => navigate('/dashboard/admin/events'), 1500);
                 timeoutsRef.current.push(timeoutId);
             } else {
                 const churchRes = await api.get('/church/my-church');
                 const churchId = churchRes.data.id;
                 if (!churchId) {
-                    alert("Veuillez d'abord créer votre fiche église.");
+                    showSnackbar("Veuillez d'abord créer votre fiche église.", 'warning');
                     setLoading(false);
                     return;
                 }
                 const pastorPayload = { ...payload, church_id: churchId };
                 if (editingId) {
                     await api.put(`/church/events/${editingId}`, pastorPayload);
-                    alert('Événement mis à jour avec succès !');
+                    showSnackbar('Événement mis à jour avec succès !', 'success');
                 } else {
                     await api.post('/church/events', pastorPayload);
-                    alert('Événement créé avec succès !');
+                    showSnackbar('Événement créé avec succès !', 'success');
                 }
                 setShowForm(false);
                 setEditingId(null);
@@ -553,10 +631,10 @@ export default function MyEvents() {
             const error = err as { response?: { data?: { errors?: Array<{ field: string; message: string }> } } };
             console.error('Erreur complète:', err);
             if (error.response?.data?.errors) {
-                const errorMessages = error.response.data.errors.map((e) => `${e.field}: ${e.message}`).join('\n');
-                alert(`Erreurs de validation:\n${errorMessages}`);
+                const errorMessages = error.response.data.errors.map((e) => `${e.field}: ${e.message}`).join(', ');
+                showSnackbar(`Erreurs de validation: ${errorMessages}`, 'error');
             } else {
-                alert('Erreur lors de la création');
+                showSnackbar('Erreur lors de la création', 'error');
             }
         } finally {
             setLoading(false);
@@ -572,7 +650,7 @@ export default function MyEvents() {
 
     const handleCancelEvent = async () => {
         if (!cancelEventId || !cancellationReason.trim() || cancellationReason.trim().length < 10) {
-            alert('Le motif d\'annulation doit contenir au moins 10 caractères');
+            showSnackbar('Le motif d\'annulation doit contenir au moins 10 caractères', 'error');
             return;
         }
 
@@ -581,36 +659,55 @@ export default function MyEvents() {
             await api.post(`/church/events/${cancelEventId}/cancel`, {
                 cancellation_reason: cancellationReason.trim()
             });
-            alert('Événement annulé avec succès !');
+            showSnackbar('Événement annulé avec succès !', 'success');
             setCancelDialogOpen(false);
             setCancelEventId(null);
             setCancellationReason('');
             checkChurchAndEvents();
         } catch (err: any) {
             console.error('Erreur lors de l\'annulation:', err);
-            alert(err.response?.data?.message || 'Erreur lors de l\'annulation de l\'événement');
+            showSnackbar(err.response?.data?.message || 'Erreur lors de l\'annulation de l\'événement', 'error');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleReactivateEvent = async (eventId: number) => {
-        if (!window.confirm('Voulez-vous vraiment réactiver cet événement ?')) {
-            return;
-        }
+    const handleReactivateEvent = async (eventId?: number) => {
+        const targetEventId = eventId || editingId;
 
-        try {
-            setLoading(true);
-            setMenuAnchor(null);
-            await api.post(`/church/events/${eventId}/reactivate`);
-            alert('Événement réactivé avec succès !');
-            checkChurchAndEvents();
-        } catch (err: any) {
-            console.error('Erreur lors de la réactivation:', err);
-            alert(err.response?.data?.message || 'Erreur lors de la réactivation de l\'événement');
-        } finally {
-            setLoading(false);
-        }
+        if (!targetEventId) return;
+
+        showConfirmDialog(
+            'Confirmer la réactivation',
+            'Voulez-vous vraiment réactiver cet événement ?',
+            async () => {
+                try {
+                    setLoading(true);
+                    setMenuAnchor(null);
+
+                    // Utiliser l'endpoint admin si on est en mode admin (editing), sinon utiliser l'endpoint church
+                    const endpoint = editingId && !eventId
+                        ? `/admin/events/${targetEventId}/reactivate`
+                        : `/church/events/${targetEventId}/reactivate`;
+
+                    await api.post(endpoint);
+                    showSnackbar('Événement réactivé avec succès !', 'success');
+
+                    // Si on édite l'événement, recharger les données
+                    if (editingId && !eventId) {
+                        await loadEventForEdit(targetEventId);
+                    } else {
+                        // Sinon, recharger la liste des événements
+                        checkChurchAndEvents();
+                    }
+                } catch (err: any) {
+                    console.error('Erreur lors de la réactivation:', err);
+                    showSnackbar(err.response?.data?.message || 'Erreur lors de la réactivation de l\'événement', 'error');
+                } finally {
+                    setLoading(false);
+                }
+            }
+        );
     };
 
     // Filter events by status and search query (memoized for performance)
@@ -1710,7 +1807,6 @@ export default function MyEvents() {
                         // La soumission doit se faire uniquement via le clic sur le bouton "Publier"
                         if (e.key === 'Enter') {
                             e.preventDefault();
-                            console.log('⚠️ Touche Entrée bloquée. Utilisez le bouton pour soumettre.');
                         }
                     }}
                 >
@@ -1729,13 +1825,25 @@ export default function MyEvents() {
                             )}
 
                             {/* Read-only mode alert */}
-                            {isReadOnly && (
+                            {isReadOnly && eventStatus === 'COMPLETED' && (
                                 <Alert severity="info" icon={<CheckCircleIcon />} sx={{ mb: 3 }}>
                                     <Typography variant="subtitle1" fontWeight="bold">
                                         Mode consultation uniquement
                                     </Typography>
                                     <Typography variant="body2">
                                         Cet événement est terminé et ne peut plus être modifié.
+                                    </Typography>
+                                </Alert>
+                            )}
+
+                            {isReadOnly && eventStatus === 'CANCELLED' && (
+                                <Alert severity="warning" icon={<CancelIcon />} sx={{ mb: 3 }}>
+                                    <Typography variant="subtitle1" fontWeight="bold">
+                                        Événement annulé
+                                    </Typography>
+                                    <Typography variant="body2">
+                                        Cet événement a été annulé. Utilisez le bouton "Réactiver l'événement" ci-dessous pour le modifier à nouveau.
+                                        {formData.cancellation_reason && ` Motif d'annulation : ${formData.cancellation_reason}`}
                                     </Typography>
                                 </Alert>
                             )}
@@ -1822,6 +1930,47 @@ export default function MyEvents() {
                                             Suivant
                                         </Button>
                                     )}
+                                </Box>
+                            )}
+
+                            {/* Read-only Mode Buttons */}
+                            {isReadOnly && (
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pt: 4, mt: 4, borderTop: 1, borderColor: 'divider' }}>
+                                    {eventStatus === 'COMPLETED' && (
+                                        <Alert severity="info" sx={{ flex: 1, mr: 2 }}>
+                                            Cet événement est terminé et ne peut plus être modifié.
+                                        </Alert>
+                                    )}
+
+                                    {eventStatus === 'CANCELLED' && (
+                                        <Alert severity="warning" sx={{ flex: 1, mr: 2 }}>
+                                            Cet événement a été annulé. Réactivez-le pour pouvoir le modifier.
+                                        </Alert>
+                                    )}
+
+                                    <Box sx={{ display: 'flex', gap: 2 }}>
+                                        {showReactivateButton && (
+                                            <Button
+                                                type="button"
+                                                variant="contained"
+                                                color="warning"
+                                                onClick={() => handleReactivateEvent()}
+                                                disabled={loading}
+                                                startIcon={<CheckCircleIcon />}
+                                            >
+                                                Réactiver l'événement
+                                            </Button>
+                                        )}
+
+                                        <Button
+                                            type="button"
+                                            variant="outlined"
+                                            onClick={() => navigate('/dashboard/admin/events')}
+                                            startIcon={<ArrowBackIcon />}
+                                        >
+                                            Retour à la liste
+                                        </Button>
+                                    </Box>
                                 </Box>
                             )}
                         </CardContent>
@@ -2573,6 +2722,44 @@ export default function MyEvents() {
                         disabled={!cancellationReason.trim() || cancellationReason.trim().length < 10 || loading}
                     >
                         {loading ? 'Annulation...' : 'Confirmer l\'annulation'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Snackbar for notifications */}
+            <Snackbar
+                open={snackbarOpen}
+                autoHideDuration={6000}
+                onClose={handleCloseSnackbar}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert onClose={handleCloseSnackbar} severity={snackbarSeverity} sx={{ width: '100%' }}>
+                    {snackbarMessage}
+                </Alert>
+            </Snackbar>
+
+            {/* Confirmation Dialog */}
+            <Dialog
+                open={confirmDialogOpen}
+                onClose={handleConfirmDialogClose}
+                maxWidth="sm"
+                fullWidth
+            >
+                <DialogTitle>{confirmDialogTitle}</DialogTitle>
+                <DialogContent>
+                    <Typography>{confirmDialogMessage}</Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleConfirmDialogClose}>
+                        Annuler
+                    </Button>
+                    <Button
+                        onClick={handleConfirmDialogConfirm}
+                        color="primary"
+                        variant="contained"
+                        autoFocus
+                    >
+                        Confirmer
                     </Button>
                 </DialogActions>
             </Dialog>

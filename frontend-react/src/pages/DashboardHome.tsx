@@ -235,9 +235,6 @@ export default function DashboardHome() {
         </Box>
     );
 
-    console.log('📊 Stats reçues:', stats);
-    console.log('📈 Graphiques:', stats.charts);
-
     // Trouver le nombre d'événements en cours
     const ongoingEvents = stats.charts.events_status.find((s: any) => s.name === 'En cours')?.count || 0;
 
@@ -256,13 +253,6 @@ export default function DashboardHome() {
         const c = stats.charts.growth.churches.find((x: any) => x.month === month);
         return c ? c.count : 0;
     });
-
-    console.log('📊 Growth Months:', growthMonths);
-    console.log('📊 Users Data:', usersData);
-    console.log('📊 Churches Data:', churchesData);
-    console.log('📊 Denominations:', stats.charts.by_denomination);
-    console.log('📊 Cities:', stats.charts.churches_by_city);
-    console.log('📊 Events Status:', stats.charts.events_status);
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
