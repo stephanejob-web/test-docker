@@ -39,7 +39,8 @@ router.get('/my-church', async (req, res) => {
         const [schedules] = await db.query('SELECT * FROM church_schedules WHERE church_id = ?', [church.id]);
 
         // Récupérer allow_network_visibility de l'admin
-        const [adminData] = await db.query('SELECT allow_network_visibility FROM admins WHERE id = ?', [req.user.id]);
+        const adminResult = await db.query('SELECT allow_network_visibility FROM admins WHERE id = ?', [req.user.id]);
+        const adminData = adminResult && adminResult[0] ? adminResult[0] : [];
 
         res.json({
             ...church,
