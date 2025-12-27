@@ -34,7 +34,8 @@ import {
     Dialog,
     DialogTitle,
     DialogContent,
-    DialogActions
+    DialogActions,
+    Pagination
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -150,6 +151,8 @@ export default function MyEvents() {
     const [isReadOnly, setIsReadOnly] = useState(false);
     const [statusFilter, setStatusFilter] = useState<string>('ALL');
     const [searchQuery, setSearchQuery] = useState<string>('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 9; // 9 events per page (3x3 grid)
 
     // Validation errors state
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -582,6 +585,28 @@ export default function MyEvents() {
                 event.address?.toLowerCase().includes(query)
             );
         });
+
+    // Pagination logic
+    const totalPages = Math.ceil(filteredEvents.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedEvents = filteredEvents.slice(startIndex, endIndex);
+
+    // Reset to page 1 when filters change
+    const handleStatusFilterChange = (status: string) => {
+        setStatusFilter(status);
+        setCurrentPage(1);
+    };
+
+    const handleSearchChange = (query: string) => {
+        setSearchQuery(query);
+        setCurrentPage(1);
+    };
+
+    const handlePageChange = (_event: React.ChangeEvent<unknown>, value: number) => {
+        setCurrentPage(value);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 
     // Step content renderers
     const renderStepContent = () => {
@@ -1362,7 +1387,7 @@ export default function MyEvents() {
                         fullWidth
                         placeholder="Rechercher un événement (titre, ville, adresse...)"
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={(e) => handleSearchChange(e.target.value)}
                         InputProps={{
                             startAdornment: (
                                 <InputAdornment position="start">
@@ -1395,35 +1420,35 @@ export default function MyEvents() {
                 <Box sx={{ mb: 3, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                     <Chip
                         label={`Tous (${events.length})`}
-                        onClick={() => setStatusFilter('ALL')}
+                        onClick={() => handleStatusFilterChange('ALL')}
                         color={statusFilter === 'ALL' ? 'primary' : 'default'}
                         variant={statusFilter === 'ALL' ? 'filled' : 'outlined'}
                     />
                     <Chip
                         label={`À venir (${events.filter(e => e.status === 'UPCOMING').length})`}
                         icon={<ScheduleIcon />}
-                        onClick={() => setStatusFilter('UPCOMING')}
+                        onClick={() => handleStatusFilterChange('UPCOMING')}
                         color={statusFilter === 'UPCOMING' ? 'primary' : 'default'}
                         variant={statusFilter === 'UPCOMING' ? 'filled' : 'outlined'}
                     />
                     <Chip
                         label={`En cours (${events.filter(e => e.status === 'ONGOING').length})`}
                         icon={<PlayCircleIcon />}
-                        onClick={() => setStatusFilter('ONGOING')}
+                        onClick={() => handleStatusFilterChange('ONGOING')}
                         color={statusFilter === 'ONGOING' ? 'success' : 'default'}
                         variant={statusFilter === 'ONGOING' ? 'filled' : 'outlined'}
                     />
                     <Chip
                         label={`Terminés (${events.filter(e => e.status === 'COMPLETED').length})`}
                         icon={<CheckCircleIcon />}
-                        onClick={() => setStatusFilter('COMPLETED')}
+                        onClick={() => handleStatusFilterChange('COMPLETED')}
                         color={statusFilter === 'COMPLETED' ? 'default' : 'default'}
                         variant={statusFilter === 'COMPLETED' ? 'filled' : 'outlined'}
                     />
                     <Chip
                         label={`Annulés (${events.filter(e => e.status === 'CANCELLED').length})`}
                         icon={<CancelIcon />}
-                        onClick={() => setStatusFilter('CANCELLED')}
+                        onClick={() => handleStatusFilterChange('CANCELLED')}
                         color={statusFilter === 'CANCELLED' ? 'error' : 'default'}
                         variant={statusFilter === 'CANCELLED' ? 'filled' : 'outlined'}
                     />
@@ -1546,7 +1571,7 @@ export default function MyEvents() {
                 </Box>
             ) : viewMode === 'grid' ? (
                 <Grid container spacing={3}>
-                    {filteredEvents.length === 0 ? (
+                    {paginatedEvents.length === 0 ? (
                         <Grid size={{ xs: 12 }}>
                             <Box sx={{ textAlign: 'center', py: 8 }}>
                                 <SearchIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
@@ -1572,7 +1597,7 @@ export default function MyEvents() {
                                 )}
                             </Box>
                         </Grid>
-                    ) : filteredEvents.map((event) => (
+                    ) : paginatedEvents.map((event) => (
                         <Grid size={{ xs: 12, md: 6, lg: 4 }} key={event.id}>
                             <Card sx={{
                                 overflow: 'hidden',
@@ -1805,7 +1830,7 @@ export default function MyEvents() {
             ) : (
                 // List View
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {filteredEvents.length === 0 ? (
+                    {paginatedEvents.length === 0 ? (
                         <Box sx={{ textAlign: 'center', py: 8 }}>
                             <SearchIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
                             <Typography variant="h6" color="text.secondary">
@@ -1829,7 +1854,7 @@ export default function MyEvents() {
                                 </Button>
                             )}
                         </Box>
-                    ) : filteredEvents.map((event) => (
+                    ) : paginatedEvents.map((event) => (
                         <Card key={event.id} sx={{
                             overflow: 'hidden',
                             transition: 'all 0.2s',
@@ -2067,6 +2092,22 @@ export default function MyEvents() {
                             </Box>
                         </CardContent>
                     </Card>
+                </Box>
+            )}
+
+            {/* Pagination */}
+            {!showForm && filteredEvents.length > 0 && totalPages > 1 && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+                    <Pagination
+                        count={totalPages}
+                        page={currentPage}
+                        onChange={handlePageChange}
+                        variant="outlined"
+                        color="primary"
+                        size="large"
+                        showFirstButton
+                        showLastButton
+                    />
                 </Box>
             )}
 
