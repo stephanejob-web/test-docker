@@ -1470,6 +1470,18 @@ export default function MyEvents() {
                 >
                     <Card sx={{ mb: 3 }}>
                         <CardContent sx={{ p: 4 }}>
+                            {/* Information importante pour la création d'événement */}
+                            {!editingId && !isReadOnly && (
+                                <Alert severity="info" icon={<InfoIcon />} sx={{ mb: 3 }}>
+                                    <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
+                                        Information importante
+                                    </Typography>
+                                    <Typography variant="body2">
+                                        Une fois créé, un événement ne peut pas être supprimé définitivement. Toutefois, vous aurez toujours la possibilité de l'annuler si nécessaire en indiquant un motif d'annulation. Les événements annulés restent visibles dans votre historique pour garantir la traçabilité.
+                                    </Typography>
+                                </Alert>
+                            )}
+
                             {/* Read-only mode alert */}
                             {isReadOnly && (
                                 <Alert severity="info" icon={<CheckCircleIcon />} sx={{ mb: 3 }}>
