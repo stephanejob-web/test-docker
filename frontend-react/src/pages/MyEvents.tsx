@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../lib/axios';
+import { formatDistanceToNow } from 'date-fns';
+import { fr } from 'date-fns/locale';
 import {
     Box,
     Typography,
@@ -61,7 +63,8 @@ import {
     ViewList as ViewListIcon,
     Schedule as ScheduleIcon,
     PlayCircle as PlayCircleIcon,
-    Search as SearchIcon
+    Search as SearchIcon,
+    AccessTime as AccessTimeIcon
 } from '@mui/icons-material';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import DateTimeInput from '../components/DateTimeInput';
@@ -606,6 +609,17 @@ export default function MyEvents() {
     const handlePageChange = (_event: React.ChangeEvent<unknown>, value: number) => {
         setCurrentPage(value);
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    // Helper function to get relative time
+    const getRelativeTime = (dateTimeString: string) => {
+        const dateStr = typeof dateTimeString === 'string'
+            ? dateTimeString.replace(' ', 'T')
+            : dateTimeString;
+        return formatDistanceToNow(new Date(dateStr), {
+            addSuffix: true,
+            locale: fr
+        });
     };
 
     // Step content renderers
@@ -1752,6 +1766,42 @@ export default function MyEvents() {
                                                 {new Date(event.start_datetime).toLocaleDateString()} à {new Date(event.start_datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             </Typography>
                                         </Box>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 3, mt: 0.5 }}>
+                                            <Box sx={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: 0.75,
+                                                bgcolor: 'white',
+                                                px: 2,
+                                                py: 1,
+                                                borderRadius: 3,
+                                                border: 2,
+                                                borderColor: event.status === 'UPCOMING' ? 'primary.main' : 'grey.300',
+                                                boxShadow: event.status === 'UPCOMING'
+                                                    ? '0 4px 12px rgba(25, 118, 210, 0.2)'
+                                                    : '0 2px 8px rgba(0, 0, 0, 0.08)',
+                                                transition: 'all 0.3s ease',
+                                                '&:hover': {
+                                                    transform: 'translateY(-2px)',
+                                                    boxShadow: event.status === 'UPCOMING'
+                                                        ? '0 6px 16px rgba(25, 118, 210, 0.3)'
+                                                        : '0 4px 12px rgba(0, 0, 0, 0.12)'
+                                                }
+                                            }}>
+                                                <AccessTimeIcon sx={{
+                                                    fontSize: 20,
+                                                    color: event.status === 'UPCOMING' ? 'primary.main' : 'text.secondary'
+                                                }} />
+                                                <Typography sx={{
+                                                    fontSize: '0.9rem',
+                                                    fontWeight: 700,
+                                                    color: event.status === 'UPCOMING' ? 'primary.main' : 'text.secondary',
+                                                    letterSpacing: '0.3px'
+                                                }}>
+                                                    {getRelativeTime(event.start_datetime)}
+                                                </Typography>
+                                            </Box>
+                                        </Box>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                             <LocationOnIcon sx={{ fontSize: 16, color: 'secondary.main' }} />
                                             <Typography variant="body2" color="text.secondary">
@@ -2014,6 +2064,40 @@ export default function MyEvents() {
                                                     day: 'numeric'
                                                 })} à {new Date(event.start_datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             </Typography>
+                                            <Box sx={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: 0.75,
+                                                bgcolor: 'white',
+                                                px: 2,
+                                                py: 1,
+                                                borderRadius: 3,
+                                                border: 2,
+                                                borderColor: event.status === 'UPCOMING' ? 'primary.main' : 'grey.300',
+                                                boxShadow: event.status === 'UPCOMING'
+                                                    ? '0 4px 12px rgba(25, 118, 210, 0.2)'
+                                                    : '0 2px 8px rgba(0, 0, 0, 0.08)',
+                                                transition: 'all 0.3s ease',
+                                                '&:hover': {
+                                                    transform: 'translateY(-2px)',
+                                                    boxShadow: event.status === 'UPCOMING'
+                                                        ? '0 6px 16px rgba(25, 118, 210, 0.3)'
+                                                        : '0 4px 12px rgba(0, 0, 0, 0.12)'
+                                                }
+                                            }}>
+                                                <AccessTimeIcon sx={{
+                                                    fontSize: 20,
+                                                    color: event.status === 'UPCOMING' ? 'primary.main' : 'text.secondary'
+                                                }} />
+                                                <Typography sx={{
+                                                    fontSize: '0.9rem',
+                                                    fontWeight: 700,
+                                                    color: event.status === 'UPCOMING' ? 'primary.main' : 'text.secondary',
+                                                    letterSpacing: '0.3px'
+                                                }}>
+                                                    {getRelativeTime(event.start_datetime)}
+                                                </Typography>
+                                            </Box>
                                         </Box>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                             <LocationOnIcon sx={{ fontSize: 18, color: 'secondary.main' }} />
