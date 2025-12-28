@@ -13,6 +13,7 @@ app.use(cors());
 app.use(express.json());
 
 // Import des routes
+const publicMapRoutes = require('./routes/publicMapRoutes');
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const churchRoutes = require('./routes/churchRoutes');
@@ -24,6 +25,10 @@ const path = require('path');
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Utilisation des routes
+// Routes publiques (sans authentification)
+app.use('/api/public', publicMapRoutes);
+
+// Routes authentifiées
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/church', churchRoutes);
