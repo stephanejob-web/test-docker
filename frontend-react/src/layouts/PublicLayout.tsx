@@ -12,21 +12,13 @@ import {
 import { Login as LoginIcon } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 
-interface ElevationScrollProps {
-    children: React.ReactElement;
-}
-
 /**
- * Optimisation: Elevation sur scroll pour meilleure UX
+ * Hook personnalisé pour détecter le scroll
  */
-function ElevationScroll({ children }: ElevationScrollProps) {
-    const trigger = useScrollTrigger({
+function useElevationScroll() {
+    return useScrollTrigger({
         disableHysteresis: true,
         threshold: 0
-    });
-
-    return React.cloneElement(children, {
-        elevation: trigger ? 4 : 0
     });
 }
 
@@ -37,6 +29,7 @@ function ElevationScroll({ children }: ElevationScrollProps) {
 const PublicLayout: React.FC = React.memo(() => {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const trigger = useElevationScroll();
 
     const handleLoginClick = React.useCallback(() => {
         navigate('/login');
@@ -52,15 +45,15 @@ const PublicLayout: React.FC = React.memo(() => {
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-            <ElevationScroll>
-                <AppBar
-                    position="fixed"
-                    sx={{
-                        backgroundColor: 'white',
-                        color: 'text.primary',
-                        zIndex: (theme) => theme.zIndex.drawer + 1
-                    }}
-                >
+            <AppBar
+                position="fixed"
+                elevation={trigger ? 4 : 0}
+                sx={{
+                    backgroundColor: 'white',
+                    color: 'text.primary',
+                    zIndex: (theme) => theme.zIndex.drawer + 1
+                }}
+            >
                     <Container maxWidth={false} disableGutters>
                         <Toolbar sx={{ px: { xs: 2, sm: 3 } }}>
                             {/* Logo / Titre */}
@@ -111,7 +104,6 @@ const PublicLayout: React.FC = React.memo(() => {
                         </Toolbar>
                     </Container>
                 </AppBar>
-            </ElevationScroll>
 
             {/* Spacer pour compenser l'AppBar fixe */}
             <Toolbar />

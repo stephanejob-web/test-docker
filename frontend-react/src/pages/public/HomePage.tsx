@@ -1,12 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     Box,
-    Drawer,
     Fab,
     Alert,
-    CircularProgress,
-    useTheme,
-    useMediaQuery
+    CircularProgress
 } from '@mui/material';
 import { MyLocation as MyLocationIcon } from '@mui/icons-material';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
@@ -82,9 +79,6 @@ const createUserIcon = () => L.divIcon({
  * Optimisée avec useMemo, useCallback et React.memo
  */
 const HomePage: React.FC = () => {
-    const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-
     // États
     const [churches, setChurches] = useState<Church[]>([]);
     const [events, setEvents] = useState<Event[]>([]);
@@ -92,7 +86,6 @@ const HomePage: React.FC = () => {
     const [mapCenter, setMapCenter] = useState<[number, number]>([48.8566, 2.3522]); // Paris par défaut
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [drawerOpen, setDrawerOpen] = useState(!isMobile);
 
     // Filtres
     const [filters] = useState<MapFilters>({
@@ -344,24 +337,6 @@ const HomePage: React.FC = () => {
                     {error}
                 </Alert>
             )}
-
-            {/* Panel de résultats (à développer) */}
-            <Drawer
-                anchor={isMobile ? 'bottom' : 'left'}
-                open={drawerOpen}
-                variant="persistent"
-                sx={{
-                    display: { xs: 'none', md: 'block' }, // Caché pour l'instant
-                    '& .MuiDrawer-paper': {
-                        width: { md: 400 },
-                        height: { xs: '50vh', md: '100vh' },
-                        top: { md: 64 },
-                        boxShadow: 3
-                    }
-                }}
-            >
-                {/* Contenu du panel à ajouter */}
-            </Drawer>
         </Box>
     );
 };
