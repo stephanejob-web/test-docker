@@ -163,7 +163,7 @@ export default function AddressAutocomplete({
                 >
                     <List disablePadding>
                         {suggestions.map((suggestion, index) => (
-                            <ListItem key={index} disablePadding>
+                            <ListItem key={`${suggestion.label}-${suggestion.postcode}-${index}`} disablePadding>
                                 <ListItemButton onClick={() => handleSelectAddress(suggestion)}>
                                     <LocationOnIcon sx={{ mr: 2, color: 'primary.main' }} />
                                     <ListItemText

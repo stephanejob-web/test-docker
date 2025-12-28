@@ -48,16 +48,17 @@ export default function DateTimeInput({
     useEffect(() => {
         if (dateOnly) {
             // In date-only mode, just pass the date
-            if (date) {
-                onChange(date);
+            const newValue = date || '';
+            if (newValue !== value) {
+                onChange(newValue);
             }
         } else {
-            if (date && time) {
-                onChange(`${date}T${time}`);
-            } else if (date || time) {
-                onChange(date && time ? `${date}T${time}` : '');
+            const newValue = (date && time) ? `${date}T${time}` : '';
+            if (newValue !== value) {
+                onChange(newValue);
             }
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [date, time, dateOnly]);
 
     const handleQuickAction = (action: 'today' | 'tomorrow' | 'next-week') => {

@@ -206,7 +206,7 @@ const HomePage: React.FC = () => {
                 userLat: center.lat,
                 userLng: center.lng,
                 search: search || undefined,
-                limit: 500
+                limit: 100  // Optimisé pour 3000 églises
             });
 
             setChurches(data.churches);
@@ -365,6 +365,8 @@ const HomePage: React.FC = () => {
             <MapContainer
                 center={mapCenter}
                 zoom={mapZoom}
+                minZoom={6}
+                maxZoom={18}
                 style={{ height: '100%', width: '100%' }}
                 zoomControl={false}
             >
@@ -391,8 +393,9 @@ const HomePage: React.FC = () => {
                     </Marker>
                 )}
 
-                {/* Marqueurs églises avec clustering */}
+                {/* Marqueurs églises et événements avec clustering unifié */}
                 <MarkerClusterGroup chunkedLoading>
+                    {/* Églises */}
                     {filteredChurches.map((church) => (
                         <Marker
                             key={`church-${church.id}`}
@@ -421,10 +424,8 @@ const HomePage: React.FC = () => {
                             </Popup>
                         </Marker>
                     ))}
-                </MarkerClusterGroup>
 
-                {/* Marqueurs événements avec clustering */}
-                <MarkerClusterGroup chunkedLoading>
+                    {/* Événements */}
                     {filteredEvents.map((event) => (
                         <Marker
                             key={`event-${event.id}`}

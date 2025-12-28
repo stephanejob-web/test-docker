@@ -195,13 +195,35 @@ export default function MyEvents() {
     }, []);
 
     // Stepper configuration
-    const steps = [
+    const steps = useMemo(() => [
         { label: 'Informations générales', icon: <DescriptionIcon /> },
         { label: 'Date & Heure', icon: <CalendarMonthIcon /> },
         { label: 'Lieu & Localisation', icon: <LocationOnIcon /> },
         { label: 'Options & Détails', icon: <SettingsIcon /> },
         { label: 'Récapitulatif', icon: <VisibilityIcon /> }
-    ];
+    ], []);
+
+    // Custom StepIcon component (mémorisé pour éviter les remontages)
+    const CustomStepIcon = useCallback(({ index, icon }: { index: number; icon: React.ReactNode }) => {
+        return (
+            <Box
+                sx={{
+                    width: { xs: 36, sm: 48 },
+                    height: { xs: 36, sm: 48 },
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    bgcolor: activeStep === index ? 'primary.main' : activeStep > index ? 'success.main' : 'action.disabledBackground',
+                    color: activeStep >= index ? 'white' : 'text.disabled',
+                    transition: 'all 0.3s ease',
+                    boxShadow: activeStep === index ? 4 : 0
+                }}
+            >
+                {activeStep > index ? <CheckCircleIcon /> : icon}
+            </Box>
+        );
+    }, [activeStep]);
 
     // Validation functions
     const validateStep1 = () => {
@@ -1880,26 +1902,9 @@ export default function MyEvents() {
                             {/* Stepper */}
                             <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 4 }}>
                                 {steps.map((step, index) => (
-                                    <Step key={step.label}>
+                                    <Step key={`step-${index}-${step.label}`}>
                                         <StepLabel
-                                            StepIconComponent={() => (
-                                                <Box
-                                                    sx={{
-                                                        width: { xs: 36, sm: 48 },
-                                                        height: { xs: 36, sm: 48 },
-                                                        borderRadius: '50%',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        bgcolor: activeStep === index ? 'primary.main' : activeStep > index ? 'success.main' : 'action.disabledBackground',
-                                                        color: activeStep >= index ? 'white' : 'text.disabled',
-                                                        transition: 'all 0.3s ease',
-                                                        boxShadow: activeStep === index ? 4 : 0
-                                                    }}
-                                                >
-                                                    {activeStep > index ? <CheckCircleIcon /> : step.icon}
-                                                </Box>
-                                            )}
+                                            StepIconComponent={() => <CustomStepIcon index={index} icon={step.icon} />}
                                         >
                                             <Typography
                                                 variant="caption"
