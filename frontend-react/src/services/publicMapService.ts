@@ -14,17 +14,39 @@ import type {
  */
 
 interface FetchChurchesParams {
+    // Bounding box (prioritaire)
+    north?: number;
+    south?: number;
+    east?: number;
+    west?: number;
+    // Distance radius (fallback)
     latitude?: number;
     longitude?: number;
     radius?: number;
+    // Point de référence pour calcul de distance
+    userLat?: number;
+    userLng?: number;
+    // Autres filtres
     denominationId?: number;
+    search?: string;
     limit?: number;
 }
 
 interface FetchEventsParams {
+    // Bounding box (prioritaire)
+    north?: number;
+    south?: number;
+    east?: number;
+    west?: number;
+    // Distance radius (fallback)
     latitude?: number;
     longitude?: number;
     radius?: number;
+    // Point de référence pour calcul de distance
+    userLat?: number;
+    userLng?: number;
+    // Autres filtres
+    search?: string;
     limit?: number;
 }
 
@@ -38,10 +60,21 @@ export const fetchChurches = async (
     try {
         const { data } = await api.get<ApiResponse<Church[]>>('/public/churches', {
             params: {
+                // Bounding box
+                north: params.north,
+                south: params.south,
+                east: params.east,
+                west: params.west,
+                // Distance radius
                 latitude: params.latitude,
                 longitude: params.longitude,
                 radius: params.radius || 50,
+                // Point de référence pour distance
+                userLat: params.userLat,
+                userLng: params.userLng,
+                // Autres filtres
                 denomination_id: params.denominationId,
+                search: params.search,
                 limit: params.limit || 100
             }
         });
@@ -96,9 +129,20 @@ export const fetchEvents = async (
     try {
         const { data } = await api.get<ApiResponse<Event[]>>('/public/events', {
             params: {
+                // Bounding box
+                north: params.north,
+                south: params.south,
+                east: params.east,
+                west: params.west,
+                // Distance radius
                 latitude: params.latitude,
                 longitude: params.longitude,
                 radius: params.radius || 50,
+                // Point de référence pour distance
+                userLat: params.userLat,
+                userLng: params.userLng,
+                // Autres filtres
+                search: params.search,
                 limit: params.limit || 100
             }
         });

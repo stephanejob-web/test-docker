@@ -19,6 +19,8 @@ router.get('/churches', [
     query('latitude').optional().isFloat({ min: -90, max: 90 }),
     query('longitude').optional().isFloat({ min: -180, max: 180 }),
     query('radius').optional().isInt({ min: 1, max: 1000 }),
+    query('userLat').optional().isFloat({ min: -90, max: 90 }),
+    query('userLng').optional().isFloat({ min: -180, max: 180 }),
     query('denomination_id').optional().isInt(),
     query('search').optional().isString(),
     query('limit').optional().isInt({ min: 1, max: 500 })
@@ -27,6 +29,7 @@ router.get('/churches', [
         const {
             north, south, east, west,
             latitude, longitude, radius = 50,
+            userLat, userLng,
             denomination_id, search,
             limit = 200
         } = req.query;
@@ -47,6 +50,16 @@ router.get('/churches', [
             whereConditions.push('ST_X(c.location) BETWEEN ? AND ?');
             params.push(parseFloat(south), parseFloat(north));
             params.push(parseFloat(west), parseFloat(east));
+
+            // Calculer la distance si userLat et userLng sont fournis
+            console.log('🔍 Checking userLat && userLng:', { userLat, userLng, condition: !!(userLat && userLng) });
+            if (userLat && userLng) {
+                const userPoint = `POINT(${userLng} ${userLat})`;
+                selectDistance = `,
+                    ST_Distance_Sphere(c.location, ST_GeomFromText('${userPoint}')) / 1000 as distance_km`;
+                orderBy = 'ORDER BY distance_km ASC';
+                console.log('✅ Distance calculation enabled:', { selectDistance, orderBy });
+            }
         }
         // Mode 2: Distance radius (fallback)
         else if (latitude && longitude) {
@@ -77,7 +90,7 @@ router.get('/churches', [
 
         const whereClause = whereConditions.join(' AND ');
 
-        // Requête principale
+        // Requête principale - OPTIMISÉE : uniquement churches (pas de JOIN avec church_details)
         const query = `
             SELECT
                 c.id,
@@ -85,16 +98,11 @@ router.get('/churches', [
                 ST_X(c.location) as longitude,
                 ST_Y(c.location) as latitude,
                 d.name as denomination_name,
-                cd.city,
-                cd.postal_code,
-                cd.address,
-                cd.logo_url,
                 CONCAT(a.first_name, ' ', a.last_name) as pastor_name
                 ${selectDistance}
             FROM churches c
             INNER JOIN admins a ON a.id = c.admin_id
             LEFT JOIN denominations d ON d.id = c.denomination_id
-            LEFT JOIN church_details cd ON cd.church_id = c.id
             WHERE ${whereClause}
             ${orderBy}
             LIMIT ?
@@ -227,6 +235,8 @@ router.get('/events', [
     query('latitude').optional().isFloat({ min: -90, max: 90 }),
     query('longitude').optional().isFloat({ min: -180, max: 180 }),
     query('radius').optional().isInt({ min: 1, max: 1000 }),
+    query('userLat').optional().isFloat({ min: -90, max: 90 }),
+    query('userLng').optional().isFloat({ min: -180, max: 180 }),
     query('search').optional().isString(),
     query('limit').optional().isInt({ min: 1, max: 500 })
 ], async (req, res) => {
@@ -234,6 +244,7 @@ router.get('/events', [
         const {
             north, south, east, west,
             latitude, longitude, radius = 50,
+            userLat, userLng,
             search,
             limit = 200
         } = req.query;
@@ -259,6 +270,17 @@ router.get('/events', [
             );
             params.push(parseFloat(south), parseFloat(north));
             params.push(parseFloat(west), parseFloat(east));
+
+            // Calculer la distance si userLat et userLng sont fournis
+            if (userLat && userLng) {
+                const userPoint = `POINT(${userLng} ${userLat})`;
+                selectDistance = `,
+                    ST_Distance_Sphere(
+                        COALESCE(e.event_location, c.location),
+                        ST_GeomFromText('${userPoint}')
+                    ) / 1000 as distance_km`;
+                orderBy = 'ORDER BY distance_km ASC, e.start_datetime ASC';
+            }
         }
         // Mode 2: Distance radius
         else if (latitude && longitude) {
@@ -355,10 +377,20 @@ router.get('/events/:id', [
                 ST_Y(COALESCE(e.event_location, c.location)) as latitude,
                 c.church_name,
                 c.id as church_id,
-                CONCAT(a.first_name, ' ', a.last_name) as organizer_name
+                c.denomination_id,
+                d.name as denomination_name,
+                CONCAT(a.first_name, ' ', a.last_name) as organizer_name,
+                a.first_name as pastor_first_name,
+                a.last_name as pastor_last_name,
+                a.email as pastor_email,
+                l.code as primary_language_code,
+                l.name_fr as primary_language_name,
+                l.flag_emoji as primary_language_flag
             FROM events e
             INNER JOIN admins a ON a.id = e.admin_id
             LEFT JOIN churches c ON c.id = e.church_id
+            LEFT JOIN denominations d ON d.id = c.denomination_id
+            LEFT JOIN languages l ON l.id = e.language_id
             WHERE e.id = ? AND e.cancelled_at IS NULL AND a.status = 'VALIDATED'
         `, [id]);
 
@@ -371,17 +403,92 @@ router.get('/events/:id', [
 
         const event = events[0];
 
-        // Détails supplémentaires
-        const [details] = await db.query(
+        // Détails de l'événement
+        const [eventDetails] = await db.query(
             'SELECT * FROM event_details WHERE event_id = ?',
             [id]
         );
+
+        // Traductions disponibles pour l'événement
+        const [translations] = await db.query(`
+            SELECT
+                l.code,
+                l.name_fr,
+                l.flag_emoji
+            FROM event_translations et
+            INNER JOIN languages l ON l.id = et.language_id
+            WHERE et.event_id = ?
+            ORDER BY l.display_order
+        `, [id]);
+
+        // Détails de l'église si elle existe
+        let churchDetails = null;
+        let churchSchedules = [];
+        let churchSocials = [];
+
+        if (event.church_id) {
+            // Détails de l'église
+            const [details] = await db.query(
+                'SELECT * FROM church_details WHERE church_id = ?',
+                [event.church_id]
+            );
+            churchDetails = details[0] || null;
+
+            // Horaires de l'église
+            const [schedules] = await db.query(`
+                SELECT
+                    cs.id,
+                    CASE cs.day_of_week
+                        WHEN 'MONDAY' THEN 'Lundi'
+                        WHEN 'TUESDAY' THEN 'Mardi'
+                        WHEN 'WEDNESDAY' THEN 'Mercredi'
+                        WHEN 'THURSDAY' THEN 'Jeudi'
+                        WHEN 'FRIDAY' THEN 'Vendredi'
+                        WHEN 'SATURDAY' THEN 'Samedi'
+                        WHEN 'SUNDAY' THEN 'Dimanche'
+                        ELSE cs.day_of_week
+                    END as day_of_week,
+                    cs.start_time,
+                    at.label_fr as activity_type
+                FROM church_schedules cs
+                LEFT JOIN activity_types at ON at.id = cs.activity_type_id
+                WHERE cs.church_id = ?
+                ORDER BY FIELD(cs.day_of_week, 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'),
+                         cs.start_time
+            `, [event.church_id]);
+            churchSchedules = schedules;
+
+            // Réseaux sociaux de l'église
+            const [socials] = await db.query(
+                'SELECT platform, url FROM church_socials WHERE church_id = ?',
+                [event.church_id]
+            );
+            churchSocials = socials;
+        }
 
         res.json({
             success: true,
             event: {
                 ...event,
-                details: details[0] || {}
+                details: eventDetails[0] || {},
+                primary_language: event.primary_language_code ? {
+                    code: event.primary_language_code,
+                    name: event.primary_language_name,
+                    flag: event.primary_language_flag
+                } : null,
+                translations: translations || [],
+                church: event.church_id ? {
+                    id: event.church_id,
+                    church_name: event.church_name,
+                    denomination_id: event.denomination_id,
+                    denomination_name: event.denomination_name,
+                    pastor_first_name: event.pastor_first_name,
+                    pastor_last_name: event.pastor_last_name,
+                    pastor_email: event.pastor_email,
+                    details: churchDetails,
+                    schedules: churchSchedules,
+                    socials: churchSocials
+                } : null
             }
         });
 

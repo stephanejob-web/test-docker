@@ -1,22 +1,37 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
     Box,
     Fab,
     Alert,
-    CircularProgress
+    CircularProgress,
+    useMediaQuery,
+    useTheme,
+    Snackbar,
+    Paper,
+    Typography,
+    IconButton
 } from '@mui/material';
-import { MyLocation as MyLocationIcon } from '@mui/icons-material';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import {
+    MyLocation as MyLocationIcon,
+    List as ListIcon,
+    Close as CloseIcon,
+    TouchApp as TouchAppIcon
+} from '@mui/icons-material';
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import '../../styles/leaflet.css';
-import type { Church, Event, UserLocation, MapFilters } from '../../types/publicMap';
+import type { Church, Event, UserLocation } from '../../types/publicMap';
 import {
     fetchChurchesAndEvents,
     getUserLocation,
     formatDistance
 } from '../../services/publicMapService';
+import SearchBar from '../../components/Map/SearchBar';
+import ResultsPanel from '../../components/Map/ResultsPanel';
+import ChurchDetailsModal from '../../components/Map/ChurchDetailsModal';
+import EventDetailsModal from '../../components/Map/EventDetailsModal';
 
 // Fix Leaflet default icon
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -49,6 +64,29 @@ const MapCenter: React.FC<MapCenterProps> = React.memo(({ center, zoom = 2 }) =>
 MapCenter.displayName = 'MapCenter';
 
 /**
+ * Composant pour gérer les événements de la carte (déplacement, zoom)
+ * Recharge automatiquement les données quand la carte bouge
+ */
+interface MapEventsHandlerProps {
+    onBoundsChange: (bounds: L.LatLngBounds) => void;
+}
+
+const MapEventsHandler: React.FC<MapEventsHandlerProps> = React.memo(({ onBoundsChange }) => {
+    const map = useMapEvents({
+        moveend: () => {
+            onBoundsChange(map.getBounds());
+        },
+        zoomend: () => {
+            onBoundsChange(map.getBounds());
+        }
+    });
+
+    return null;
+});
+
+MapEventsHandler.displayName = 'MapEventsHandler';
+
+/**
  * Icônes personnalisées pour les marqueurs
  */
 const createChurchIcon = () => L.divIcon({
@@ -75,10 +113,13 @@ const createUserIcon = () => L.divIcon({
 });
 
 /**
- * HomePage - Page principale avec carte interactive
+ * HomePage - Page principale avec carte interactive Google Maps style
  * Optimisée avec useMemo, useCallback et React.memo
  */
 const HomePage: React.FC = () => {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
     // États
     const [churches, setChurches] = useState<Church[]>([]);
     const [events, setEvents] = useState<Event[]>([]);
@@ -88,17 +129,25 @@ const HomePage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Filtres
-    const [filters] = useState<MapFilters>({
-        radius: 50,
-        denominationId: null,
-        showChurches: true,
-        showEvents: true,
-        search: ''
-    });
+    // UI States
+    const [resultsPanelOpen, setResultsPanelOpen] = useState(!isMobile); // Fermé par défaut sur mobile
+    const [selectedChurchId, setSelectedChurchId] = useState<number | null>(null);
+    const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
+    const [churchModalOpen, setChurchModalOpen] = useState(false);
+    const [eventModalOpen, setEventModalOpen] = useState(false);
+    const [showHelpMessage, setShowHelpMessage] = useState(true);
+
+    // Filtres simples
+    const [showChurches, setShowChurches] = useState(true);
+    const [showEvents, setShowEvents] = useState(true);
+    const [search, setSearch] = useState('');
+
+    // Ref pour debounce et first load
+    const boundsChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const isFirstLoadRef = useRef(true);
 
     /**
-     * Chargement initial : géolocalisation + données
+     * Chargement initial : géolocalisation
      */
     useEffect(() => {
         const initializeMap = async () => {
@@ -111,24 +160,22 @@ const HomePage: React.FC = () => {
 
                 let lat = 48.8566;
                 let lng = 2.3522;
+                let zoom = 13;
 
                 if (position) {
                     lat = position.coords.latitude;
                     lng = position.coords.longitude;
                     setUserLocation({ latitude: lat, longitude: lng });
                     setMapCenter([lat, lng]);
+                    setMapZoom(zoom);
+                } else {
+                    // Vue mondiale par défaut
+                    setMapCenter([20, 0]);
+                    setMapZoom(2);
                 }
 
-                // Charger les données - SANS filtre de distance au chargement initial
-                // pour afficher toutes les églises du monde
-                const data = await fetchChurchesAndEvents({
-                    // Pas de latitude/longitude = pas de filtre de distance
-                    denominationId: filters.denominationId || undefined,
-                    limit: 500 // Augmenter la limite
-                });
-
-                setChurches(data.churches);
-                setEvents(data.events);
+                // Les données seront chargées par le MapEventsHandler
+                // après le premier rendu de la carte
             } catch (err: any) {
                 console.error('Error initializing map:', err);
                 setError(err.message || 'Erreur lors du chargement de la carte');
@@ -138,7 +185,60 @@ const HomePage: React.FC = () => {
         };
 
         initializeMap();
-    }, [filters.radius, filters.denominationId]);
+    }, []);
+
+    /**
+     * Handler: Charger les données selon les bounds de la carte
+     */
+    const loadDataForBounds = useCallback(async (bounds: L.LatLngBounds) => {
+        try {
+            setLoading(true);
+            setError(null);
+
+            // Utiliser le centre de la carte pour calculer les distances v2
+            const center = bounds.getCenter();
+
+            const data = await fetchChurchesAndEvents({
+                north: bounds.getNorth(),
+                south: bounds.getSouth(),
+                east: bounds.getEast(),
+                west: bounds.getWest(),
+                userLat: center.lat,
+                userLng: center.lng,
+                search: search || undefined,
+                limit: 500
+            });
+
+            setChurches(data.churches);
+            setEvents(data.events);
+        } catch (err: any) {
+            console.error('Error loading data:', err);
+            setError(err.message || 'Erreur lors du chargement des données');
+        } finally {
+            setLoading(false);
+        }
+    }, [search]);
+
+    /**
+     * Handler: Changement de bounds de la carte (debounced, sauf premier chargement)
+     */
+    const handleBoundsChange = useCallback((bounds: L.LatLngBounds) => {
+        // Premier chargement: immédiat sans debounce
+        if (isFirstLoadRef.current) {
+            isFirstLoadRef.current = false;
+            loadDataForBounds(bounds);
+            return;
+        }
+
+        // Debounce pour éviter trop de requêtes pendant le déplacement
+        if (boundsChangeTimeoutRef.current) {
+            clearTimeout(boundsChangeTimeoutRef.current);
+        }
+
+        boundsChangeTimeoutRef.current = setTimeout(() => {
+            loadDataForBounds(bounds);
+        }, 500); // 500ms de délai
+    }, [loadDataForBounds]);
 
     /**
      * Handler: Recentrer sur la position utilisateur
@@ -146,11 +246,10 @@ const HomePage: React.FC = () => {
     const handleRecenterMap = useCallback(async () => {
         if (userLocation) {
             setMapCenter([userLocation.latitude, userLocation.longitude]);
-            setMapZoom(13); // Zoomer sur la position
+            setMapZoom(13);
             return;
         }
 
-        // Demander la géolocalisation si pas encore obtenue
         setLoading(true);
         try {
             const position = await getUserLocation();
@@ -161,7 +260,7 @@ const HomePage: React.FC = () => {
                 };
                 setUserLocation(newLocation);
                 setMapCenter([newLocation.latitude, newLocation.longitude]);
-                setMapZoom(13); // Zoomer sur la position
+                setMapZoom(13);
             } else {
                 setError('Géolocalisation non disponible');
             }
@@ -171,6 +270,76 @@ const HomePage: React.FC = () => {
             setLoading(false);
         }
     }, [userLocation]);
+
+    /**
+     * Handler: Changement de recherche
+     */
+    const handleSearchChange = useCallback((value: string) => {
+        setSearch(value);
+    }, []);
+
+    /**
+     * Handler: Toggle des filtres
+     */
+    const handleToggleChurches = useCallback(() => {
+        setShowChurches(prev => !prev);
+    }, []);
+
+    const handleToggleEvents = useCallback(() => {
+        setShowEvents(prev => !prev);
+    }, []);
+
+    /**
+     * Handler: Clic sur une église dans la liste
+     */
+    const handleChurchClick = useCallback((church: Church) => {
+        // Zoomer sur la carte
+        setMapCenter([church.latitude, church.longitude]);
+        setMapZoom(15);
+
+        // Ouvrir le modal de détails
+        setSelectedChurchId(church.id);
+        setChurchModalOpen(true);
+
+        // Fermer le panel sur mobile
+        if (isMobile) {
+            setResultsPanelOpen(false);
+        }
+    }, [isMobile]);
+
+    /**
+     * Handler: Clic sur un événement dans la liste
+     */
+    const handleEventClick = useCallback((event: Event) => {
+        // Zoomer sur la carte
+        setMapCenter([event.latitude, event.longitude]);
+        setMapZoom(15);
+
+        // Ouvrir le modal de détails
+        setSelectedEventId(event.id);
+        setEventModalOpen(true);
+
+        // Fermer le panel sur mobile
+        if (isMobile) {
+            setResultsPanelOpen(false);
+        }
+    }, [isMobile]);
+
+    /**
+     * Handler: Sélection d'une adresse dans l'autocomplete
+     */
+    const handleLocationSelect = useCallback((lat: number, lng: number, label: string) => {
+        // Centrer la carte sur l'adresse sélectionnée
+        setMapCenter([lat, lng]);
+        setMapZoom(13);
+
+        // Fermer le panel sur mobile
+        if (isMobile) {
+            setResultsPanelOpen(false);
+        }
+
+        console.log(`📍 Navigation vers: ${label} (${lat}, ${lng})`);
+    }, [isMobile]);
 
     /**
      * Icônes memoizées pour éviter les re-créations
@@ -183,12 +352,12 @@ const HomePage: React.FC = () => {
      * Filtrage des données selon les filtres
      */
     const filteredChurches = useMemo(() => {
-        return filters.showChurches ? churches : [];
-    }, [churches, filters.showChurches]);
+        return showChurches ? churches : [];
+    }, [churches, showChurches]);
 
     const filteredEvents = useMemo(() => {
-        return filters.showEvents ? events : [];
-    }, [events, filters.showEvents]);
+        return showEvents ? events : [];
+    }, [events, showEvents]);
 
     return (
         <Box sx={{ position: 'relative', height: '100%', width: '100%' }}>
@@ -206,6 +375,9 @@ const HomePage: React.FC = () => {
 
                 {/* Recentrage automatique */}
                 <MapCenter center={mapCenter} zoom={mapZoom} />
+
+                {/* Handler pour les événements de carte */}
+                <MapEventsHandler onBoundsChange={handleBoundsChange} />
 
                 {/* Marqueur utilisateur */}
                 {userLocation && (
@@ -230,14 +402,14 @@ const HomePage: React.FC = () => {
                             <Popup>
                                 <Box sx={{ minWidth: 200 }}>
                                     <strong>{church.church_name}</strong>
+                                    {church.denomination_name && (
+                                        <div style={{ fontSize: '0.9em', marginTop: 4 }}>
+                                            {church.denomination_name}
+                                        </div>
+                                    )}
                                     {church.pastor_name && (
                                         <div style={{ fontSize: '0.9em', marginTop: 4 }}>
                                             Pasteur: {church.pastor_name}
-                                        </div>
-                                    )}
-                                    {church.city && (
-                                        <div style={{ fontSize: '0.9em', marginTop: 4 }}>
-                                            {church.city} ({church.postal_code})
                                         </div>
                                     )}
                                     {church.distance_km !== null && (
@@ -287,6 +459,47 @@ const HomePage: React.FC = () => {
                     ))}
                 </MarkerClusterGroup>
             </MapContainer>
+
+            {/* Barre de recherche */}
+            <SearchBar
+                value={search}
+                onChange={handleSearchChange}
+                showChurches={showChurches}
+                showEvents={showEvents}
+                onToggleChurches={handleToggleChurches}
+                onToggleEvents={handleToggleEvents}
+                resultsCount={filteredChurches.length + filteredEvents.length}
+                onLocationSelect={handleLocationSelect}
+            />
+
+            {/* Panneau de résultats */}
+            <ResultsPanel
+                churches={filteredChurches}
+                events={filteredEvents}
+                loading={loading}
+                onChurchClick={handleChurchClick}
+                onEventClick={handleEventClick}
+                onClose={() => setResultsPanelOpen(false)}
+                open={resultsPanelOpen}
+            />
+
+            {/* Bouton liste sur mobile */}
+            {isMobile && !resultsPanelOpen && (
+                <Fab
+                    color="secondary"
+                    aria-label="afficher la liste"
+                    onClick={() => setResultsPanelOpen(true)}
+                    sx={{
+                        position: 'absolute',
+                        bottom: 100,
+                        left: 16,
+                        zIndex: 1000,
+                        boxShadow: 3
+                    }}
+                >
+                    <ListIcon />
+                </Fab>
+            )}
 
             {/* Bouton de géolocalisation */}
             <Fab
@@ -340,6 +553,73 @@ const HomePage: React.FC = () => {
                     {error}
                 </Alert>
             )}
+
+            {/* Modal de détails d'église */}
+            <ChurchDetailsModal
+                open={churchModalOpen}
+                onClose={() => setChurchModalOpen(false)}
+                churchId={selectedChurchId}
+            />
+
+            {/* Modal de détails d'événement */}
+            <EventDetailsModal
+                open={eventModalOpen}
+                onClose={() => setEventModalOpen(false)}
+                eventId={selectedEventId}
+            />
+
+            {/* Message d'aide pour guider l'utilisateur */}
+            <Snackbar
+                open={showHelpMessage && !loading}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                sx={{ bottom: { xs: 80, md: 24 } }}
+            >
+                <Paper
+                    elevation={8}
+                    sx={{
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        color: 'white',
+                        px: 3,
+                        py: 2,
+                        borderRadius: 3,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2,
+                        maxWidth: 500,
+                        boxShadow: '0 8px 32px 0 rgba(102, 126, 234, 0.4)'
+                    }}
+                >
+                    <TouchAppIcon sx={{ fontSize: 32, animation: 'pulse 2s infinite' }} />
+                    <Box sx={{ flex: 1 }}>
+                        <Typography variant="subtitle1" fontWeight={600}>
+                            Bienvenue!
+                        </Typography>
+                        <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                            Déplacez ou zoomez la carte pour découvrir les églises et événements autour de vous
+                        </Typography>
+                    </Box>
+                    <IconButton
+                        size="small"
+                        onClick={() => setShowHelpMessage(false)}
+                        sx={{
+                            color: 'white',
+                            '&:hover': {
+                                backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        }}
+                    >
+                        <CloseIcon />
+                    </IconButton>
+                </Paper>
+            </Snackbar>
+
+            {/* Animation pulse pour l'icône */}
+            <style>{`
+                @keyframes pulse {
+                    0%, 100% { transform: scale(1); }
+                    50% { transform: scale(1.1); }
+                }
+            `}</style>
         </Box>
     );
 };
