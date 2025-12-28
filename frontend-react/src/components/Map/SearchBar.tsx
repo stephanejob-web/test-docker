@@ -11,8 +11,9 @@ import {
     ListItemText,
     CircularProgress,
     Typography,
-    ToggleButtonGroup,
-    ToggleButton
+    ButtonGroup,
+    Button,
+    Badge
 } from '@mui/material';
 import {
     Search as SearchIcon,
@@ -36,7 +37,8 @@ interface SearchBarProps {
     showEvents: boolean;
     onToggleChurches: () => void;
     onToggleEvents: () => void;
-    resultsCount: number;
+    churchesCount: number;
+    eventsCount: number;
     onLocationSelect?: (lat: number, lng: number, label: string) => void;
 }
 
@@ -51,7 +53,8 @@ const SearchBar: React.FC<SearchBarProps> = React.memo(({
     showEvents,
     onToggleChurches,
     onToggleEvents,
-    resultsCount,
+    churchesCount,
+    eventsCount,
     onLocationSelect
 }) => {
     const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
@@ -116,25 +119,6 @@ const SearchBar: React.FC<SearchBarProps> = React.memo(({
         }
     };
 
-    // Construire la valeur pour ToggleButtonGroup
-    const toggleValue = [];
-    if (showChurches) toggleValue.push('churches');
-    if (showEvents) toggleValue.push('events');
-
-    const handleToggleChange = (
-        _event: React.MouseEvent<HTMLElement>,
-        newValue: string[]
-    ) => {
-        const churchesNowActive = newValue.includes('churches');
-        const eventsNowActive = newValue.includes('events');
-
-        if (churchesNowActive !== showChurches) {
-            onToggleChurches();
-        }
-        if (eventsNowActive !== showEvents) {
-            onToggleEvents();
-        }
-    };
 
     return (
         <Box
@@ -257,25 +241,22 @@ const SearchBar: React.FC<SearchBarProps> = React.memo(({
                 </Paper>
             )}
 
-            {/* Filtres modernes avec ToggleButton */}
+            {/* Filtres avec ButtonGroup */}
             <Stack direction="row" spacing={1} sx={{ mt: 1.5, px: 0.5 }} alignItems="center">
-                <ToggleButtonGroup
-                    value={toggleValue}
-                    onChange={handleToggleChange}
+                <ButtonGroup
                     size="small"
                     sx={{
                         backgroundColor: 'rgba(44, 62, 80, 0.95)',
                         borderRadius: 2.5,
                         border: '1px solid rgba(255, 255, 255, 0.1)',
                         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-                        '& .MuiToggleButtonGroup-grouped': {
+                        '& .MuiButtonGroup-grouped': {
                             border: 'none',
                             '&:not(:last-of-type)': {
                                 borderRight: '1px solid rgba(255, 255, 255, 0.1)'
                             }
                         },
-                        '& .MuiToggleButton-root': {
-                            color: 'rgba(255, 255, 255, 0.6)',
+                        '& .MuiButton-root': {
                             borderRadius: 2,
                             px: 2,
                             py: 0.75,
@@ -283,50 +264,69 @@ const SearchBar: React.FC<SearchBarProps> = React.memo(({
                             fontSize: '0.8rem',
                             textTransform: 'none',
                             transition: 'all 0.2s ease',
-                            '&.Mui-selected': {
-                                backgroundColor: 'rgba(52, 152, 219, 0.25)',
-                                color: '#3498db',
-                                boxShadow: 'inset 0 0 0 1px rgba(52, 152, 219, 0.3)',
-                                '&:hover': {
-                                    backgroundColor: 'rgba(52, 152, 219, 0.35)'
-                                }
-                            },
                             '&:hover': {
                                 backgroundColor: 'rgba(255, 255, 255, 0.08)'
                             }
                         }
                     }}
                 >
-                    <ToggleButton value="churches">
-                        <ChurchIcon sx={{ mr: 0.75, fontSize: 18 }} />
-                        Églises
-                    </ToggleButton>
-                    <ToggleButton value="events">
-                        <EventIcon sx={{ mr: 0.75, fontSize: 18 }} />
-                        Événements
-                    </ToggleButton>
-                </ToggleButtonGroup>
-
-                {resultsCount > 0 && (
-                    <Paper
-                        elevation={4}
+                    <Button
+                        onClick={onToggleChurches}
                         sx={{
-                            px: 2,
-                            py: 0.75,
-                            borderRadius: 2.5,
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 0.5,
-                            border: '1px solid rgba(255, 255, 255, 0.2)',
-                            boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
+                            color: showChurches ? '#3498db' : 'rgba(255, 255, 255, 0.6)',
+                            backgroundColor: showChurches ? 'rgba(52, 152, 219, 0.25)' : 'transparent',
+                            boxShadow: showChurches ? 'inset 0 0 0 1px rgba(52, 152, 219, 0.3)' : 'none',
+                            '&:hover': {
+                                backgroundColor: showChurches ? 'rgba(52, 152, 219, 0.35)' : 'rgba(255, 255, 255, 0.08)'
+                            }
                         }}
                     >
-                        <Typography variant="caption" fontWeight={700} color="white" sx={{ fontSize: '0.8rem' }}>
-                            {resultsCount} résultat{resultsCount > 1 ? 's' : ''}
-                        </Typography>
-                    </Paper>
-                )}
+                        <Badge
+                            badgeContent={churchesCount}
+                            color="primary"
+                            max={999}
+                            sx={{
+                                '& .MuiBadge-badge': {
+                                    backgroundColor: '#d32f2f',
+                                    color: 'white',
+                                    fontWeight: 700,
+                                    fontSize: '0.7rem'
+                                }
+                            }}
+                        >
+                            <ChurchIcon sx={{ mr: 0.75, fontSize: 18 }} />
+                        </Badge>
+                        Églises
+                    </Button>
+                    <Button
+                        onClick={onToggleEvents}
+                        sx={{
+                            color: showEvents ? '#3498db' : 'rgba(255, 255, 255, 0.6)',
+                            backgroundColor: showEvents ? 'rgba(52, 152, 219, 0.25)' : 'transparent',
+                            boxShadow: showEvents ? 'inset 0 0 0 1px rgba(52, 152, 219, 0.3)' : 'none',
+                            '&:hover': {
+                                backgroundColor: showEvents ? 'rgba(52, 152, 219, 0.35)' : 'rgba(255, 255, 255, 0.08)'
+                            }
+                        }}
+                    >
+                        <Badge
+                            badgeContent={eventsCount}
+                            color="secondary"
+                            max={999}
+                            sx={{
+                                '& .MuiBadge-badge': {
+                                    backgroundColor: '#2196f3',
+                                    color: 'white',
+                                    fontWeight: 700,
+                                    fontSize: '0.7rem'
+                                }
+                            }}
+                        >
+                            <EventIcon sx={{ mr: 0.75, fontSize: 18 }} />
+                        </Badge>
+                        Événements
+                    </Button>
+                </ButtonGroup>
             </Stack>
         </Box>
     );
