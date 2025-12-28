@@ -11,14 +11,16 @@ import {
     IconButton,
     Drawer,
     useMediaQuery,
-    useTheme
+    useTheme,
+    Button
 } from '@mui/material';
 import {
     Close as CloseIcon,
     Church as ChurchIcon,
     Event as EventIcon,
     Place as PlaceIcon,
-    Directions as DirectionsIcon
+    Directions as DirectionsIcon,
+    InfoOutlined as InfoIcon
 } from '@mui/icons-material';
 import type { Church, Event } from '../../types/publicMap';
 import { formatDistance } from '../../services/publicMapService';
@@ -40,71 +42,114 @@ const ChurchCard: React.FC<{
     church: Church;
     onClick: () => void;
 }> = React.memo(({ church, onClick }) => (
-    <ListItemButton
-        onClick={onClick}
+    <Box
         sx={{
             py: 2,
             px: 2,
             '&:hover': {
                 backgroundColor: 'action.hover'
-            }
+            },
+            transition: 'background-color 0.2s'
         }}
     >
         <Box sx={{ width: '100%' }}>
-            <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ mb: 1 }}>
-                <ChurchIcon color="primary" sx={{ mt: 0.5 }} />
+            {/* En-tête avec icône et nom */}
+            <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ mb: 1.5 }}>
+                <ChurchIcon
+                    color="primary"
+                    sx={{
+                        mt: 0.5,
+                        fontSize: 28
+                    }}
+                />
                 <Box sx={{ flex: 1 }}>
-                    <Typography variant="subtitle1" fontWeight={600}>
+                    <Typography
+                        variant="h6"
+                        fontWeight={600}
+                        sx={{
+                            fontSize: '1.1rem',
+                            lineHeight: 1.3,
+                            mb: 0.5
+                        }}
+                    >
                         {church.church_name}
                     </Typography>
+
+                    {/* Pasteur */}
                     {church.pastor_name && (
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ mb: 0.5 }}
+                        >
                             Pasteur: {church.pastor_name}
+                        </Typography>
+                    )}
+
+                    {/* Ville et Code Postal */}
+                    {(church.city || church.postal_code) && (
+                        <Stack direction="row" spacing={0.5} alignItems="center">
+                            <PlaceIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                            <Typography variant="body2" color="text.secondary">
+                                {church.city && church.postal_code
+                                    ? `${church.city}, ${church.postal_code}`
+                                    : church.city || church.postal_code
+                                }
+                            </Typography>
+                        </Stack>
+                    )}
+
+                    {/* Distance */}
+                    {church.distance_km !== null && (
+                        <Typography
+                            variant="body2"
+                            color="primary.main"
+                            fontWeight={600}
+                            sx={{ mt: 0.5 }}
+                        >
+                            📍 {formatDistance(church.distance_km)}
                         </Typography>
                     )}
                 </Box>
             </Stack>
 
-            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" gap={0.5}>
-                {church.denomination_name && (
-                    <Chip
-                        label={church.denomination_name}
-                        size="small"
-                        color="primary"
-                        variant="outlined"
-                    />
-                )}
-                {church.distance_km !== null && (
-                    <>
-                        <Typography variant="caption" color="text.secondary">
-                            📍 {formatDistance(church.distance_km)}
-                        </Typography>
-                        <IconButton
-                            size="small"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                window.open(
-                                    `https://www.google.com/maps/dir/?api=1&destination=${church.latitude},${church.longitude}`,
-                                    '_blank'
-                                );
-                            }}
-                            sx={{
-                                ml: 0.5,
-                                padding: 0.5,
-                                backgroundColor: 'primary.main',
-                                color: 'white',
-                                '&:hover': {
-                                    backgroundColor: 'primary.dark'
-                                }
-                            }}
-                        >
-                            <DirectionsIcon sx={{ fontSize: 16 }} />
-                        </IconButton>
-                    </>
-                )}
+            {/* Boutons d'action */}
+            <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+                <Button
+                    variant="contained"
+                    size="small"
+                    startIcon={<InfoIcon />}
+                    onClick={onClick}
+                    sx={{
+                        flex: 1,
+                        textTransform: 'none',
+                        fontWeight: 600
+                    }}
+                >
+                    Voir plus
+                </Button>
+                <IconButton
+                    size="small"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        window.open(
+                            `https://www.google.com/maps/dir/?api=1&destination=${church.latitude},${church.longitude}`,
+                            '_blank'
+                        );
+                    }}
+                    sx={{
+                        backgroundColor: 'primary.main',
+                        color: 'white',
+                        '&:hover': {
+                            backgroundColor: 'primary.dark'
+                        }
+                    }}
+                >
+                    <DirectionsIcon />
+                </IconButton>
             </Stack>
         </Box>
-    </ListItemButton>
+    </Box>
 ));
 
 ChurchCard.displayName = 'ChurchCard';

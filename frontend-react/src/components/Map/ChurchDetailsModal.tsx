@@ -250,8 +250,8 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
                                         </Typography>
                                     </Stack>
                                     <List dense>
-                                        {church.schedules.map((schedule, index) => (
-                                            <ListItem key={index} disableGutters>
+                                        {church.schedules.map((schedule) => (
+                                            <ListItem key={`schedule-${schedule.day_of_week}-${schedule.start_time}`} disableGutters>
                                                 <ListItemText
                                                     primary={schedule.day_of_week}
                                                     secondary={`${schedule.start_time} - ${schedule.activity_type || 'Culte'}`}
@@ -326,9 +326,9 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
                                         Réseaux sociaux
                                     </Typography>
                                     <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
-                                        {church.socials.map((social, index) => (
+                                        {church.socials.map((social) => (
                                             <Chip
-                                                key={index}
+                                                key={`social-${social.platform}-${social.url}`}
                                                 icon={getSocialIcon(social.platform)}
                                                 label={social.platform}
                                                 component="a"

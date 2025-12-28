@@ -333,9 +333,9 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
                                                     Traductions disponibles
                                                 </Typography>
                                                 <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
-                                                    {event.translations.map((translation, index) => (
+                                                    {event.translations.map((translation) => (
                                                         <Chip
-                                                            key={index}
+                                                            key={`translation-${translation.code || translation.name}`}
                                                             label={`${translation.flag || ''} ${translation.name}`}
                                                             variant="outlined"
                                                             size="small"
@@ -551,8 +551,8 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
                                                 </Typography>
                                             </Stack>
                                             <List dense>
-                                                {event.church.schedules.map((schedule, index) => (
-                                                    <ListItem key={index} disableGutters>
+                                                {event.church.schedules.map((schedule) => (
+                                                    <ListItem key={`schedule-${schedule.day_of_week}-${schedule.start_time}`} disableGutters>
                                                         <ListItemText
                                                             primary={schedule.day_of_week}
                                                             secondary={`${schedule.start_time} - ${schedule.activity_type || 'Culte'}`}
@@ -627,9 +627,9 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
                                                 Réseaux sociaux
                                             </Typography>
                                             <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
-                                                {event.church.socials.map((social, index) => (
+                                                {event.church.socials.map((social) => (
                                                     <Chip
-                                                        key={index}
+                                                        key={`social-${social.platform}-${social.url}`}
                                                         icon={getSocialIcon(social.platform)}
                                                         label={social.platform}
                                                         component="a"

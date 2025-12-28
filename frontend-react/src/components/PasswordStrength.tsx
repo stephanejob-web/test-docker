@@ -69,10 +69,10 @@ export default function PasswordStrength({ password }: PasswordStrengthProps) {
 
       {/* Liste des critères */}
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-        {requirements.map((req, index) => {
+        {requirements.map((req) => {
           const isValid = req.test(password);
           return (
-            <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box key={req.label} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               {isValid ? (
                 <CheckCircle sx={{ fontSize: 16, color: 'success.main' }} />
               ) : (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../lib/axios';
 import {
     Box,
@@ -80,6 +80,18 @@ const PastorNetwork = () => {
     const [selectedChurchData, setSelectedChurchData] = useState<any>(null);
     const [error, setError] = useState('');
 
+    // Ref pour AbortController
+    const abortControllerRef = useRef<AbortController | null>(null);
+
+    // Cleanup au unmount
+    useEffect(() => {
+        return () => {
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+            }
+        };
+    }, []);
+
     // Charger les dénominations
     useEffect(() => {
         const fetchDenominations = async () => {
@@ -94,16 +106,21 @@ const PastorNetwork = () => {
         fetchDenominations();
     }, []);
 
-    // Charger les pasteurs
-    useEffect(() => {
-        fetchPastors();
-    }, [pagination.page, search, city, denominationId]);
+    // Charger les pasteurs avec useCallback et AbortController
+    const fetchPastors = useCallback(async () => {
+        // Annuler la requête précédente si elle existe
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
 
-    const fetchPastors = async () => {
+        // Créer un nouveau AbortController
+        const abortController = new AbortController();
+        abortControllerRef.current = abortController;
+
         try {
             setLoading(true);
             setError('');
-            
+
             const params: any = {
                 page: pagination.page,
                 limit: pagination.limit
@@ -113,25 +130,44 @@ const PastorNetwork = () => {
             if (city) params.city = city;
             if (denominationId) params.denomination_id = denominationId;
 
-            const { data } = await api.get('/pastor/network', { params });
-
-            setPastors(data.pastors || []);
-            setPagination(data.pagination || {
-                page: 1,
-                limit: 20,
-                total: 0,
-                totalPages: 0
+            const { data } = await api.get('/pastor/network', {
+                params,
+                signal: abortController.signal
             });
+
+            // Ne mettre à jour que si non annulé
+            if (!abortController.signal.aborted) {
+                setPastors(data.pastors || []);
+                setPagination(data.pagination || {
+                    page: 1,
+                    limit: 20,
+                    total: 0,
+                    totalPages: 0
+                });
+            }
         } catch (err: any) {
+            // Ignorer les erreurs d'annulation
+            if (err.name === 'AbortError' || err.code === 'ERR_CANCELED') {
+                return;
+            }
             console.error('Error loading pastors:', err);
-            setError(err.response?.data?.message || 'Erreur lors du chargement du réseau pastoral');
+            if (!abortController.signal.aborted) {
+                setError(err.response?.data?.message || 'Erreur lors du chargement du réseau pastoral');
+            }
         } finally {
-            setLoading(false);
+            if (!abortController.signal.aborted) {
+                setLoading(false);
+            }
         }
-    };
+    }, [pagination.page, search, city, denominationId, pagination.limit]);
+
+    // useEffect pour charger les pasteurs
+    useEffect(() => {
+        fetchPastors();
+    }, [fetchPastors]);
 
     const handlePageChange = (_event: React.ChangeEvent<unknown>, value: number) => {
-        setPagination({ ...pagination, page: value });
+        setPagination(prev => ({ ...prev, page: value }));
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -176,7 +212,7 @@ const PastorNetwork = () => {
                             value={search}
                             onChange={(e) => {
                                 setSearch(e.target.value);
-                                setPagination({ ...pagination, page: 1 });
+                                setPagination(prev => ({ ...prev, page: 1 }));
                             }}
                             size="small"
                             fullWidth
@@ -194,7 +230,7 @@ const PastorNetwork = () => {
                             value={city}
                             onChange={(e) => {
                                 setCity(e.target.value);
-                                setPagination({ ...pagination, page: 1 });
+                                setPagination(prev => ({ ...prev, page: 1 }));
                             }}
                             size="small"
                             sx={{ minWidth: 200 }}
@@ -214,7 +250,7 @@ const PastorNetwork = () => {
                                 label="Dénomination"
                                 onChange={(e) => {
                                     setDenominationId(e.target.value);
-                                    setPagination({ ...pagination, page: 1 });
+                                    setPagination(prev => ({ ...prev, page: 1 }));
                                 }}
                             >
                                 <MenuItem value="">Toutes</MenuItem>
@@ -249,7 +285,7 @@ const PastorNetwork = () => {
                 <Stack spacing={2}>
                     {loading ? (
                         Array.from({ length: 5 }).map((_, index) => (
-                            <Card key={index}>
+                            <Card key={`skeleton-card-${index}`}>
                                 <CardContent>
                                     <Skeleton variant="text" width="60%" height={30} />
                                     <Skeleton variant="text" width="80%" />
@@ -373,7 +409,7 @@ const PastorNetwork = () => {
                         <TableBody>
                             {loading ? (
                                 Array.from({ length: 5 }).map((_, index) => (
-                                    <TableRow key={index}>
+                                    <TableRow key={`skeleton-row-${index}`}>
                                         <TableCell><Skeleton /></TableCell>
                                         <TableCell><Skeleton /></TableCell>
                                         <TableCell><Skeleton /></TableCell>

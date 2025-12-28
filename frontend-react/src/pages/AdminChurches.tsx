@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/axios';
 import {
@@ -61,17 +61,10 @@ export default function AdminChurches() {
     const [cities, setCities] = useState<string[]>([]);
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            fetchChurches();
-        }, 300);
-        return () => clearTimeout(timer);
-    }, [currentPage, search, denominationFilter, cityFilter]);
-
-    useEffect(() => {
         fetchRefData();
     }, []);
 
-    const fetchChurches = async () => {
+    const fetchChurches = useCallback(async () => {
         setLoading(true);
         try {
             const { data } = await api.get('/admin/churches', {
@@ -88,7 +81,14 @@ export default function AdminChurches() {
             setTotalPages(data.pagination.totalPages);
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
-    };
+    }, [currentPage, search, denominationFilter, cityFilter]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            fetchChurches();
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [fetchChurches]);
 
     const fetchRefData = async () => {
         try {

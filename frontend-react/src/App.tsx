@@ -17,13 +17,15 @@ import AdminSettings from './pages/AdminSettings';
 import AdminChurches from './pages/AdminChurches';
 import AdminEvents from './pages/AdminEvents';
 import AdminRegistrations from './pages/AdminRegistrations';
+import ErrorBoundary from './components/ErrorBoundary';
 
 function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <AuthProvider>
-        <BrowserRouter>
+    <ErrorBoundary>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <AuthProvider>
+          <BrowserRouter>
           <Routes>
             {/* Pages publiques */}
             <Route element={<PublicLayout />}>
@@ -63,6 +65,7 @@ function App() {
         </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

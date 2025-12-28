@@ -9,6 +9,8 @@ export interface Church {
     latitude: number;
     denomination_name: string | null;
     pastor_name: string;
+    city: string | null;
+    postal_code: string | null;
     distance_km: number | null;
 }
 

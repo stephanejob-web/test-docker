@@ -224,8 +224,8 @@ const SearchBar: React.FC<SearchBarProps> = React.memo(({
                                 📍 RECHERCHE GÉOGRAPHIQUE
                             </Typography>
                         </ListItem>
-                        {suggestions.map((suggestion, index) => (
-                            <ListItem key={index} disablePadding>
+                        {suggestions.map((suggestion) => (
+                            <ListItem key={`${suggestion.label}-${suggestion.postcode}`} disablePadding>
                                 <ListItemButton
                                     onClick={() => handleSelectLocation(suggestion)}
                                     sx={{

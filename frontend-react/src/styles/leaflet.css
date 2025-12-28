@@ -30,25 +30,34 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-.custom-marker-user {
-  background-color: #2196f3;
-  border: 3px solid white;
-  border-radius: 50%;
+.custom-marker-user-static {
+  background: transparent;
+  border: none;
   width: 20px;
   height: 20px;
-  animation: pulse 2s infinite;
-  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.6);
 }
 
-@keyframes pulse {
+.custom-marker-user-static svg {
+  overflow: visible;
+}
+
+.pulse-circle {
+  animation: svg-pulse 2s ease-in-out infinite;
+  transform-origin: center;
+}
+
+@keyframes svg-pulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(33, 150, 243, 0.7);
+    opacity: 0.8;
+    r: 6;
   }
-  70% {
-    box-shadow: 0 0 0 15px rgba(33, 150, 243, 0);
+  50% {
+    opacity: 0.3;
+    r: 9;
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(33, 150, 243, 0);
+    opacity: 0;
+    r: 12;
   }
 }
 

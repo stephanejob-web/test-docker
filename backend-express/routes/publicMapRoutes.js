@@ -88,7 +88,7 @@ router.get('/churches', [
 
         const whereClause = whereConditions.join(' AND ');
 
-        // Requête principale - OPTIMISÉE : uniquement churches (pas de JOIN avec church_details)
+        // Requête principale - Inclut city et postal_code de church_details
         const query = `
             SELECT
                 c.id,
@@ -96,11 +96,14 @@ router.get('/churches', [
                 ST_X(c.location) as longitude,
                 ST_Y(c.location) as latitude,
                 d.name as denomination_name,
-                CONCAT(a.first_name, ' ', a.last_name) as pastor_name
+                CONCAT(a.first_name, ' ', a.last_name) as pastor_name,
+                cd.city,
+                cd.postal_code
                 ${selectDistance}
             FROM churches c
             INNER JOIN admins a ON a.id = c.admin_id
             LEFT JOIN denominations d ON d.id = c.denomination_id
+            LEFT JOIN church_details cd ON cd.church_id = c.id
             WHERE ${whereClause}
             ${orderBy}
             LIMIT ?

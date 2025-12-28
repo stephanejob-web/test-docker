@@ -105,11 +105,18 @@ const createEventIcon = () => L.divIcon({
     popupAnchor: [0, -30]
 });
 
-const createUserIcon = () => L.divIcon({
-    className: 'custom-marker-user',
-    html: '<div></div>',
+// Créer l'icône utilisateur UNE SEULE FOIS en dehors du composant
+const userIconInstance = L.divIcon({
+    className: 'custom-marker-user-static',
+    html: `
+        <svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+            <circle class="pulse-circle" cx="10" cy="10" r="8" fill="rgba(33, 150, 243, 0.3)"/>
+            <circle cx="10" cy="10" r="5" fill="#2196F3" stroke="white" stroke-width="2"/>
+        </svg>
+    `,
     iconSize: [20, 20],
-    iconAnchor: [10, 10]
+    iconAnchor: [10, 10],
+    popupAnchor: [0, -10]
 });
 
 /**
@@ -145,6 +152,7 @@ const HomePage: React.FC = () => {
     // Ref pour debounce et first load
     const boundsChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const isFirstLoadRef = useRef(true);
+    const abortControllerRef = useRef<AbortController | null>(null);
 
     /**
      * Chargement initial : géolocalisation
@@ -188,36 +196,85 @@ const HomePage: React.FC = () => {
     }, []);
 
     /**
+     * Cleanup: Annuler les requêtes et timers au unmount
+     */
+    useEffect(() => {
+        return () => {
+            // Annuler toute requête en cours
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+            }
+            // Nettoyer le timeout de debounce
+            if (boundsChangeTimeoutRef.current) {
+                clearTimeout(boundsChangeTimeoutRef.current);
+            }
+        };
+    }, []);
+
+    /**
      * Handler: Charger les données selon les bounds de la carte
      */
     const loadDataForBounds = useCallback(async (bounds: L.LatLngBounds) => {
+        // Annuler la requête précédente si elle existe
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+
+        // Créer un nouveau AbortController pour cette requête
+        const abortController = new AbortController();
+        abortControllerRef.current = abortController;
+
         try {
             setLoading(true);
             setError(null);
 
-            // Utiliser le centre de la carte pour calculer les distances v2
-            const center = bounds.getCenter();
+            // Utiliser la position de l'utilisateur si disponible, sinon le centre de la carte
+            // La distance doit toujours être calculée par rapport à la position de l'utilisateur
+            let refLat: number | undefined;
+            let refLng: number | undefined;
+
+            if (userLocation) {
+                // Position géolocalisée de l'utilisateur (fixe)
+                refLat = userLocation.latitude;
+                refLng = userLocation.longitude;
+            } else {
+                // Fallback: centre de la carte (si pas de géolocalisation)
+                const center = bounds.getCenter();
+                refLat = center.lat;
+                refLng = center.lng;
+            }
 
             const data = await fetchChurchesAndEvents({
                 north: bounds.getNorth(),
                 south: bounds.getSouth(),
                 east: bounds.getEast(),
                 west: bounds.getWest(),
-                userLat: center.lat,
-                userLng: center.lng,
+                userLat: refLat,
+                userLng: refLng,
                 search: search || undefined,
                 limit: 100  // Optimisé pour 3000 églises
             });
 
-            setChurches(data.churches);
-            setEvents(data.events);
+            // Ne mettre à jour que si la requête n'a pas été annulée
+            if (!abortController.signal.aborted) {
+                setChurches(data.churches);
+                setEvents(data.events);
+            }
         } catch (err: any) {
+            // Ignorer les erreurs d'annulation
+            if (err.name === 'AbortError' || abortController.signal.aborted) {
+                return;
+            }
             console.error('Error loading data:', err);
-            setError(err.message || 'Erreur lors du chargement des données');
+            if (!abortController.signal.aborted) {
+                setError(err.message || 'Erreur lors du chargement des données');
+            }
         } finally {
-            setLoading(false);
+            if (!abortController.signal.aborted) {
+                setLoading(false);
+            }
         }
-    }, [search]);
+    }, [search, userLocation]);
 
     /**
      * Handler: Changement de bounds de la carte (debounced, sauf premier chargement)
@@ -346,7 +403,6 @@ const HomePage: React.FC = () => {
      */
     const churchIcon = useMemo(() => createChurchIcon(), []);
     const eventIcon = useMemo(() => createEventIcon(), []);
-    const userIcon = useMemo(() => createUserIcon(), []);
 
     /**
      * Filtrage des données selon les filtres
@@ -385,10 +441,14 @@ const HomePage: React.FC = () => {
                 {userLocation && (
                     <Marker
                         position={[userLocation.latitude, userLocation.longitude]}
-                        icon={userIcon}
+                        icon={userIconInstance}
                     >
                         <Popup>
-                            <strong>Votre position</strong>
+                            <Box sx={{ textAlign: 'center', p: 0.5 }}>
+                                <Typography variant="body2" sx={{ fontWeight: 600, color: '#2196F3' }}>
+                                    📍 Vous êtes ici
+                                </Typography>
+                            </Box>
                         </Popup>
                     </Marker>
                 )}
