@@ -4,15 +4,14 @@ import {
     Paper,
     Typography,
     List,
-    ListItemButton,
     Divider,
-    Chip,
     Stack,
     IconButton,
     Drawer,
     useMediaQuery,
     useTheme,
-    Button
+    Button,
+    Chip
 } from '@mui/material';
 import {
     Close as CloseIcon,
@@ -116,7 +115,7 @@ const ChurchCard: React.FC<{
             {/* Boutons d'action */}
             <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
                 <Button
-                    variant="contained"
+                    variant="outlined"
                     size="small"
                     startIcon={<InfoIcon />}
                     onClick={onClick}
@@ -160,82 +159,172 @@ ChurchCard.displayName = 'ChurchCard';
 const EventCard: React.FC<{
     event: Event;
     onClick: () => void;
-}> = React.memo(({ event, onClick }) => (
-    <ListItemButton
-        onClick={onClick}
-        sx={{
-            py: 2,
-            px: 2,
-            '&:hover': {
-                backgroundColor: 'action.hover'
-            }
-        }}
-    >
-        <Box sx={{ width: '100%' }}>
-            <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ mb: 1 }}>
-                <EventIcon color="secondary" sx={{ mt: 0.5 }} />
-                <Box sx={{ flex: 1 }}>
-                    <Typography variant="subtitle1" fontWeight={600}>
-                        {event.title}
-                    </Typography>
-                    {event.church_name && (
-                        <Typography variant="body2" color="text.secondary">
-                            {event.church_name}
-                        </Typography>
-                    )}
-                </Box>
-            </Stack>
+}> = React.memo(({ event, onClick }) => {
+    const startDate = new Date(event.start_datetime);
+    const endDate = event.end_datetime ? new Date(event.end_datetime) : null;
+    const now = new Date();
 
-            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" gap={0.5}>
-                <Typography variant="caption" color="text.secondary">
-                    {new Date(event.start_datetime).toLocaleDateString('fr-FR', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    })}
-                </Typography>
-                {event.event_city && (
-                    <Chip
-                        icon={<PlaceIcon />}
-                        label={event.event_city}
-                        size="small"
-                        variant="outlined"
+    // Calculer le statut de l'événement
+    const isOngoing = endDate && now >= startDate && now <= endDate;
+    const isUpcoming = now < startDate;
+
+    return (
+        <Box
+            sx={{
+                py: 2,
+                px: 2,
+                '&:hover': {
+                    backgroundColor: 'action.hover'
+                },
+                transition: 'background-color 0.2s'
+            }}
+        >
+            <Box sx={{ width: '100%' }}>
+                {/* En-tête avec icône et titre */}
+                <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ mb: 1.5 }}>
+                    <EventIcon
+                        color="secondary"
+                        sx={{
+                            mt: 0.5,
+                            fontSize: 28
+                        }}
                     />
-                )}
-                {event.distance_km !== null && (
-                    <>
-                        <Typography variant="caption" color="text.secondary">
-                            📍 {formatDistance(event.distance_km)}
-                        </Typography>
-                        <IconButton
-                            size="small"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                window.open(
-                                    `https://www.google.com/maps/dir/?api=1&destination=${event.latitude},${event.longitude}`,
-                                    '_blank'
-                                );
-                            }}
-                            sx={{
-                                ml: 0.5,
-                                padding: 0.5,
-                                backgroundColor: 'secondary.main',
-                                color: 'white',
-                                '&:hover': {
-                                    backgroundColor: 'secondary.dark'
-                                }
-                            }}
+                    <Box sx={{ flex: 1 }}>
+                        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+                            <Typography
+                                variant="h6"
+                                fontWeight={600}
+                                sx={{
+                                    fontSize: '1.1rem',
+                                    lineHeight: 1.3
+                                }}
+                            >
+                                {event.title}
+                            </Typography>
+                            {/* Badge de statut */}
+                            {isOngoing ? (
+                                <Chip
+                                    label="En cours"
+                                    size="small"
+                                    sx={{
+                                        bgcolor: 'orange',
+                                        color: 'white',
+                                        fontWeight: 600,
+                                        fontSize: '0.7rem'
+                                    }}
+                                />
+                            ) : isUpcoming ? (
+                                <Chip
+                                    label="À venir"
+                                    color="info"
+                                    size="small"
+                                    sx={{
+                                        fontWeight: 600,
+                                        fontSize: '0.7rem'
+                                    }}
+                                />
+                            ) : null}
+                        </Stack>
+
+                        {/* Date de début */}
+                        <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ mb: 0.3 }}
                         >
-                            <DirectionsIcon sx={{ fontSize: 16 }} />
-                        </IconButton>
-                    </>
-                )}
-            </Stack>
+                            Début: {startDate.toLocaleDateString('fr-FR', {
+                                day: 'numeric',
+                                month: 'long',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            })}
+                        </Typography>
+
+                        {/* Date de fin */}
+                        {endDate && (
+                            <Typography
+                                variant="body2"
+                                color="text.secondary"
+                                sx={{ mb: 0.5 }}
+                            >
+                                Fin: {endDate.toLocaleDateString('fr-FR', {
+                                    day: 'numeric',
+                                    month: 'long',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                })}
+                            </Typography>
+                        )}
+
+                        {/* Ville et Code Postal */}
+                        {(event.event_city || event.event_postal_code) && (
+                            <Stack direction="row" spacing={0.5} alignItems="center">
+                                <PlaceIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                                <Typography variant="body2" color="text.secondary">
+                                    {event.event_city && event.event_postal_code
+                                        ? `${event.event_city}, ${event.event_postal_code}`
+                                        : event.event_city || event.event_postal_code
+                                    }
+                                </Typography>
+                            </Stack>
+                        )}
+
+                        {/* Distance */}
+                        {event.distance_km !== null && (
+                            <Typography
+                                variant="body2"
+                                color="secondary.main"
+                                fontWeight={600}
+                                sx={{ mt: 0.5 }}
+                            >
+                                📍 {formatDistance(event.distance_km)}
+                            </Typography>
+                        )}
+                    </Box>
+                </Stack>
+
+                {/* Boutons d'action */}
+                <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+                    <Button
+                        variant="outlined"
+                        size="small"
+                        color="secondary"
+                        startIcon={<InfoIcon />}
+                        onClick={onClick}
+                        sx={{
+                            flex: 1,
+                            textTransform: 'none',
+                            fontWeight: 600
+                        }}
+                    >
+                        Voir plus
+                    </Button>
+                    <IconButton
+                        size="small"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(
+                                `https://www.google.com/maps/dir/?api=1&destination=${event.latitude},${event.longitude}`,
+                                '_blank'
+                            );
+                        }}
+                        sx={{
+                            backgroundColor: 'secondary.main',
+                            color: 'white',
+                            '&:hover': {
+                                backgroundColor: 'secondary.dark'
+                            }
+                        }}
+                    >
+                        <DirectionsIcon />
+                    </IconButton>
+                </Stack>
+            </Box>
         </Box>
-    </ListItemButton>
-));
+    );
+});
 
 EventCard.displayName = 'EventCard';
 
