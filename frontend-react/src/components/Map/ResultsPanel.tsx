@@ -32,6 +32,7 @@ interface ResultsPanelProps {
     onEventClick: (event: Event) => void;
     onClose?: () => void;
     open?: boolean;
+    isGeolocated?: boolean;
 }
 
 /**
@@ -340,7 +341,8 @@ const ResultsPanel: React.FC<ResultsPanelProps> = React.memo(({
     onChurchClick,
     onEventClick,
     onClose,
-    open = true
+    open = true,
+    isGeolocated = false
 }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -361,19 +363,49 @@ const ResultsPanel: React.FC<ResultsPanelProps> = React.memo(({
                 sx={{
                     p: 2,
                     borderBottom: 1,
-                    borderColor: 'divider',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between'
+                    borderColor: 'divider'
                 }}
             >
-                <Typography variant="h6" fontWeight={600}>
-                    Résultats ({totalResults})
-                </Typography>
-                {isMobile && onClose && (
-                    <IconButton onClick={onClose} size="small">
-                        <CloseIcon />
-                    </IconButton>
+                <Box
+                    sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        mb: isGeolocated ? 1 : 0
+                    }}
+                >
+                    <Typography variant="h6" fontWeight={600}>
+                        Résultats ({totalResults})
+                    </Typography>
+                    {isMobile && onClose && (
+                        <IconButton onClick={onClose} size="small">
+                            <CloseIcon />
+                        </IconButton>
+                    )}
+                </Box>
+                {/* Indicateur de tri par distance */}
+                {isGeolocated && totalResults > 0 && (
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.5
+                        }}
+                    >
+                        <PlaceIcon
+                            sx={{
+                                fontSize: 16,
+                                color: 'primary.main'
+                            }}
+                        />
+                        <Typography
+                            variant="caption"
+                            color="primary.main"
+                            fontWeight={600}
+                        >
+                            Triés par distance (du plus proche au plus éloigné)
+                        </Typography>
+                    </Box>
                 )}
             </Box>
 

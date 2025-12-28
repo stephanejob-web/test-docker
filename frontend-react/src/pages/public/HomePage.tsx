@@ -542,6 +542,7 @@ const HomePage: React.FC = () => {
                 onEventClick={handleEventClick}
                 onClose={() => setResultsPanelOpen(false)}
                 open={resultsPanelOpen}
+                isGeolocated={!!userLocation}
             />
 
             {/* Bouton liste sur mobile */}
