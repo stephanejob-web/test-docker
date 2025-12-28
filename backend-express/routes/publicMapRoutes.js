@@ -52,13 +52,11 @@ router.get('/churches', [
             params.push(parseFloat(west), parseFloat(east));
 
             // Calculer la distance si userLat et userLng sont fournis
-            console.log('🔍 Checking userLat && userLng:', { userLat, userLng, condition: !!(userLat && userLng) });
             if (userLat && userLng) {
                 const userPoint = `POINT(${userLng} ${userLat})`;
                 selectDistance = `,
                     ST_Distance_Sphere(c.location, ST_GeomFromText('${userPoint}')) / 1000 as distance_km`;
                 orderBy = 'ORDER BY distance_km ASC';
-                console.log('✅ Distance calculation enabled:', { selectDistance, orderBy });
             }
         }
         // Mode 2: Distance radius (fallback)
