@@ -16,10 +16,11 @@ router.get('/network', async (req, res) => {
             'a.role = "PASTOR"',
             'a.status = "VALIDATED"',
             'a.allow_network_visibility = TRUE',
-            'c.id IS NOT NULL'
+            'c.id IS NOT NULL',
+            'a.id != ?' // Exclure le pasteur connecté
         ];
 
-        let params = [];
+        let params = [req.user.id]; // Ajouter l'ID du pasteur connecté aux paramètres
 
         if (search) {
             whereConditions.push(`(a.first_name LIKE ? OR a.last_name LIKE ? OR a.email LIKE ? OR c.church_name LIKE ?)`);
