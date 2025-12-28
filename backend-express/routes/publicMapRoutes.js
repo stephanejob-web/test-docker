@@ -292,7 +292,7 @@ router.get('/events', [
                 ${selectDistance}
             FROM events e
             INNER JOIN admins a ON a.id = e.admin_id
-            LEFT JOIN churches c ON c.admin_id = a.id
+            LEFT JOIN churches c ON c.id = e.church_id
             LEFT JOIN event_details ed ON ed.event_id = e.id
             WHERE ${whereClause}
             ${orderByDistance}
@@ -344,7 +344,7 @@ router.get('/events/:id', [
                 CONCAT(a.first_name, ' ', a.last_name) as organizer_name
             FROM events e
             INNER JOIN admins a ON a.id = e.admin_id
-            LEFT JOIN churches c ON c.admin_id = a.id
+            LEFT JOIN churches c ON c.id = e.church_id
             WHERE e.id = ? AND e.cancelled_at IS NULL AND a.status = 'VALIDATED'
         `, [id]);
 
