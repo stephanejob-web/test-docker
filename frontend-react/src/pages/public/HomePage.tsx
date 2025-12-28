@@ -34,7 +34,7 @@ interface MapCenterProps {
     zoom?: number;
 }
 
-const MapCenter: React.FC<MapCenterProps> = React.memo(({ center, zoom = 13 }) => {
+const MapCenter: React.FC<MapCenterProps> = React.memo(({ center, zoom = 2 }) => {
     const map = useMap();
 
     useEffect(() => {
@@ -83,7 +83,8 @@ const HomePage: React.FC = () => {
     const [churches, setChurches] = useState<Church[]>([]);
     const [events, setEvents] = useState<Event[]>([]);
     const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
-    const [mapCenter, setMapCenter] = useState<[number, number]>([48.8566, 2.3522]); // Paris par défaut
+    const [mapCenter, setMapCenter] = useState<[number, number]>([20, 0]); // Vue monde par défaut
+    const [mapZoom, setMapZoom] = useState<number>(2); // Zoom monde
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -118,12 +119,12 @@ const HomePage: React.FC = () => {
                     setMapCenter([lat, lng]);
                 }
 
-                // Charger les données
+                // Charger les données - SANS filtre de distance au chargement initial
+                // pour afficher toutes les églises du monde
                 const data = await fetchChurchesAndEvents({
-                    latitude: lat,
-                    longitude: lng,
-                    radius: filters.radius,
-                    denominationId: filters.denominationId || undefined
+                    // Pas de latitude/longitude = pas de filtre de distance
+                    denominationId: filters.denominationId || undefined,
+                    limit: 500 // Augmenter la limite
                 });
 
                 setChurches(data.churches);
@@ -145,6 +146,7 @@ const HomePage: React.FC = () => {
     const handleRecenterMap = useCallback(async () => {
         if (userLocation) {
             setMapCenter([userLocation.latitude, userLocation.longitude]);
+            setMapZoom(13); // Zoomer sur la position
             return;
         }
 
@@ -159,6 +161,7 @@ const HomePage: React.FC = () => {
                 };
                 setUserLocation(newLocation);
                 setMapCenter([newLocation.latitude, newLocation.longitude]);
+                setMapZoom(13); // Zoomer sur la position
             } else {
                 setError('Géolocalisation non disponible');
             }
@@ -192,7 +195,7 @@ const HomePage: React.FC = () => {
             {/* Carte Leaflet */}
             <MapContainer
                 center={mapCenter}
-                zoom={13}
+                zoom={mapZoom}
                 style={{ height: '100%', width: '100%' }}
                 zoomControl={false}
             >
@@ -202,7 +205,7 @@ const HomePage: React.FC = () => {
                 />
 
                 {/* Recentrage automatique */}
-                <MapCenter center={mapCenter} />
+                <MapCenter center={mapCenter} zoom={mapZoom} />
 
                 {/* Marqueur utilisateur */}
                 {userLocation && (
