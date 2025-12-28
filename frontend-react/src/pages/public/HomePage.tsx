@@ -32,6 +32,7 @@ import SearchBar from '../../components/Map/SearchBar';
 import ResultsPanel from '../../components/Map/ResultsPanel';
 import ChurchDetailsModal from '../../components/Map/ChurchDetailsModal';
 import EventDetailsModal from '../../components/Map/EventDetailsModal';
+import GlobalStats from '../../components/Map/GlobalStats';
 
 // Fix Leaflet default icon
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -213,6 +214,8 @@ const HomePage: React.FC = () => {
 
     /**
      * Handler: Charger les données selon les bounds de la carte
+     * Sur mobile géolocalisé: rayon fixe de 15km
+     * Sinon: bounding box classique
      */
     const loadDataForBounds = useCallback(async (bounds: L.LatLngBounds) => {
         // Annuler la requête précédente si elle existe
@@ -228,32 +231,48 @@ const HomePage: React.FC = () => {
             setLoading(true);
             setError(null);
 
-            // Utiliser la position de l'utilisateur si disponible, sinon le centre de la carte
-            // La distance doit toujours être calculée par rapport à la position de l'utilisateur
-            let refLat: number | undefined;
-            let refLng: number | undefined;
+            let data;
 
-            if (userLocation) {
-                // Position géolocalisée de l'utilisateur (fixe)
-                refLat = userLocation.latitude;
-                refLng = userLocation.longitude;
-            } else {
-                // Fallback: centre de la carte (si pas de géolocalisation)
-                const center = bounds.getCenter();
-                refLat = center.lat;
-                refLng = center.lng;
+            // MODE MOBILE GÉOLOCALISÉ: Rayon fixe de 15km autour de la position
+            if (isMobile && userLocation) {
+                data = await fetchChurchesAndEvents({
+                    latitude: userLocation.latitude,
+                    longitude: userLocation.longitude,
+                    radius: 15, // 15km de rayon
+                    userLat: userLocation.latitude,
+                    userLng: userLocation.longitude,
+                    search: search || undefined,
+                    limit: 100
+                });
             }
+            // MODE DESKTOP OU MOBILE NON GÉOLOCALISÉ: Bounding box
+            else {
+                // Utiliser la position de l'utilisateur si disponible, sinon le centre de la carte
+                let refLat: number | undefined;
+                let refLng: number | undefined;
 
-            const data = await fetchChurchesAndEvents({
-                north: bounds.getNorth(),
-                south: bounds.getSouth(),
-                east: bounds.getEast(),
-                west: bounds.getWest(),
-                userLat: refLat,
-                userLng: refLng,
-                search: search || undefined,
-                limit: 100  // Optimisé pour 3000 églises
-            });
+                if (userLocation) {
+                    // Position géolocalisée de l'utilisateur (fixe)
+                    refLat = userLocation.latitude;
+                    refLng = userLocation.longitude;
+                } else {
+                    // Fallback: centre de la carte (si pas de géolocalisation)
+                    const center = bounds.getCenter();
+                    refLat = center.lat;
+                    refLng = center.lng;
+                }
+
+                data = await fetchChurchesAndEvents({
+                    north: bounds.getNorth(),
+                    south: bounds.getSouth(),
+                    east: bounds.getEast(),
+                    west: bounds.getWest(),
+                    userLat: refLat,
+                    userLng: refLng,
+                    search: search || undefined,
+                    limit: 100  // Optimisé pour 3000 églises
+                });
+            }
 
             // Ne mettre à jour que si la requête n'a pas été annulée
             if (!abortController.signal.aborted) {
@@ -274,16 +293,23 @@ const HomePage: React.FC = () => {
                 setLoading(false);
             }
         }
-    }, [search, userLocation]);
+    }, [search, userLocation, isMobile]);
 
     /**
      * Handler: Changement de bounds de la carte (debounced, sauf premier chargement)
+     * Sur mobile géolocalisé: pas de rechargement (rayon fixe)
      */
     const handleBoundsChange = useCallback((bounds: L.LatLngBounds) => {
         // Premier chargement: immédiat sans debounce
         if (isFirstLoadRef.current) {
             isFirstLoadRef.current = false;
             loadDataForBounds(bounds);
+            return;
+        }
+
+        // Sur mobile géolocalisé, on utilise un rayon fixe
+        // Pas besoin de recharger quand la carte bouge
+        if (isMobile && userLocation) {
             return;
         }
 
@@ -295,7 +321,7 @@ const HomePage: React.FC = () => {
         boundsChangeTimeoutRef.current = setTimeout(() => {
             loadDataForBounds(bounds);
         }, 500); // 500ms de délai
-    }, [loadDataForBounds]);
+    }, [loadDataForBounds, isMobile, userLocation]);
 
     /**
      * Handler: Recentrer sur la position utilisateur
@@ -416,8 +442,12 @@ const HomePage: React.FC = () => {
     }, [events, showEvents]);
 
     return (
-        <Box sx={{ position: 'relative', height: '100%', width: '100%' }}>
+        <Box sx={{ position: 'relative', height: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
+            {/* Statistiques globales */}
+            <GlobalStats />
+
             {/* Carte Leaflet */}
+            <Box sx={{ flex: 1, position: 'relative' }}>
             <MapContainer
                 center={mapCenter}
                 zoom={mapZoom}
@@ -529,7 +559,8 @@ const HomePage: React.FC = () => {
                 showEvents={showEvents}
                 onToggleChurches={handleToggleChurches}
                 onToggleEvents={handleToggleEvents}
-                resultsCount={filteredChurches.length + filteredEvents.length}
+                churchesCount={filteredChurches.length}
+                eventsCount={filteredEvents.length}
                 onLocationSelect={handleLocationSelect}
             />
 
@@ -542,6 +573,8 @@ const HomePage: React.FC = () => {
                 onEventClick={handleEventClick}
                 onClose={() => setResultsPanelOpen(false)}
                 open={resultsPanelOpen}
+                isGeolocated={!!userLocation}
+                isMobileView={isMobile}
             />
 
             {/* Bouton liste sur mobile */}
@@ -681,6 +714,7 @@ const HomePage: React.FC = () => {
                     50% { transform: scale(1.1); }
                 }
             `}</style>
+            </Box>
         </Box>
     );
 };

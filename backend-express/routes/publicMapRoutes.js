@@ -531,4 +531,57 @@ router.get('/denominations', async (req, res) => {
     }
 });
 
+/**
+ * Route publique : GET /api/public/stats
+ * Retourne les statistiques globales (France)
+ */
+router.get('/stats', async (req, res) => {
+    try {
+        // Nombre d'églises actives (validées)
+        const [churchesCount] = await db.query(`
+            SELECT COUNT(*) as total
+            FROM churches c
+            INNER JOIN admins a ON a.id = c.admin_id
+            WHERE a.status = 'VALIDATED'
+        `);
+
+        // Nombre d'événements en cours
+        const [ongoingEvents] = await db.query(`
+            SELECT COUNT(*) as total
+            FROM events e
+            INNER JOIN admins a ON a.id = e.admin_id
+            WHERE e.cancelled_at IS NULL
+            AND a.status = 'VALIDATED'
+            AND e.start_datetime <= NOW()
+            AND COALESCE(e.end_datetime, e.start_datetime) >= NOW()
+        `);
+
+        // Nombre d'événements à venir
+        const [upcomingEvents] = await db.query(`
+            SELECT COUNT(*) as total
+            FROM events e
+            INNER JOIN admins a ON a.id = e.admin_id
+            WHERE e.cancelled_at IS NULL
+            AND a.status = 'VALIDATED'
+            AND e.start_datetime > NOW()
+        `);
+
+        res.json({
+            success: true,
+            stats: {
+                churches: churchesCount[0].total,
+                ongoingEvents: ongoingEvents[0].total,
+                upcomingEvents: upcomingEvents[0].total
+            }
+        });
+
+    } catch (err) {
+        console.error('Error fetching stats:', err);
+        res.status(500).json({
+            success: false,
+            message: 'Erreur lors du chargement des statistiques'
+        });
+    }
+});
+
 module.exports = router;
