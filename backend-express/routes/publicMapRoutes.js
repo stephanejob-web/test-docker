@@ -242,7 +242,7 @@ router.get('/events', [
         } = req.query;
 
         let whereConditions = [
-            'e.status = "PUBLISHED"',
+            'e.cancelled_at IS NULL',
             'e.start_datetime >= NOW()',
             'a.status = "VALIDATED"'
         ];
@@ -345,7 +345,7 @@ router.get('/events/:id', [
             FROM events e
             INNER JOIN admins a ON a.id = e.admin_id
             LEFT JOIN churches c ON c.admin_id = a.id
-            WHERE e.id = ? AND e.status = 'PUBLISHED' AND a.status = 'VALIDATED'
+            WHERE e.id = ? AND e.cancelled_at IS NULL AND a.status = 'VALIDATED'
         `, [id]);
 
         if (events.length === 0) {
