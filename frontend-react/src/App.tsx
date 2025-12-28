@@ -1,7 +1,9 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import { AuthProvider } from './context/AuthContext';
 import theme from './theme/theme';
+import PublicLayout from './layouts/PublicLayout';
+import HomePage from './pages/public/HomePage';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import DashboardLayout from './components/Layout';
@@ -23,11 +25,16 @@ function App() {
       <AuthProvider>
         <BrowserRouter>
           <Routes>
+            {/* Pages publiques */}
+            <Route element={<PublicLayout />}>
+              <Route path="/" element={<HomePage />} />
+            </Route>
+
+            {/* Pages d'authentification */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
 
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-
+            {/* Dashboard protégé */}
             <Route path="/dashboard" element={<ProtectedRoute />}>
               <Route element={<DashboardLayout />}>
                 <Route index element={<DashboardHome />} />
