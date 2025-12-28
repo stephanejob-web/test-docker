@@ -67,6 +67,7 @@ export interface Event {
     church_id: number;
     event_address: string | null;
     event_city: string | null;
+    event_postal_code: string | null;
     distance_km: number | null;
 }
 

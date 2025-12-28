@@ -252,7 +252,10 @@ router.get('/events', [
 
         let whereConditions = [
             'e.cancelled_at IS NULL',
-            'e.start_datetime >= NOW()',
+            // Afficher les événements à venir ET en cours
+            // Si end_datetime existe, vérifier qu'il n'est pas passé
+            // Sinon, vérifier que start_datetime n'est pas passé
+            'COALESCE(e.end_datetime, e.start_datetime) >= NOW()',
             'a.status = "VALIDATED"'
         ];
 
@@ -324,7 +327,8 @@ router.get('/events', [
                 c.church_name,
                 c.id as church_id,
                 ed.address as event_address,
-                ed.city as event_city
+                ed.city as event_city,
+                ed.postal_code as event_postal_code
                 ${selectDistance}
             FROM events e
             INNER JOIN admins a ON a.id = e.admin_id
