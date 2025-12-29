@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Light Church - Plateforme pour pasteurs et responsables d'églises. Gérez votre église, créez des événements et touchez plus d'âmes.">
+    <title>Light Church - Plateforme pour Pasteurs & Responsables d'Églises</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-content">
+                <div class="logo">
+                    <span class="logo-icon">✝️</span>
+                    <span class="logo-text">Light Church</span>
+                    <span class="logo-tag">Pour Pasteurs</span>
+                </div>
+                <div class="nav-links">
+                    <a href="#mission">Mission</a>
+                    <a href="#fonctionnalites">Fonctionnalités</a>
+                    <a href="#comment-ca-marche">Comment ça marche</a>
+                    <a href="#interface">Interface</a>
+                    <a href="#reveil">Le Réveil</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-text">
+                    <span class="badge spiritual">🔥 Plateforme du Réveil</span>
+                    <h1 class="hero-title">
+                        Votre église visible sur
+                        <span class="gradient-text">la carte interactive</span>
+                    </h1>
+                    <p class="hero-description">
+                        Des milliers de personnes cherchent une église près de chez eux chaque jour.
+                        <strong>Light Church</strong> affiche votre église et vos événements <strong>en temps réel</strong> sur une <strong>carte interactive</strong>
+                        accessible depuis le site web et l'application mobile. Mise à jour instantanée de toutes vos informations.
+                    </p>
+                    <div class="hero-features">
+                        <div class="hero-feature">
+                            <div class="feature-check">✓</div>
+                            <div>
+                                <strong>Site Web & App Mobile</strong>
+                                <p>Visible partout (iOS, Android, Web)</p>
+                            </div>
+                        </div>
+                        <div class="hero-feature">
+                            <div class="feature-check">✓</div>
+                            <div>
+                                <strong>Carte Interactive avec Géolocalisation</strong>
+                                <p>Trouvez facilement toutes les églises à proximité</p>
+                            </div>
+                        </div>
+                        <div class="hero-feature">
+                            <div class="feature-check">✓</div>
+                            <div>
+                                <strong>Événements Visibles par Tous</strong>
+                                <p>Vos réunions, évangélisations, conférences sur la map</p>
+                            </div>
+                        </div>
+                        <div class="hero-feature">
+                            <div class="feature-check">✓</div>
+                            <div>
+                                <strong>Réseau Entre Pasteurs</strong>
+                                <p>Recherchez, communiquez, collaborez</p>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="trust-badge">
+                        <span class="trust-item">✓ 100% Gratuit</span>
+                        <span class="trust-item">✓ 3000+ Églises</span>
+                        <span class="trust-item">✓ Visible immédiatement</span>
+                    </p>
+                </div>
+                <div class="hero-visual">
+                    <div class="mockups-container">
+                        <!-- iPhone Mockup Principal - Carte -->
+                        <div class="iphone-mockup main">
+                            <div class="iphone-frame">
+                                <div class="iphone-notch"></div>
+                                <div class="iphone-screen">
+                                    <div class="app-screen map-screen">
+                                        <!-- Search Bar -->
+                                        <div class="app-searchbar">
+                                            <div class="search-icon">🔍</div>
+                                            <div class="search-text">Chercher une église...</div>
+                                        </div>
+                                        <!-- Map avec pins -->
+                                        <div class="map-container">
+                                            <div class="map-pin" style="top: 30%; left: 45%;">
+                                                <div class="pin-icon">⛪</div>
+                                            </div>
+                                            <div class="map-pin" style="top: 50%; left: 60%;">
+                                                <div class="pin-icon">⛪</div>
+                                            </div>
+                                            <div class="map-pin event" style="top: 40%; left: 30%;">
+                                                <div class="pin-icon">📅</div>
+                                            </div>
+                                            <div class="map-pin" style="top: 65%; left: 50%;">
+                                                <div class="pin-icon">⛪</div>
+                                            </div>
+                                            <div class="map-cluster" style="top: 25%; left: 70%;">
+                                                <div class="cluster-number">12</div>
+                                            </div>
+                                            <!-- User location -->
+                                            <div class="user-location">
+                                                <div class="location-pulse"></div>
+                                                <div class="location-dot"></div>
+                                            </div>
+                                        </div>
+                                        <!-- Bottom info card -->
+                                        <div class="church-card">
+                                            <div class="card-header">
+                                                <div class="church-icon">⛪</div>
+                                                <div class="church-info">
+                                                    <div class="church-name">Église Évangélique</div>
+                                                    <div class="church-distance">📍 À 800m · Ouverte</div>
+                                                </div>
+                                            </div>
+                                            <div class="church-actions">
+                                                <button class="action-btn primary">Voir détails</button>
+                                                <button class="action-btn secondary">Itinéraire</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- iPhone Mockup Secondaire - Liste -->
+                        <div class="iphone-mockup secondary">
+                            <div class="iphone-frame">
+                                <div class="iphone-notch"></div>
+                                <div class="iphone-screen">
+                                    <div class="app-screen list-screen">
+                                        <div class="screen-header">
+                                            <div class="header-title">Événements à venir</div>
+                                        </div>
+                                        <div class="events-list">
+                                            <div class="event-item">
+                                                <div class="event-date">
+                                                    <div class="date-day">15</div>
+                                                    <div class="date-month">JAN</div>
+                                                </div>
+                                                <div class="event-details">
+                                                    <div class="event-title">Réunion d'évangélisation</div>
+                                                    <div class="event-church">Église Baptiste · 19h00</div>
+                                                </div>
+                                            </div>
+                                            <div class="event-item">
+                                                <div class="event-date">
+                                                    <div class="date-day">22</div>
+                                                    <div class="date-month">JAN</div>
+                                                </div>
+                                                <div class="event-details">
+                                                    <div class="event-title">Pasteur invité</div>
+                                                    <div class="event-church">Assemblée de Dieu · 10h30</div>
+                                                </div>
+                                            </div>
+                                            <div class="event-item">
+                                                <div class="event-date">
+                                                    <div class="date-day">28</div>
+                                                    <div class="date-month">JAN</div>
+                                                </div>
+                                                <div class="event-details">
+                                                    <div class="event-title">Conférence</div>
+                                                    <div class="event-church">Église Évangélique · 18h00</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mockup-label">
+                        <div class="label-icon">📱</div>
+                        <div class="label-text">
+                            <strong>Application Mobile</strong>
+                            <span>iOS & Android</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="hero-bg-pattern"></div>
+    </section>
+
+    <!-- Mobile App Gallery -->
+    <section class="mobile-gallery">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge adaptive">Une plateforme qui s'adapte à vous</span>
+                <h2>Travaillez où vous voulez, quand vous voulez</h2>
+                <p class="section-description">
+                    <strong>La même plateforme, deux modes d'utilisation.</strong>
+                    Au bureau ? Utilisez le dashboard web. En déplacement ? L'application mobile prend le relais.
+                    Light Church s'adapte automatiquement à votre contexte pour une expérience optimale.
+                </p>
+                <div class="mode-features">
+                    <div class="mode-feature">
+                        <span class="feature-badge mobile">📱 Mode Mobile</span>
+                        <span>En déplacement • Notifications • Gestion rapide</span>
+                    </div>
+                    <div class="mode-feature">
+                        <span class="feature-badge desktop">🖥️ Mode Desktop</span>
+                        <span>Au bureau • Analytics • Gestion complète</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="subsection-header">
+                <h3>📱 Mode Mobile : En déplacement</h3>
+                <p>Application iOS & Android - Créez un événement, modifiez vos horaires depuis votre smartphone</p>
+            </div>
+
+            <div class="phones-showcase">
+                <!-- Phone 1: Map -->
+                <div class="phone-mockup" data-aos="fade-up" data-aos-delay="0">
+                    <div class="phone-frame">
+                        <div class="phone-notch"></div>
+                        <div class="phone-screen">
+                            <img src="phone-gallery/map.png" alt="Carte interactive">
+                        </div>
+                    </div>
+                    <div class="phone-label">
+                        <strong>Carte Interactive</strong>
+                        <span>Trouvez des églises près de vous</span>
+                    </div>
+                </div>
+
+                <!-- Phone 2: Analytics -->
+                <div class="phone-mockup" data-aos="fade-up" data-aos-delay="100">
+                    <div class="phone-frame">
+                        <div class="phone-notch"></div>
+                        <div class="phone-screen">
+                            <img src="phone-gallery/analytics.png" alt="Statistiques">
+                        </div>
+                    </div>
+                    <div class="phone-label">
+                        <strong>Analytics</strong>
+                        <span>6002+ événements référencés</span>
+                    </div>
+                </div>
+
+                <!-- Phone 3: Pastors Network -->
+                <div class="phone-mockup" data-aos="fade-up" data-aos-delay="200">
+                    <div class="phone-frame">
+                        <div class="phone-notch"></div>
+                        <div class="phone-screen">
+                            <img src="phone-gallery/pastors.png" alt="Réseau pastoral">
+                        </div>
+                    </div>
+                    <div class="phone-label">
+                        <strong>Réseau Pastoral</strong>
+                        <span>3001+ pasteurs connectés</span>
+                    </div>
+                </div>
+
+                <!-- Phone 4: Schedule -->
+                <div class="phone-mockup" data-aos="fade-up" data-aos-delay="300">
+                    <div class="phone-frame">
+                        <div class="phone-notch"></div>
+                        <div class="phone-screen">
+                            <img src="phone-gallery/schedule.png" alt="Horaires">
+                        </div>
+                    </div>
+                    <div class="phone-label">
+                        <strong>Horaires</strong>
+                        <span>Gestion des cultes</span>
+                    </div>
+                </div>
+
+                <!-- Phone 5: Login -->
+                <div class="phone-mockup" data-aos="fade-up" data-aos-delay="400">
+                    <div class="phone-frame">
+                        <div class="phone-notch"></div>
+                        <div class="phone-screen">
+                            <img src="phone-gallery/login.png" alt="Connexion">
+                        </div>
+                    </div>
+                    <div class="phone-label">
+                        <strong>Connexion</strong>
+                        <span>Interface sécurisée</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="subsection-header">
+                <h3>🖥️ Mode Desktop : Au bureau</h3>
+                <p>Interface Web complète - Analytics avancés, statistiques détaillées, export de données depuis votre ordinateur</p>
+            </div>
+
+            <div class="desktop-gallery">
+                <!-- Desktop Screenshot 1: Map -->
+                <div class="desktop-item" data-aos="fade-up" data-aos-delay="0">
+                    <div class="desktop-frame">
+                        <div class="desktop-screen">
+                            <img src="screenshots/screenshot-2.png" alt="Carte interactive">
+                        </div>
+                    </div>
+                    <div class="desktop-label">
+                        <strong>Carte Interactive</strong>
+                        <span>Recherche d'églises géolocalisée</span>
+                    </div>
+                </div>
+
+                <!-- Desktop Screenshot 2: Dashboard -->
+                <div class="desktop-item" data-aos="fade-up" data-aos-delay="100">
+                    <div class="desktop-frame">
+                        <div class="desktop-screen">
+                            <img src="screenshots/screenshot-3.png" alt="Dashboard">
+                        </div>
+                    </div>
+                    <div class="desktop-label">
+                        <strong>Tableau de Bord</strong>
+                        <span>Vue d'ensemble et statistiques</span>
+                    </div>
+                </div>
+
+                <!-- Desktop Screenshot 3: Events -->
+                <div class="desktop-item" data-aos="fade-up" data-aos-delay="200">
+                    <div class="desktop-frame">
+                        <div class="desktop-screen">
+                            <img src="screenshots/screenshot-5.png" alt="Événements">
+                        </div>
+                    </div>
+                    <div class="desktop-label">
+                        <strong>Mes Événements</strong>
+                        <span>Gestion complète du calendrier</span>
+                    </div>
+                </div>
+
+                <!-- Desktop Screenshot 4: Analytics -->
+                <div class="desktop-item" data-aos="fade-up" data-aos-delay="300">
+                    <div class="desktop-frame">
+                        <div class="desktop-screen">
+                            <img src="screenshots/screenshot-8.png" alt="Analytics">
+                        </div>
+                    </div>
+                    <div class="desktop-label">
+                        <strong>Analytics Avancés</strong>
+                        <span>Statistiques et données détaillées</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Mission Section -->
+    <section id="mission" class="mission">
+        <div class="container">
+            <div class="mission-content">
+                <div class="mission-text">
+                    <span class="section-badge">Notre Mission</span>
+                    <h2>Accomplir la Grande Commission à l'ère numérique</h2>
+                    <p class="lead">
+                        "Allez, faites de toutes les nations des disciples..." - Matthieu 28:19
+                    </p>
+                    <p>
+                        Des milliers de personnes cherchent Dieu chaque jour sur leur téléphone.
+                        Mais comment peuvent-elles <strong>trouver votre église</strong> si vous n'êtes pas visible là où elles cherchent ?
+                    </p>
+                    <p>
+                        <strong>Light Church</strong> permet aux personnes de <strong>voir en temps réel</strong> tous les événements et églises près de chez eux.
+                        En voyage ? L'application affiche automatiquement les églises et événements à proximité de leur localisation.
+                    </p>
+                    <p>
+                        Votre église reçoit un évangéliste ? <strong>Créez l'événement</strong> et toutes les personnes ayant l'application
+                        recevront cette information <strong>instantanément</strong>. Vous modifiez vos horaires de culte ?
+                        La mise à jour est <strong>immédiate</strong> sur l'application mobile et le site web.
+                    </p>
+                    <p>
+                        Light Church vous donne les <strong>outils modernes</strong> pour remplir votre mission :
+                        être <strong>une lumière dans votre ville</strong> et guider les âmes vers Christ, en temps réel.
+                    </p>
+                    <div class="mission-quote">
+                        <div class="quote-icon">"</div>
+                        <p>Vous êtes la lumière du monde. Une ville située sur une montagne ne peut être cachée.</p>
+                        <cite>Matthieu 5:14</cite>
+                    </div>
+                </div>
+                <div class="mission-visual">
+                    <div class="impact-card">
+                        <div class="impact-number">78%</div>
+                        <p>des personnes utilisent leur smartphone pour trouver une église près de chez eux</p>
+                    </div>
+                    <div class="impact-card">
+                        <div class="impact-number">3.2M</div>
+                        <p>de recherches "église près de moi" chaque année en France</p>
+                    </div>
+                    <div class="impact-card highlight">
+                        <div class="impact-icon">💡</div>
+                        <p><strong>Votre église peut être la réponse</strong> à ces recherches</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problème / Solution -->
+    <section class="problem-solution">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge danger">Le Défi d'Aujourd'hui</span>
+                <h2>Les obstacles que vous rencontrez</h2>
+            </div>
+            <div class="problems-grid">
+                <div class="problem-card">
+                    <div class="problem-icon">🔍</div>
+                    <h3>Invisibilité en ligne</h3>
+                    <p>Votre église fait un travail formidable, mais les gens ne peuvent pas vous trouver facilement sur internet</p>
+                </div>
+                <div class="problem-card">
+                    <div class="problem-icon">⏰</div>
+                    <h3>Manque de temps</h3>
+                    <p>Entre la préparation des cultes, la pastorale et l'administratif, vous n'avez pas le temps de gérer un site web</p>
+                </div>
+                <div class="problem-card">
+                    <div class="problem-icon">📢</div>
+                    <h3>Communication limitée</h3>
+                    <p>Difficile de promouvoir vos événements et d'atteindre de nouvelles personnes au-delà de votre assemblée actuelle</p>
+                </div>
+                <div class="problem-card">
+                    <div class="problem-icon">📊</div>
+                    <h3>Pas de mesure d'impact</h3>
+                    <p>Vous ne savez pas combien de personnes vous trouvent ou s'intéressent à votre église en ligne</p>
+                </div>
+            </div>
+            <div class="solution-banner">
+                <div class="solution-content">
+                    <h3>✨ Light Church résout tous ces défis</h3>
+                    <p>Une plateforme complète qui rend votre église <strong>visible, accessible et attractive</strong> pour les chercheurs spirituels</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Fonctionnalités -->
+    <section id="fonctionnalites" class="features">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">Fonctionnalités</span>
+                <h2>Tout ce dont vous avez besoin pour rayonner</h2>
+                <p class="section-description">Des outils puissants mais simples, conçus spécifiquement pour les responsables d'églises</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card" data-animate>
+                    <div class="feature-number">01</div>
+                    <div class="feature-icon church">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                        </svg>
+                    </div>
+                    <h3>Profil d'Église Complet</h3>
+                    <p>Créez et gérez le profil de votre église en quelques minutes : informations, horaires, photos, adresse, dénomination, message du pasteur.</p>
+                    <ul class="feature-list">
+                        <li>✓ Visible sur la carte interactive</li>
+                        <li>✓ Référencement optimisé</li>
+                        <li>✓ Photos et descriptions</li>
+                        <li>✓ Mise à jour en temps réel</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card" data-animate>
+                    <div class="feature-number">02</div>
+                    <div class="feature-icon events">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                    </div>
+                    <h3>Gestion d'Événements</h3>
+                    <p>Publiez vos cultes spéciaux, conférences, concerts, séminaires. Les utilisateurs peuvent les ajouter à leur calendrier en 1 clic.</p>
+                    <ul class="feature-list">
+                        <li>✓ Création illimitée d'événements</li>
+                        <li>✓ Notifications push automatiques</li>
+                        <li>✓ Formulaires d'inscription</li>
+                        <li>✓ Rappels automatiques</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card" data-animate>
+                    <div class="feature-number">03</div>
+                    <div class="feature-icon analytics">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path>
+                            <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
+                        </svg>
+                    </div>
+                    <h3>Statistiques & Analytics</h3>
+                    <p>Mesurez votre impact : nombre de vues, nouveaux visiteurs, événements populaires, heures de pointe, origine géographique.</p>
+                    <ul class="feature-list">
+                        <li>✓ Tableau de bord en temps réel</li>
+                        <li>✓ Rapports mensuels automatiques</li>
+                        <li>✓ Tendances et insights</li>
+                        <li>✓ Données exportables</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card" data-animate>
+                    <div class="feature-number">04</div>
+                    <div class="feature-icon reach">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <circle cx="12" cy="12" r="6"></circle>
+                            <circle cx="12" cy="12" r="2"></circle>
+                        </svg>
+                    </div>
+                    <h3>Visibilité Maximale</h3>
+                    <p>Votre église apparaît sur la carte pour tous les utilisateurs de Light Church dans votre région. Touchez des milliers de personnes.</p>
+                    <ul class="feature-list">
+                        <li>✓ Géolocalisation précise</li>
+                        <li>✓ Recherche par dénomination</li>
+                        <li>✓ Filtres intelligents</li>
+                        <li>✓ Itinéraire GPS intégré</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card" data-animate>
+                    <div class="feature-number">05</div>
+                    <div class="feature-icon team">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                    </div>
+                    <h3>Gestion d'Équipe</h3>
+                    <p>Donnez accès à vos collaborateurs (anciens, responsables) avec différents niveaux de permissions. Travaillez en équipe.</p>
+                    <ul class="feature-list">
+                        <li>✓ Comptes multiples</li>
+                        <li>✓ Rôles personnalisables</li>
+                        <li>✓ Historique des modifications</li>
+                        <li>✓ Notifications d'équipe</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card" data-animate>
+                    <div class="feature-number">06</div>
+                    <div class="feature-icon support">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                    </div>
+                    <h3>Support Dédié</h3>
+                    <p>Notre équipe vous accompagne à chaque étape. Formation gratuite, support technique réactif et ressources complètes.</p>
+                    <ul class="feature-list">
+                        <li>✓ Tutoriels vidéo</li>
+                        <li>✓ Chat en direct</li>
+                        <li>✓ Formation personnalisée</li>
+                        <li>✓ Communauté d'entraide</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Impact Section -->
+    <section id="impact" class="impact">
+        <div class="container">
+            <div class="impact-content">
+                <div class="impact-visual">
+                    <div class="impact-illustration">
+                        <div class="ripple-container">
+                            <div class="ripple"></div>
+                            <div class="ripple"></div>
+                            <div class="ripple"></div>
+                            <div class="center-icon">⛪</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="impact-text">
+                    <span class="section-badge success">Impact Réel</span>
+                    <h2>Votre église, un phare dans la ville</h2>
+                    <div class="impact-benefits">
+                        <div class="benefit-item">
+                            <div class="benefit-icon">🌟</div>
+                            <div class="benefit-content">
+                                <h4>Touchez plus d'âmes</h4>
+                                <p>Soyez trouvé par des personnes en recherche spirituelle active dans votre région. Chaque profil reçoit en moyenne <strong>800+ vues par mois</strong>.</p>
+                            </div>
+                        </div>
+                        <div class="benefit-item">
+                            <div class="benefit-icon">🤝</div>
+                            <div class="benefit-content">
+                                <h4>Facilitez l'intégration</h4>
+                                <p>Les nouveaux visiteurs trouvent facilement toutes les infos : horaires, adresse, événements. Réduisez la barrière d'entrée.</p>
+                            </div>
+                        </div>
+                        <div class="benefit-item">
+                            <div class="benefit-icon">🔥</div>
+                            <div class="benefit-content">
+                                <h4>Participez au réveil</h4>
+                                <p>Rejoignez un mouvement de milliers d'églises qui utilisent la technologie pour <strong>accélérer le réveil spirituel</strong>.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Comment ça marche -->
+    <section id="comment-ca-marche" class="how-it-works">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">Comment ça marche</span>
+                <h2>Ce que vous allez faire concrètement</h2>
+                <p class="section-description">Un outil simple et puissant pour gérer votre église et toucher votre ville</p>
+            </div>
+
+            <div class="workflow-grid">
+                <!-- Pour les Pasteurs -->
+                <div class="workflow-section">
+                    <div class="workflow-header">
+                        <div class="workflow-icon pastor">👨‍💼</div>
+                        <h3>En tant que Pasteur</h3>
+                        <p>Gérez votre église et touchez plus d'âmes</p>
+                    </div>
+                    <div class="workflow-steps">
+                        <div class="step-item">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h4>Créez votre compte</h4>
+                                <p>Inscription gratuite en 2 minutes. Nom, email, église. C'est tout!</p>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h4>Renseignez votre église</h4>
+                                <p>Informations complètes: nom, adresse, horaires de cultes, dénomination, photos, message du pasteur, services proposés.</p>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h4>Votre église s'affiche sur la carte</h4>
+                                <p>Automatiquement visible sur la carte interactive pour des milliers de personnes. Toutes vos infos sont à jour en temps réel!</p>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <h4>Créez vos événements</h4>
+                                <p>Réunions, évangélisation, pasteur invité, conférences, concerts... Vos événements apparaissent sur l'app mobile ET le site web!</p>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <div class="step-number">5</div>
+                            <div class="step-content">
+                                <h4>Connectez avec d'autres pasteurs</h4>
+                                <p>Voir la liste des pasteurs, rechercher un pasteur, communiquer avec lui. Réseau spirituel actif!</p>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <div class="step-number">6</div>
+                            <div class="step-content">
+                                <h4>Suivez votre impact</h4>
+                                <p>Statistiques en temps réel: combien de personnes voient votre église, vos événements populaires, tendances.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pour les Fidèles -->
+                <div class="workflow-section">
+                    <div class="workflow-header">
+                        <div class="workflow-icon user">👤</div>
+                        <h3>Pour les Fidèles</h3>
+                        <p>Comment ils vont trouver votre église</p>
+                    </div>
+                    <div class="workflow-steps">
+                        <div class="step-item">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h4>Ils vont sur le site ou l'app mobile</h4>
+                                <p>Site web accessible à tous OU application mobile téléchargeable (iOS/Android).</p>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h4>Voient les églises à proximité</h4>
+                                <p>Carte interactive montrant TOUTES les églises autour d'eux avec géolocalisation précise.</p>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h4>Découvrent les événements près de chez eux</h4>
+                                <p>Tous vos événements apparaissent sur la carte et dans la liste. Filtrage par type, date, distance.</p>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <h4>Consultent les infos de votre église</h4>
+                                <p>Horaires, adresse exacte, dénomination, photos, message du pasteur. Tout est clair!</p>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <div class="step-number">5</div>
+                            <div class="step-content">
+                                <h4>Obtiennent l'itinéraire GPS</h4>
+                                <p>Navigation directe vers votre église. En 1 clic, ils savent comment venir!</p>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <div class="step-number">6</div>
+                            <div class="step-content">
+                                <h4>Ajoutent vos événements à leur calendrier</h4>
+                                <p>Rappels automatiques. Ils n'oublient plus vos événements!</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Le Besoin & Le Réveil -->
+    <section id="reveil" class="revival-need">
+        <div class="container">
+            <div class="revival-content">
+                <div class="need-section">
+                    <span class="section-badge danger">Le Problème Actuel</span>
+                    <h2>Ce besoin n'existe nulle part aujourd'hui</h2>
+                    <div class="need-points">
+                        <div class="need-point">
+                            <div class="need-icon">❌</div>
+                            <div class="need-text">
+                                <h4>Aucune plateforme centralisée</h4>
+                                <p>Les églises sont éparpillées sur différents sites, pages Facebook, annuaires obsolètes. Impossible pour quelqu'un de trouver TOUTES les églises d'une ville facilement.</p>
+                            </div>
+                        </div>
+                        <div class="need-point">
+                            <div class="need-icon">❌</div>
+                            <div class="need-text">
+                                <h4>Informations dispersées et non à jour</h4>
+                                <p>Horaires erronés, adresses incorrectes, événements passés encore affichés. Les gens se déplacent pour rien.</p>
+                            </div>
+                        </div>
+                        <div class="need-point">
+                            <div class="need-icon">❌</div>
+                            <div class="need-text">
+                                <h4>Aucun outil pour les pasteurs</h4>
+                                <p>Pas de plateforme permettant de gérer son église, publier des événements et mesurer son impact digital facilement.</p>
+                            </div>
+                        </div>
+                        <div class="need-point">
+                            <div class="need-icon">❌</div>
+                            <div class="need-text">
+                                <h4>Pas de réseau entre pasteurs</h4>
+                                <p>Difficile de trouver et communiquer avec d'autres pasteurs de sa région pour des collaborations, invitations, partage d'expériences.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="revival-section">
+                    <div class="revival-banner">
+                        <div class="revival-icon">🔥</div>
+                        <h2>Light Church: L'outil du réveil à venir</h2>
+                    </div>
+                    <div class="revival-description">
+                        <p class="lead">
+                            Nous croyons qu'un <strong>grand réveil spirituel</strong> arrive. Des milliers de personnes vont chercher Dieu, chercher une église, chercher la vérité.
+                        </p>
+                        <p>
+                            <strong>La question est:</strong> Seront-ils capables de vous trouver ?
+                        </p>
+                        <p>
+                            Light Church est l'infrastructure technologique qui va <strong>faciliter ce réveil</strong>:
+                        </p>
+                    </div>
+                    <div class="revival-points">
+                        <div class="revival-point">
+                            <div class="point-icon">✅</div>
+                            <div class="point-text">
+                                <h4>Visibilité instantanée</h4>
+                                <p>Toute personne en recherche spirituelle trouve immédiatement les églises près de chez elle. Fini les barrières.</p>
+                            </div>
+                        </div>
+                        <div class="revival-point">
+                            <div class="point-icon">✅</div>
+                            <div class="point-text">
+                                <h4>Événements d'évangélisation amplifiés</h4>
+                                <p>Vos campagnes, conférences, réunions spéciales touchent 10x plus de monde grâce à la visibilité sur l'app mobile et le web.</p>
+                            </div>
+                        </div>
+                        <div class="revival-point">
+                            <div class="point-icon">✅</div>
+                            <div class="point-text">
+                                <h4>Réseau pastoral actif</h4>
+                                <p>Les pasteurs se connectent, collaborent, s'invitent, organisent ensemble. Unité pour le réveil!</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="revival-quote">
+                        <p>"L'Esprit et l'épouse disent: Viens! Et que celui qui entend dise: Viens!"</p>
+                        <cite>Apocalypse 22:17</cite>
+                    </div>
+                    <div class="revival-cta">
+                        <p class="revival-cta-text">
+                            <strong>Préparez votre église pour le réveil.</strong><br>
+                            Soyez visible, accessible, prêt à accueillir la moisson qui vient.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <div class="logo">
+                        <span class="logo-icon">✝️</span>
+                        <span class="logo-text">Light Church</span>
+                    </div>
+                    <p>Faites briller votre église dans le monde numérique</p>
+                    <div class="footer-verse">
+                        <p>"Vous êtes la lumière du monde"</p>
+                        <cite>Matthieu 5:14</cite>
+                    </div>
+                </div>
+                <div class="footer-links">
+                    <div class="footer-column">
+                        <h4>Plateforme</h4>
+                        <a href="#fonctionnalites">Fonctionnalités</a>
+                        <a href="#">Tarifs (Gratuit!)</a>
+                        <a href="#">Démo</a>
+                        <a href="#">FAQ</a>
+                    </div>
+                    <div class="footer-column">
+                        <h4>Ressources</h4>
+                        <a href="#">Tutoriels</a>
+                        <a href="#">Blog</a>
+                        <a href="#">Études de cas</a>
+                        <a href="#">Webinaires</a>
+                    </div>
+                    <div class="footer-column">
+                        <h4>Support</h4>
+                        <a href="#">Centre d'aide</a>
+                        <a href="#">Contact</a>
+                        <a href="#">Communauté</a>
+                        <a href="#">Formation</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Light Church. Tous droits réservés.</p>
+                <div class="footer-legal">
+                    <a href="#">Confidentialité</a>
+                    <a href="#">Conditions</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
