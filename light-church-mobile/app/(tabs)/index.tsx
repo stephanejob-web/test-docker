@@ -1,98 +1,185 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+/**
+ * Main Map Screen
+ * Google Maps style with bottom sheet
+ */
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import React, { useRef, useState, useCallback, useMemo } from 'react';
+import { StyleSheet, View, ActivityIndicator, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
+import BottomSheet from '@gorhom/bottom-sheet';
+import type { Region } from 'react-native-maps';
+import MapView from 'react-native-maps';
 
-export default function HomeScreen() {
+import ChurchMap from '@/components/map/ChurchMap';
+import ChurchesBottomSheet from '@/components/bottomSheet/ChurchesBottomSheet';
+import SearchBar from '@/components/map/SearchBar';
+import MyLocationButton from '@/components/map/MyLocationButton';
+import { Box, Text } from '@/components/ui';
+import { useLocation } from '@/hooks/useLocation';
+import { useChurches, useEvents } from '@/hooks/query';
+import { getBoundingBox } from '@/utils/geo';
+import { MAP_CONFIG } from '@/constants/config';
+import type { Church, Event } from '@/types';
+
+export default function MapScreen() {
+  const router = useRouter();
+  const bottomSheetRef = useRef<BottomSheet>(null);
+  const mapRef = useRef<MapView>(null);
+
+  // User location
+  const { location: userLocation, loading: locationLoading } = useLocation();
+
+  // Map region state
+  const [mapRegion, setMapRegion] = useState<Region>({
+    latitude: userLocation?.latitude || MAP_CONFIG.DEFAULT_LATITUDE,
+    longitude: userLocation?.longitude || MAP_CONFIG.DEFAULT_LONGITUDE,
+    latitudeDelta: 0.5,
+    longitudeDelta: 0.5,
+  });
+
+  // Filters
+  const [showChurches, setShowChurches] = useState(true);
+  const [showEvents, setShowEvents] = useState(true);
+
+  // Calculate query params
+  const queryParams = useMemo(() => {
+    const bbox = getBoundingBox(mapRegion);
+    return {
+      ...bbox,
+      userLat: userLocation?.latitude,
+      userLng: userLocation?.longitude,
+      limit: 100,
+    };
+  }, [mapRegion, userLocation]);
+
+  // Fetch data
+  const { data: churchesData, isLoading: churchesLoading } = useChurches(queryParams, showChurches);
+  const { data: eventsData, isLoading: eventsLoading } = useEvents(queryParams, showEvents);
+
+  const churches = churchesData?.churches || [];
+  const events = eventsData?.events || [];
+
+  // Handle map region change (debounced in hook)
+  const handleRegionChange = useCallback((region: Region) => {
+    setMapRegion(region);
+  }, []);
+
+  // Navigate to details
+  const handleChurchPress = useCallback((church: Church) => {
+    router.push(`/church/${church.id}`);
+  }, [router]);
+
+  const handleEventPress = useCallback((event: Event) => {
+    router.push(`/event/${event.id}`);
+  }, [router]);
+
+  // Handle location search from SearchBar
+  const handleLocationSelect = useCallback((latitude: number, longitude: number, label: string) => {
+    const newRegion: Region = {
+      latitude,
+      longitude,
+      latitudeDelta: 0.05, // Zoom closer on searched location
+      longitudeDelta: 0.05,
+    };
+
+    // Animate map to new location
+    mapRef.current?.animateToRegion(newRegion, 500);
+    setMapRegion(newRegion);
+  }, []);
+
+  // Handle "My Location" button press
+  const handleMyLocation = useCallback(() => {
+    if (!userLocation) {
+      Alert.alert(
+        'Position non disponible',
+        'Impossible de récupérer votre position actuelle.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    const newRegion: Region = {
+      latitude: userLocation.latitude,
+      longitude: userLocation.longitude,
+      latitudeDelta: 0.1,
+      longitudeDelta: 0.1,
+    };
+
+    // Animate map to user location
+    mapRef.current?.animateToRegion(newRegion, 500);
+    setMapRegion(newRegion);
+  }, [userLocation]);
+
+  // Show loading state while getting location
+  if (locationLoading) {
+    return (
+      <Box flex={1} justifyContent="center" alignItems="center" backgroundColor="background">
+        <ActivityIndicator size="large" color="#4285F4" />
+        <Text variant="body" color="textSecondary" marginTop="m">
+          Obtention de votre position...
+        </Text>
+      </Box>
+    );
+  }
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <View style={styles.container}>
+      {/* Map */}
+      <ChurchMap
+        ref={mapRef}
+        churches={churches}
+        events={events}
+        userLocation={userLocation}
+        onRegionChange={handleRegionChange}
+        onChurchPress={handleChurchPress}
+        onEventPress={handleEventPress}
+      />
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      {/* Search Bar */}
+      <SearchBar onLocationSelect={handleLocationSelect} />
+
+      {/* My Location Button */}
+      <MyLocationButton onPress={handleMyLocation} />
+
+      {/* Loading indicator */}
+      {(churchesLoading || eventsLoading) && (
+        <Box
+          position="absolute"
+          top={160}
+          alignSelf="center"
+          backgroundColor="surface"
+          paddingHorizontal="m"
+          paddingVertical="s"
+          borderRadius="round"
+          style={styles.loadingBadge}
+        >
+          <ActivityIndicator size="small" color="#4285F4" />
+        </Box>
+      )}
+
+      {/* Bottom Sheet */}
+      <ChurchesBottomSheet
+        ref={bottomSheetRef}
+        churches={churches}
+        events={events}
+        showChurches={showChurches}
+        showEvents={showEvents}
+        onChurchPress={handleChurchPress}
+        onEventPress={handleEventPress}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  loadingBadge: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
 });
