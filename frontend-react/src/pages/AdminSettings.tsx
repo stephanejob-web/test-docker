@@ -159,12 +159,18 @@ export default function AdminSettings() {
     };
 
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, md: 3 } }}>
+            <Typography variant="h3" sx={{ fontWeight: 'bold', fontSize: { xs: '1.75rem', sm: '2.5rem', md: '3rem' } }}>
                 Configuration Globale
             </Typography>
 
-            <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)}>
+            <Tabs
+                value={activeTab}
+                onChange={(_, newValue) => setActiveTab(newValue)}
+                variant="scrollable"
+                scrollButtons="auto"
+                allowScrollButtonsMobile
+            >
                 <Tab label="Langues" />
                 <Tab label="Types d'activités" />
                 <Tab label="Dénominations" />
@@ -175,7 +181,7 @@ export default function AdminSettings() {
                 <Grid container spacing={3}>
                     <Grid size={{ xs: 12, lg: 6 }}>
                         <Card>
-                            <CardContent>
+                            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
                                 <Typography variant="h6" sx={{ mb: 2 }}>
                                     {editingLangId ? 'Modifier Langue' : 'Nouvelle Langue'}
                                 </Typography>
@@ -225,7 +231,7 @@ export default function AdminSettings() {
                     </Grid>
                     <Grid size={{ xs: 12, lg: 6 }}>
                         <Card>
-                            <CardContent>
+                            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
                                 <Typography variant="h6" sx={{ mb: 2 }}>Langues Actives</Typography>
                                 <List>
                                     {languages.map(l => (
@@ -257,7 +263,7 @@ export default function AdminSettings() {
                 <Grid container spacing={3}>
                     <Grid size={{ xs: 12, lg: 6 }}>
                         <Card>
-                            <CardContent>
+                            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
                                 <Typography variant="h6" sx={{ mb: 2 }}>
                                     {editingTypeId ? 'Modifier Type d\'Activité' : 'Nouveau Type d\'Activité'}
                                 </Typography>
@@ -301,7 +307,7 @@ export default function AdminSettings() {
                     </Grid>
                     <Grid size={{ xs: 12, lg: 6 }}>
                         <Card>
-                            <CardContent>
+                            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
                                 <Typography variant="h6" sx={{ mb: 2 }}>Types Actifs</Typography>
                                 <List>
                                     {activityTypes.map(t => (
@@ -333,7 +339,7 @@ export default function AdminSettings() {
                 <Grid container spacing={3}>
                     <Grid size={{ xs: 12, lg: 6 }}>
                         <Card>
-                            <CardContent>
+                            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
                                 <Typography variant="h6" sx={{ mb: 2 }}>
                                     {editingDenomId ? 'Modifier Dénomination' : 'Nouvelle Dénomination'}
                                 </Typography>
@@ -393,7 +399,7 @@ export default function AdminSettings() {
                     </Grid>
                     <Grid size={{ xs: 12, lg: 6 }}>
                         <Card>
-                            <CardContent>
+                            <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
                                 <Typography variant="h6" sx={{ mb: 2 }}>
                                     Dénominations Actives ({denominations.filter(d => d.is_active).length})
                                 </Typography>

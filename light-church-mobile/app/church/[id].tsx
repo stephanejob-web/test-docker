@@ -1,0 +1,248 @@
+/**
+ * Church Detail Page
+ */
+
+import React from 'react';
+import { ScrollView, StyleSheet, ActivityIndicator, Linking } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+import { Box, Text, Button, Card } from '@/components/ui';
+import { useChurchDetail } from '@/hooks/query';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+
+export default function ChurchDetailScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { data, isLoading, error } = useChurchDetail(Number(id));
+
+  const handleOpenMaps = () => {
+    if (!data?.church) return;
+    const { latitude, longitude } = data.church;
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
+    Linking.openURL(url);
+  };
+
+  const handleCall = () => {
+    if (!data?.church?.details?.phone) return;
+    Linking.openURL(`tel:${data.church.details.phone}`);
+  };
+
+  const handleWebsite = () => {
+    if (!data?.church?.details?.website) return;
+    Linking.openURL(data.church.details.website);
+  };
+
+  const handleEmail = () => {
+    if (!data?.church?.email) return;
+    Linking.openURL(`mailto:${data.church.email}`);
+  };
+
+  if (isLoading) {
+    return (
+      <Box flex={1} justifyContent="center" alignItems="center" backgroundColor="background">
+        <ActivityIndicator size="large" color="#4285F4" />
+      </Box>
+    );
+  }
+
+  if (error || !data?.church) {
+    return (
+      <Box flex={1} justifyContent="center" alignItems="center" backgroundColor="background" padding="m">
+        <Text variant="body" color="error">
+          Erreur lors du chargement des détails
+        </Text>
+      </Box>
+    );
+  }
+
+  const church = data.church;
+
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {/* Header */}
+      <Box padding="m">
+        <Text variant="header" marginBottom="s">
+          {church.church_name}
+        </Text>
+        <Text variant="body" color="primary">
+          {church.denomination_name}
+        </Text>
+      </Box>
+
+      {/* Actions */}
+      <Box flexDirection="row" paddingHorizontal="m" gap="s" marginBottom="m">
+        <Box flex={1}>
+          <Button onPress={handleOpenMaps} variant="primary" size="medium">
+            🚗 Itinéraire
+          </Button>
+        </Box>
+        {church.details?.phone && (
+          <Box flex={1}>
+            <Button onPress={handleCall} variant="outline" size="medium">
+              📞 Appeler
+            </Button>
+          </Box>
+        )}
+      </Box>
+
+      {/* Info Card */}
+      <Card marginHorizontal="m" marginBottom="m">
+        <Text variant="subtitle" marginBottom="m">
+          Informations
+        </Text>
+
+        {(church.details?.pastor_first_name || church.details?.pastor_last_name) && (
+          <Box marginBottom="s">
+            <Text variant="caption" color="textSecondary">
+              Pasteur
+            </Text>
+            <Text variant="body">
+              {church.details.pastor_first_name} {church.details.pastor_last_name}
+            </Text>
+          </Box>
+        )}
+
+        {church.email && (
+          <Box marginBottom="s">
+            <Text variant="caption" color="textSecondary">
+              Email
+            </Text>
+            <Text variant="body" color="primary" onPress={handleEmail}>
+              {church.email}
+            </Text>
+          </Box>
+        )}
+
+        {church.details?.address && (
+          <Box marginBottom="s">
+            <Text variant="caption" color="textSecondary">
+              Adresse
+            </Text>
+            <Text variant="body">
+              {church.details.address}
+              {'\n'}
+              {church.details.postal_code} {church.details.city}
+            </Text>
+          </Box>
+        )}
+
+        {church.details?.phone && (
+          <Box marginBottom="s">
+            <Text variant="caption" color="textSecondary">
+              Téléphone
+            </Text>
+            <Text variant="body" color="primary" onPress={handleCall}>
+              {church.details.phone}
+            </Text>
+          </Box>
+        )}
+
+        {church.details?.website && (
+          <Box marginBottom="s">
+            <Text variant="caption" color="textSecondary">
+              Site web
+            </Text>
+            <Text variant="body" color="primary" onPress={handleWebsite}>
+              {church.details.website}
+            </Text>
+          </Box>
+        )}
+
+        {church.details?.status && (
+          <Box>
+            <Text variant="caption" color="textSecondary">
+              Statut
+            </Text>
+            <Text variant="body" color={church.details.status === 'ACTIVE' ? 'success' : 'textSecondary'}>
+              {church.details.status === 'ACTIVE' ? '✓ Active' : church.details.status}
+            </Text>
+          </Box>
+        )}
+      </Card>
+
+      {/* Schedules */}
+      {church.schedules && church.schedules.length > 0 && (
+        <Card marginHorizontal="m" marginBottom="m">
+          <Text variant="subtitle" marginBottom="m">
+            Horaires
+          </Text>
+          {church.schedules.map((schedule, index) => (
+            <Box
+              key={index}
+              flexDirection="row"
+              justifyContent="space-between"
+              marginBottom="s"
+              paddingBottom="s"
+              borderBottomWidth={index < church.schedules.length - 1 ? 1 : 0}
+              borderBottomColor="border"
+            >
+              <Box>
+                <Text variant="body">{schedule.day_of_week}</Text>
+                <Text variant="caption" color="textSecondary">
+                  {schedule.activity_type}
+                </Text>
+              </Box>
+              <Text variant="body" fontWeight="600">
+                {schedule.start_time.slice(0, 5)}
+              </Text>
+            </Box>
+          ))}
+        </Card>
+      )}
+
+      {/* Description */}
+      {church.details?.description && (
+        <Card marginHorizontal="m" marginBottom="m">
+          <Text variant="subtitle" marginBottom="m">
+            À propos
+          </Text>
+          <Text variant="body" color="textSecondary">
+            {church.details.description}
+          </Text>
+        </Card>
+      )}
+
+      {/* Parking */}
+      {church.details?.has_parking === 1 && (
+        <Card marginHorizontal="m" marginBottom="m">
+          <Text variant="subtitle" marginBottom="m">
+            Parking
+          </Text>
+          <Text variant="body" color="textSecondary">
+            {church.details.parking_capacity ? `${church.details.parking_capacity} places` : 'Disponible'}
+            {church.details.is_parking_free === 1 && ' • Gratuit'}
+          </Text>
+        </Card>
+      )}
+
+      {/* Social Media */}
+      {church.socials && church.socials.length > 0 && (
+        <Card marginHorizontal="m" marginBottom="m">
+          <Text variant="subtitle" marginBottom="m">
+            Réseaux sociaux
+          </Text>
+          {church.socials.map((social, index) => (
+            <Box key={index} marginBottom="s">
+              <Text
+                variant="body"
+                color="primary"
+                onPress={() => Linking.openURL(social.url)}
+              >
+                {social.platform}
+              </Text>
+            </Box>
+          ))}
+        </Card>
+      )}
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F8F9FA',
+  },
+  content: {
+    paddingBottom: 40,
+  },
+});

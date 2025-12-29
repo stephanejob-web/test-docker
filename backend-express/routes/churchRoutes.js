@@ -32,16 +32,22 @@ router.get('/my-church', async (req, res) => {
         }
 
         const church = churches[0];
+
         // Récupérer les détails
         const [details] = await db.query('SELECT * FROM church_details WHERE church_id = ?', [church.id]);
         const [socials] = await db.query('SELECT * FROM church_socials WHERE church_id = ?', [church.id]);
         const [schedules] = await db.query('SELECT * FROM church_schedules WHERE church_id = ?', [church.id]);
 
+        // Récupérer allow_network_visibility de l'admin
+        const adminResult = await db.query('SELECT allow_network_visibility FROM admins WHERE id = ?', [req.user.id]);
+        const adminData = adminResult && adminResult[0] ? adminResult[0] : [];
+
         res.json({
             ...church,
             details: details[0] || {},
             socials: socials || [],
-            schedules: schedules || []
+            schedules: schedules || [],
+            allow_network_visibility: adminData[0]?.allow_network_visibility || false
         });
     } catch (error) {
         console.error(error);
@@ -57,7 +63,9 @@ router.post('/my-church', validateChurch, async (req, res) => {
         description, address, street_number, street_name, postal_code, city, phone, website, pastor_first_name, pastor_last_name, has_parking, parking_capacity, is_parking_free, logo_url,
         // Relations
         socials, // Array of { platform, url }
-        schedules // Array of { day_of_week, start_time, activity_type_id }
+        schedules, // Array of { day_of_week, start_time, activity_type_id }
+        // Network visibility
+        allow_network_visibility
     } = req.body;
 
     const connection = await db.getConnection();
@@ -129,6 +137,14 @@ router.post('/my-church', validateChurch, async (req, res) => {
             await connection.query(
                 'INSERT INTO church_schedules (church_id, activity_type_id, day_of_week, start_time) VALUES ?',
                 [scheduleValues]
+            );
+        }
+
+        // 5. Update allow_network_visibility in admins table
+        if (allow_network_visibility !== undefined) {
+            await connection.query(
+                'UPDATE admins SET allow_network_visibility = ? WHERE id = ?',
+                [allow_network_visibility ? 1 : 0, req.user.id]
             );
         }
 

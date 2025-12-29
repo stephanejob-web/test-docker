@@ -27,6 +27,7 @@ import {
   Settings,
   Logout,
   HowToReg,
+  Diversity3 as NetworkIcon,
 } from '@mui/icons-material';
 
 const drawerWidth = 260;
@@ -64,6 +65,12 @@ export default function DashboardLayout() {
       href: '/dashboard/events',
       icon: Event,
       roles: ['PASTOR', 'EVANGELIST'],
+    },
+    {
+      name: 'Réseau Pastoral',
+      href: '/dashboard/pastor-network',
+      icon: NetworkIcon,
+      roles: ['PASTOR'],
     },
     {
       name: 'Demandes d\'inscription',

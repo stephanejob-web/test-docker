@@ -31,8 +31,8 @@ export function BackendErrors({ errors }: BackendErrorsProps) {
     <Alert severity="error" sx={{ mb: 2 }}>
       <AlertTitle>Erreurs de validation</AlertTitle>
       <Box component="ul" sx={{ pl: 2, m: 0 }}>
-        {errors.map((error, index) => (
-          <li key={index}>
+        {errors.map((error) => (
+          <li key={`${error.field}-${error.message}`}>
             <Typography variant="body2">
               <strong>{error.field}</strong> : {error.message}
             </Typography>

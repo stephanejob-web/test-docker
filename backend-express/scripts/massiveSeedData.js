@@ -64,6 +64,28 @@ const FRENCH_CITIES = [
   { name: 'Ajaccio', lat: 41.9270, lng: 8.7369, region: 'Corse' },
   { name: 'Cholet', lat: 47.0594, lng: -0.8794, region: 'Pays de la Loire' },
   { name: 'Lorient', lat: 47.7482, lng: -3.3706, region: 'Bretagne' },
+
+  // La Réunion (974) - DOM-TOM
+  { name: 'Saint-Denis', lat: -20.8823, lng: 55.4504, region: 'La Réunion' },
+  { name: 'Saint-Paul', lat: -21.0096, lng: 55.2708, region: 'La Réunion' },
+  { name: 'Saint-Pierre', lat: -21.3393, lng: 55.4781, region: 'La Réunion' },
+  { name: 'Le Tampon', lat: -21.2778, lng: 55.5153, region: 'La Réunion' },
+  { name: 'Saint-André', lat: -20.9628, lng: 55.6544, region: 'La Réunion' },
+  { name: 'Saint-Louis', lat: -21.2817, lng: 55.4098, region: 'La Réunion' },
+  { name: 'Saint-Benoît', lat: -21.0341, lng: 55.7129, region: 'La Réunion' },
+  { name: 'Le Port', lat: -20.9374, lng: 55.2967, region: 'La Réunion' },
+  { name: 'Saint-Joseph', lat: -21.3763, lng: 55.6170, region: 'La Réunion' },
+  { name: 'Saint-Leu', lat: -21.1700, lng: 55.2889, region: 'La Réunion' },
+  { name: 'La Possession', lat: -20.9400, lng: 55.3300, region: 'La Réunion' },
+  { name: 'Sainte-Marie', lat: -20.8976, lng: 55.5485, region: 'La Réunion' },
+  { name: 'Sainte-Suzanne', lat: -20.9063, lng: 55.6062, region: 'La Réunion' },
+  { name: 'Petite-Île', lat: -21.3375, lng: 55.5647, region: 'La Réunion' },
+  { name: 'Bras-Panon', lat: -21.0176, lng: 55.6837, region: 'La Réunion' },
+  { name: 'Saint-Philippe', lat: -21.3589, lng: 55.7692, region: 'La Réunion' },
+  { name: 'Entre-Deux', lat: -21.2481, lng: 55.4681, region: 'La Réunion' },
+  { name: 'Cilaos', lat: -21.1367, lng: 55.4722, region: 'La Réunion' },
+  { name: 'Salazie', lat: -21.0331, lng: 55.5392, region: 'La Réunion' },
+  { name: 'Les Avirons', lat: -21.2400, lng: 55.3372, region: 'La Réunion' },
 ];
 
 // Préfixes pour noms d'églises
@@ -210,7 +232,8 @@ async function massiveSeedData() {
         'PASTOR',
         'VALIDATED',
         firstName,
-        lastName
+        lastName,
+        true // allow_network_visibility
       ]);
       pastorEmails.push(email);
     }
@@ -220,7 +243,7 @@ async function massiveSeedData() {
     for (let i = 0; i < pastors.length; i += batchSize) {
       const batch = pastors.slice(i, i + batchSize);
       await connection.query(
-        `INSERT INTO admins (email, password_hash, role, status, first_name, last_name) VALUES ?`,
+        `INSERT INTO admins (email, password_hash, role, status, first_name, last_name, allow_network_visibility) VALUES ?`,
         [batch]
       );
       console.log(`   ✓ Batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(pastors.length / batchSize)} (${batch.length} pasteurs)`);
@@ -292,13 +315,22 @@ async function massiveSeedData() {
       const cityData = churchesData[i].city;
       const pastor = createdPastors.find(p => p.id === church.admin_id);
 
+      // Split pastor name into first and last
+      const pastorName = pastor ? pastor.email.split('@')[0].replace(/\d+$/, '') : 'anonyme';
+      const [firstName, lastName] = pastorName.split('.');
+
       churchDetails.push([
         church.id,
         'ACTIVE',
         randomChoice(languageIds),
-        `Pasteur ${pastor ? pastor.email.split('@')[0].replace('.', ' ') : 'Anonyme'}`,
+        firstName || 'Pasteur',
+        lastName || 'Inconnu',
         null, // logo_url
         `${Math.floor(Math.random() * 200) + 1} Rue de la ${randomChoice(['Paix', 'Liberté', 'République', 'Victoire', 'Grâce'])}, ${cityData.name}`,
+        null, // street_number
+        `Rue de la ${randomChoice(['Paix', 'Liberté', 'République', 'Victoire', 'Grâce'])}`,
+        cityData.name.split('-')[0].substring(0, 5),
+        cityData.name,
         `0${Math.floor(Math.random() * 9) + 1}${String(Math.floor(Math.random() * 100000000)).padStart(8, '0')}`,
         `Une église accueillante et dynamique au cœur de ${cityData.name}. Nous prêchons l'Évangile de Jésus-Christ avec passion et authenticité.`,
         Math.random() > 0.7 ? `https://eglise-${cityData.name.toLowerCase()}.fr` : null,
@@ -311,7 +343,7 @@ async function massiveSeedData() {
     for (let i = 0; i < churchDetails.length; i += batchSize) {
       const batch = churchDetails.slice(i, i + batchSize);
       await connection.query(
-        `INSERT INTO church_details (church_id, status, language_id, pastor_name, logo_url, address, phone, description, website, has_parking, parking_capacity, is_parking_free) VALUES ?`,
+        `INSERT INTO church_details (church_id, status, language_id, pastor_first_name, pastor_last_name, logo_url, address, street_number, street_name, postal_code, city, phone, description, website, has_parking, parking_capacity, is_parking_free) VALUES ?`,
         [batch]
       );
       console.log(`   ✓ Batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(churchDetails.length / batchSize)}`);
@@ -414,8 +446,7 @@ async function massiveSeedData() {
         startDate,
         endDate.toISOString().slice(0, 19).replace('T', ' '),
         lng,
-        lat,
-        randomChoice(['PUBLISHED', 'PUBLISHED', 'PUBLISHED', 'DRAFT']) // 75% published
+        lat
       ]);
 
       // Détails de l'événement
@@ -443,11 +474,11 @@ async function massiveSeedData() {
 
       // Construire la requête avec ST_PointFromText
       const values = batch.map(e =>
-        `(${e[0]}, ${e[1]}, ${connection.escape(e[2])}, ${e[3]}, ${connection.escape(e[4])}, ${connection.escape(e[5])}, ST_PointFromText('POINT(${e[6]} ${e[7]})'), ${connection.escape(e[8])})`
+        `(${e[0]}, ${e[1]}, ${connection.escape(e[2])}, ${e[3]}, ${connection.escape(e[4])}, ${connection.escape(e[5])}, ST_PointFromText('POINT(${e[6]} ${e[7]})'))`
       ).join(', ');
 
       await connection.query(
-        `INSERT INTO events (admin_id, church_id, title, language_id, start_datetime, end_datetime, event_location, status) VALUES ${values}`
+        `INSERT INTO events (admin_id, church_id, title, language_id, start_datetime, end_datetime, event_location) VALUES ${values}`
       );
       console.log(`   ✓ Batch événements ${Math.floor(i / batchSize) + 1}/${Math.ceil(events.length / batchSize)}`);
     }
