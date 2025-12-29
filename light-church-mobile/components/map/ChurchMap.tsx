@@ -17,6 +17,7 @@ interface ChurchMapProps {
   onChurchPress?: (church: Church) => void;
   onEventPress?: (event: Event) => void;
   initialRegion?: Region;
+  mapType?: 'standard' | 'satellite' | 'hybrid';
 }
 
 const ChurchMap = forwardRef<MapView, ChurchMapProps>(({
@@ -27,6 +28,7 @@ const ChurchMap = forwardRef<MapView, ChurchMapProps>(({
   onChurchPress,
   onEventPress,
   initialRegion,
+  mapType = 'standard',
 }, ref) => {
 
   const defaultRegion: Region = {
@@ -45,6 +47,7 @@ const ChurchMap = forwardRef<MapView, ChurchMapProps>(({
       ref={ref}
       provider={PROVIDER_GOOGLE}
       style={styles.map}
+      mapType={mapType}
       initialRegion={initialRegion || defaultRegion}
       onRegionChangeComplete={handleRegionChangeComplete}
       clusterColor={COLORS.PRIMARY}
