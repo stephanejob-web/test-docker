@@ -14,6 +14,7 @@ import ChurchMap from '@/components/map/ChurchMap';
 import ChurchesBottomSheet from '@/components/bottomSheet/ChurchesBottomSheet';
 import SearchBar from '@/components/map/SearchBar';
 import MyLocationButton from '@/components/map/MyLocationButton';
+import MapTypeToggle from '@/components/map/MapTypeToggle';
 import { Box, Text } from '@/components/ui';
 import { useLocation } from '@/hooks/useLocation';
 import { useChurches, useEvents } from '@/hooks/query';
@@ -40,6 +41,9 @@ export default function MapScreen() {
   // Filters
   const [showChurches, setShowChurches] = useState(true);
   const [showEvents, setShowEvents] = useState(true);
+
+  // Map type (standard, satellite, hybrid)
+  const [mapType, setMapType] = useState<'standard' | 'satellite' | 'hybrid'>('standard');
 
   // Calculate query params
   const queryParams = useMemo(() => {
@@ -110,6 +114,15 @@ export default function MapScreen() {
     setMapRegion(newRegion);
   }, [userLocation]);
 
+  // Handle map type toggle
+  const handleToggleMapType = useCallback(() => {
+    setMapType(prev => {
+      if (prev === 'standard') return 'satellite';
+      if (prev === 'satellite') return 'hybrid';
+      return 'standard';
+    });
+  }, []);
+
   // Show loading state while getting location
   if (locationLoading) {
     return (
@@ -130,6 +143,7 @@ export default function MapScreen() {
         churches={churches}
         events={events}
         userLocation={userLocation}
+        mapType={mapType}
         onRegionChange={handleRegionChange}
         onChurchPress={handleChurchPress}
         onEventPress={handleEventPress}
@@ -140,6 +154,9 @@ export default function MapScreen() {
 
       {/* My Location Button */}
       <MyLocationButton onPress={handleMyLocation} />
+
+      {/* Map Type Toggle */}
+      <MapTypeToggle mapType={mapType} onToggle={handleToggleMapType} />
 
       {/* Loading indicator */}
       {(churchesLoading || eventsLoading) && (
