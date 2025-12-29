@@ -3,12 +3,13 @@
  * Google Maps style with 3 snap points
  */
 
-import React, { useMemo, useCallback, forwardRef } from 'react';
+import React, { useMemo, useCallback, forwardRef, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
 import { Box, Text } from '@/components/ui';
 import ChurchCard from '@/components/cards/ChurchCard';
 import EventCard from '@/components/cards/EventCard';
+import FilterChips from '@/components/map/FilterChips';
 import type { Church, Event } from '@/types';
 
 interface ChurchesBottomSheetProps {
@@ -21,19 +22,33 @@ interface ChurchesBottomSheetProps {
 }
 
 const ChurchesBottomSheet = forwardRef<BottomSheet, ChurchesBottomSheetProps>(
-  ({ churches, events, showChurches, showEvents, onChurchPress, onEventPress }, ref) => {
+  ({ churches, events, showChurches: initialShowChurches, showEvents: initialShowEvents, onChurchPress, onEventPress }, ref) => {
     // Snap points: peek (12%), half (50%), full (90%)
     const snapPoints = useMemo(() => ['12%', '50%', '90%'], []);
 
-    // Combine and filter data
+    // Internal filter state (independent from map filters)
+    const [filterChurches, setFilterChurches] = useState(true);
+    const [filterEvents, setFilterEvents] = useState(true);
+
+    // Toggle filters
+    const handleToggleChurches = useCallback(() => {
+      setFilterChurches(prev => !prev);
+    }, []);
+
+    const handleToggleEvents = useCallback(() => {
+      setFilterEvents(prev => !prev);
+    }, []);
+
+    // Combine and filter data based on internal filters
     const data = useMemo(() => {
       const items: Array<{ type: 'church' | 'event'; data: Church | Event }> = [];
 
-      if (showChurches) {
+      // Apply both map filters AND bottom sheet filters
+      if (initialShowChurches && filterChurches) {
         churches.forEach(church => items.push({ type: 'church', data: church }));
       }
 
-      if (showEvents) {
+      if (initialShowEvents && filterEvents) {
         events.forEach(event => items.push({ type: 'event', data: event }));
       }
 
@@ -43,7 +58,7 @@ const ChurchesBottomSheet = forwardRef<BottomSheet, ChurchesBottomSheetProps>(
         const distB = 'distance_km' in b.data ? b.data.distance_km : Infinity;
         return (distA || Infinity) - (distB || Infinity);
       });
-    }, [churches, events, showChurches, showEvents]);
+    }, [churches, events, initialShowChurches, initialShowEvents, filterChurches, filterEvents]);
 
     const renderItem = useCallback(({ item }: { item: typeof data[0] }) => {
       if (item.type === 'church') {
@@ -66,24 +81,47 @@ const ChurchesBottomSheet = forwardRef<BottomSheet, ChurchesBottomSheetProps>(
         handleIndicatorStyle={styles.handleIndicator}
         backgroundStyle={styles.background}
       >
+        {/* Header */}
         <Box padding="m" borderBottomWidth={1} borderBottomColor="border">
           <Text variant="title">
             {data.length} {data.length > 1 ? 'résultats' : 'résultat'}
           </Text>
           <Text variant="caption" color="textSecondary" marginTop="xs">
-            {showChurches && showEvents && 'Églises et événements'}
-            {showChurches && !showEvents && 'Églises'}
-            {!showChurches && showEvents && 'Événements'}
+            {filterChurches && filterEvents && 'Églises et événements'}
+            {filterChurches && !filterEvents && 'Églises uniquement'}
+            {!filterChurches && filterEvents && 'Événements uniquement'}
+            {!filterChurches && !filterEvents && 'Aucun filtre sélectionné'}
           </Text>
         </Box>
 
-        <BottomSheetFlatList
-          data={data}
-          renderItem={renderItem}
-          keyExtractor={keyExtractor}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
+        {/* Filter Chips */}
+        <FilterChips
+          showChurches={filterChurches}
+          showEvents={filterEvents}
+          churchesCount={churches.length}
+          eventsCount={events.length}
+          onToggleChurches={handleToggleChurches}
+          onToggleEvents={handleToggleEvents}
         />
+
+        {/* Results List */}
+        {data.length > 0 ? (
+          <BottomSheetFlatList
+            data={data}
+            renderItem={renderItem}
+            keyExtractor={keyExtractor}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+          />
+        ) : (
+          <Box padding="xl" alignItems="center" justifyContent="center" flex={1}>
+            <Text variant="body" color="textSecondary" textAlign="center">
+              {!filterChurches && !filterEvents
+                ? 'Veuillez sélectionner au moins un filtre'
+                : 'Aucun résultat ne correspond à vos filtres'}
+            </Text>
+          </Box>
+        )}
       </BottomSheet>
     );
   }

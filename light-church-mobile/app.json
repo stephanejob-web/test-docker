@@ -12,7 +12,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.lightchurch.mobile",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Cette application a besoin de votre position pour afficher les églises à proximité."
+        "NSLocationWhenInUseUsageDescription": "Cette application a besoin de votre position pour afficher les églises à proximité.",
+        "NSCalendarsUsageDescription": "Cette application a besoin d'accéder à votre calendrier pour ajouter des événements.",
+        "NSCalendarsWriteOnlyAccessUsageDescription": "Cette application souhaite ajouter des événements à votre calendrier."
       }
     },
     "android": {
@@ -27,7 +29,9 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
+        "ACCESS_FINE_LOCATION",
+        "READ_CALENDAR",
+        "WRITE_CALENDAR"
       ]
     },
     "web": {
@@ -40,6 +44,12 @@
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "Cette application a besoin de votre position pour afficher les églises à proximité."
+        }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Cette application a besoin d'accéder à votre calendrier pour ajouter des événements."
         }
       ],
       [

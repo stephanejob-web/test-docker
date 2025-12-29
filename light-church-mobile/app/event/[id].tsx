@@ -2,17 +2,19 @@
  * Event Detail Page
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { ScrollView, StyleSheet, ActivityIndicator, Linking, Image } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Box, Text, Button, Card } from '@/components/ui';
 import { useEventDetail } from '@/hooks/query';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { addEventToCalendar } from '@/utils/calendar';
 
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, isLoading, error } = useEventDetail(Number(id));
+  const [isAddingToCalendar, setIsAddingToCalendar] = useState(false);
 
   const handleOpenMaps = () => {
     if (!data?.event) return;
@@ -34,6 +36,52 @@ export default function EventDetailScreen() {
   const handleChurchPhone = () => {
     if (!data?.event?.church?.details?.phone) return;
     Linking.openURL(`tel:${data.event.church.details.phone}`);
+  };
+
+  const handleAddToCalendar = async () => {
+    if (!data?.event) return;
+
+    setIsAddingToCalendar(true);
+    try {
+      const event = data.event;
+      const startDate = new Date(event.start_datetime);
+      const endDate = new Date(event.end_datetime);
+
+      // Build location string
+      let location = '';
+      if (event.details?.address) {
+        location = event.details.address;
+        if (event.details.postal_code && event.details.city) {
+          location += `, ${event.details.postal_code} ${event.details.city}`;
+        }
+      }
+
+      // Build notes with description and organizer info
+      let notes = '';
+      if (event.details?.description) {
+        notes += event.details.description + '\n\n';
+      }
+      if (event.church?.church_name) {
+        notes += `Organisé par: ${event.church.church_name}\n`;
+      }
+      if (event.pastor_first_name || event.pastor_last_name) {
+        notes += `Contact: ${event.pastor_first_name} ${event.pastor_last_name}\n`;
+      }
+      if (event.pastor_email) {
+        notes += `Email: ${event.pastor_email}\n`;
+      }
+
+      await addEventToCalendar({
+        title: event.title,
+        startDate,
+        endDate,
+        location,
+        notes: notes.trim(),
+        url: event.details?.registration_link || undefined,
+      });
+    } finally {
+      setIsAddingToCalendar(false);
+    }
   };
 
   if (isLoading) {
@@ -105,18 +153,26 @@ export default function EventDetailScreen() {
       </Box>
 
       {/* Actions */}
-      <Box flexDirection="row" paddingHorizontal="m" gap="s" marginBottom="m">
-        <Box flex={1}>
-          <Button onPress={handleOpenMaps} variant="primary" size="medium">
-            🚗 Itinéraire
-          </Button>
-        </Box>
-        {event.details?.registration_link && (
+      <Box paddingHorizontal="m" gap="s" marginBottom="m">
+        {/* Primary Actions Row */}
+        <Box flexDirection="row" gap="s">
           <Box flex={1}>
-            <Button onPress={handleRegister} variant="outline" size="medium">
-              📝 S'inscrire
+            <Button onPress={handleAddToCalendar} variant="primary" size="medium" disabled={isAddingToCalendar}>
+              {isAddingToCalendar ? '⏳' : '📅'} Ajouter au calendrier
             </Button>
           </Box>
+          <Box flex={1}>
+            <Button onPress={handleOpenMaps} variant="outline" size="medium">
+              🚗 Itinéraire
+            </Button>
+          </Box>
+        </Box>
+
+        {/* Secondary Actions Row */}
+        {event.details?.registration_link && (
+          <Button onPress={handleRegister} variant="outline" size="medium">
+            📝 S'inscrire à l'événement
+          </Button>
         )}
       </Box>
 
