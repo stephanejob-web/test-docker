@@ -12,6 +12,10 @@ router.get('/network', async (req, res) => {
         const { page = 1, limit = 20, search = '', city = '', denomination_id = '' } = req.query;
         const offset = (parseInt(page) - 1) * parseInt(limit);
 
+        // Nettoyer et normaliser la recherche
+        // Trim + remplacer espaces multiples par un seul
+        const cleanSearch = search.trim().replace(/\s+/g, ' ');
+
         let whereConditions = [
             'a.role = "PASTOR"',
             'a.status = "VALIDATED"',
@@ -22,10 +26,17 @@ router.get('/network', async (req, res) => {
 
         let params = [req.user.id]; // Ajouter l'ID du pasteur connecté aux paramètres
 
-        if (search) {
-            whereConditions.push(`(a.first_name LIKE ? OR a.last_name LIKE ? OR a.email LIKE ? OR c.church_name LIKE ?)`);
-            const searchPattern = `%${search}%`;
-            params.push(searchPattern, searchPattern, searchPattern, searchPattern);
+        if (cleanSearch) {
+            whereConditions.push(`(
+                a.first_name LIKE ? OR
+                a.last_name LIKE ? OR
+                CONCAT(a.first_name, ' ', a.last_name) LIKE ? OR
+                CONCAT(a.last_name, ' ', a.first_name) LIKE ? OR
+                a.email LIKE ? OR
+                c.church_name LIKE ?
+            )`);
+            const searchPattern = `%${cleanSearch}%`;
+            params.push(searchPattern, searchPattern, searchPattern, searchPattern, searchPattern, searchPattern);
         }
 
         if (city) {

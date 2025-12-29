@@ -45,11 +45,11 @@ router.get('/churches', [
         let orderBy = 'ORDER BY c.church_name ASC';
 
         // Mode 1: Bounding Box (prioritaire pour performance)
+        // Using MBRContains for optimal spatial index usage
         if (north && south && east && west) {
-            whereConditions.push('ST_Y(c.location) BETWEEN ? AND ?');
-            whereConditions.push('ST_X(c.location) BETWEEN ? AND ?');
-            params.push(parseFloat(south), parseFloat(north));
-            params.push(parseFloat(west), parseFloat(east));
+            const bbox = `POLYGON((${west} ${south}, ${east} ${south}, ${east} ${north}, ${west} ${north}, ${west} ${south}))`;
+            whereConditions.push('MBRContains(ST_GeomFromText(?), c.location)');
+            params.push(bbox);
 
             // Calculer la distance si userLat et userLng sont fournis
             if (userLat && userLng) {
@@ -264,16 +264,14 @@ router.get('/events', [
         let orderBy = 'ORDER BY e.start_datetime ASC';
 
         // Mode 1: Bounding Box
+        // Using MBRContains for optimal spatial index usage
         if (north && south && east && west) {
+            const bbox = `POLYGON((${west} ${south}, ${east} ${south}, ${east} ${north}, ${west} ${north}, ${west} ${south}))`;
             // Pour les événements, utiliser COALESCE car location peut être celle de l'événement ou de l'église
             whereConditions.push(
-                'ST_Y(COALESCE(e.event_location, c.location)) BETWEEN ? AND ?'
+                'MBRContains(ST_GeomFromText(?), COALESCE(e.event_location, c.location))'
             );
-            whereConditions.push(
-                'ST_X(COALESCE(e.event_location, c.location)) BETWEEN ? AND ?'
-            );
-            params.push(parseFloat(south), parseFloat(north));
-            params.push(parseFloat(west), parseFloat(east));
+            params.push(bbox);
 
             // Calculer la distance si userLat et userLng sont fournis
             if (userLat && userLng) {

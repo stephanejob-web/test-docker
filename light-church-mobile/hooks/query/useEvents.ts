@@ -18,7 +18,9 @@ export function useEvents(params: EventsQueryParams, enabled = true) {
       !!(params.north && params.south && params.east && params.west) ||
       !!(params.latitude && params.longitude)
     ),
-    staleTime: 30 * 60 * 1000, // 30 minutes (events change more frequently)
+    staleTime: 3 * 60 * 1000, // 3 minutes - events change more frequently
+    gcTime: 15 * 60 * 1000, // Keep in cache for 15 min after last use
+    refetchOnMount: false, // Use cached data if fresh
   });
 }
 

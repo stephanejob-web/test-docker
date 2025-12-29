@@ -18,7 +18,9 @@ export function useChurches(params: ChurchesQueryParams, enabled = true) {
       !!(params.north && params.south && params.east && params.west) ||
       !!(params.latitude && params.longitude)
     ),
-    staleTime: 60 * 60 * 1000, // 1 hour
+    staleTime: 5 * 60 * 1000, // 5 minutes - shorter for map data to update when panning
+    gcTime: 30 * 60 * 1000, // Keep in cache for 30 min after last use
+    refetchOnMount: false, // Use cached data if fresh
   });
 }
 
