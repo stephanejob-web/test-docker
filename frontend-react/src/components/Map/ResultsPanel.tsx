@@ -11,7 +11,10 @@ import {
     useMediaQuery,
     useTheme,
     Button,
-    Chip
+    Chip,
+    Tabs,
+    Tab,
+    Skeleton
 } from '@mui/material';
 import {
     Close as CloseIcon,
@@ -485,6 +488,37 @@ const ResultsPanel: React.FC<ResultsPanelProps> = React.memo(({
 
     const totalResults = churches.length + events.length;
 
+    // État pour gérer l'onglet actif
+    const [activeTab, setActiveTab] = useState<'churches' | 'events'>('churches');
+
+    // Smart default : Sélectionner l'onglet pertinent au chargement
+    useEffect(() => {
+        if (loading) return;
+
+        // Vérifier s'il y a des événements en cours
+        const now = new Date();
+        const ongoingEvents = events.filter(event => {
+            const start = new Date(event.start_datetime);
+            const end = event.end_datetime ? new Date(event.end_datetime) : null;
+            return end && now >= start && now <= end;
+        });
+
+        // Si événements en cours, afficher l'onglet événements
+        if (ongoingEvents.length > 0) {
+            setActiveTab('events');
+        }
+        // Sinon, afficher l'onglet avec le plus de résultats
+        else if (events.length > churches.length) {
+            setActiveTab('events');
+        } else if (churches.length > 0) {
+            setActiveTab('churches');
+        }
+        // Si que des événements et pas d'églises
+        else if (events.length > 0 && churches.length === 0) {
+            setActiveTab('events');
+        }
+    }, [churches.length, events.length, loading]);
+
     const content = (
         <Box
             sx={{
@@ -506,8 +540,7 @@ const ResultsPanel: React.FC<ResultsPanelProps> = React.memo(({
                     sx={{
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'space-between',
-                        mb: isGeolocated ? 1 : 0
+                        justifyContent: 'space-between'
                     }}
                 >
                     <Typography variant="h6" fontWeight={600}>
@@ -519,96 +552,163 @@ const ResultsPanel: React.FC<ResultsPanelProps> = React.memo(({
                         </IconButton>
                     )}
                 </Box>
-                {/* Indicateur de tri par distance */}
-                {isGeolocated && totalResults > 0 && (
-                    <Box
-                        sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 0.5
-                        }}
-                    >
-                        <PlaceIcon
-                            sx={{
-                                fontSize: 16,
-                                color: 'primary.main'
-                            }}
-                        />
-                        <Typography
-                            variant="caption"
-                            color="primary.main"
-                            fontWeight={600}
-                        >
-                            {isMobileView
-                                ? 'Dans un rayon de 15km autour de vous'
-                                : 'Triés par distance (du plus proche au plus éloigné)'
-                            }
-                        </Typography>
-                    </Box>
-                )}
             </Box>
 
-            {/* Liste des résultats */}
+            {/* Onglets */}
+            <Tabs
+                value={activeTab}
+                onChange={(_, newValue) => setActiveTab(newValue)}
+                variant="fullWidth"
+                sx={{
+                    borderBottom: 1,
+                    borderColor: 'divider',
+                    minHeight: 48,
+                    '& .MuiTab-root': {
+                        fontWeight: 600,
+                        fontSize: '0.95rem',
+                        textTransform: 'none',
+                        minHeight: 48,
+                        py: 1
+                    }
+                }}
+            >
+                <Tab
+                    value="churches"
+                    label={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <ChurchIcon sx={{ fontSize: 20 }} />
+                            <span>Églises</span>
+                            <Chip
+                                label={churches.length}
+                                size="small"
+                                color="primary"
+                                sx={{
+                                    height: 22,
+                                    fontSize: '0.75rem',
+                                    fontWeight: 700,
+                                    minWidth: 32
+                                }}
+                            />
+                        </Box>
+                    }
+                />
+                <Tab
+                    value="events"
+                    label={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <EventIcon sx={{ fontSize: 20 }} />
+                            <span>Événements</span>
+                            <Chip
+                                label={events.length}
+                                size="small"
+                                color="secondary"
+                                sx={{
+                                    height: 22,
+                                    fontSize: '0.75rem',
+                                    fontWeight: 700,
+                                    minWidth: 32
+                                }}
+                            />
+                        </Box>
+                    }
+                />
+            </Tabs>
+
+            {/* Indicateur de tri par distance */}
+            {isGeolocated && totalResults > 0 && (
+                <Box
+                    sx={{
+                        px: 2,
+                        py: 1,
+                        backgroundColor: 'action.hover',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5
+                    }}
+                >
+                    <PlaceIcon
+                        sx={{
+                            fontSize: 16,
+                            color: 'primary.main'
+                        }}
+                    />
+                    <Typography
+                        variant="caption"
+                        color="primary.main"
+                        fontWeight={600}
+                    >
+                        {isMobileView
+                            ? 'Dans un rayon de 15km'
+                            : 'Triés par distance'}
+                    </Typography>
+                </Box>
+            )}
+
+            {/* Liste des résultats selon l'onglet actif */}
             <Box sx={{ flex: 1, overflow: 'auto' }}>
                 {loading ? (
-                    <Box sx={{ p: 3, textAlign: 'center' }}>
-                        <Typography color="text.secondary">
-                            Chargement...
-                        </Typography>
+                    // Skeleton loaders
+                    <Box sx={{ p: 2 }}>
+                        {[1, 2, 3].map(i => (
+                            <Box key={i} sx={{ mb: 2 }}>
+                                <Skeleton
+                                    variant="rectangular"
+                                    height={120}
+                                    sx={{ borderRadius: 2 }}
+                                />
+                            </Box>
+                        ))}
                     </Box>
-                ) : totalResults === 0 ? (
-                    <Box sx={{ p: 3, textAlign: 'center' }}>
-                        <Typography color="text.secondary">
-                            Aucun résultat dans cette zone
-                        </Typography>
-                    </Box>
+                ) : activeTab === 'churches' ? (
+                    // Onglet Églises
+                    churches.length === 0 ? (
+                        <Box sx={{ p: 4, textAlign: 'center' }}>
+                            <ChurchIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2, opacity: 0.3 }} />
+                            <Typography variant="h6" color="text.secondary" gutterBottom>
+                                Aucune église
+                            </Typography>
+                            <Typography variant="body2" color="text.disabled">
+                                Aucune église trouvée dans cette zone
+                            </Typography>
+                        </Box>
+                    ) : (
+                        <List disablePadding>
+                            {churches.map((church, index) => (
+                                <React.Fragment key={church.id}>
+                                    <ChurchCard
+                                        church={church}
+                                        onClick={() => onChurchClick(church)}
+                                    />
+                                    {index < churches.length - 1 && <Divider />}
+                                </React.Fragment>
+                            ))}
+                        </List>
+                    )
                 ) : (
-                    <List disablePadding>
-                        {/* Section Églises */}
-                        {churches.length > 0 && (
-                            <>
-                                <Box sx={{ p: 2, backgroundColor: 'action.hover' }}>
-                                    <Typography variant="overline" fontWeight={700} color="primary">
-                                        Églises ({churches.length})
-                                    </Typography>
-                                </Box>
-                                {churches.map((church, index) => (
-                                    <React.Fragment key={church.id}>
-                                        <ChurchCard
-                                            church={church}
-                                            onClick={() => onChurchClick(church)}
-                                        />
-                                        {index < churches.length - 1 && <Divider />}
-                                    </React.Fragment>
-                                ))}
-                            </>
-                        )}
-
-                        {/* Séparateur entre églises et événements */}
-                        {churches.length > 0 && events.length > 0 && (
-                            <Divider sx={{ my: 2 }} />
-                        )}
-
-                        {/* Section Événements */}
-                        {events.length > 0 && (
-                            <>
-                                <Box sx={{ p: 2, backgroundColor: 'action.hover' }}>
-                                    <Typography variant="overline" fontWeight={700} color="secondary">
-                                        Événements ({events.length})
-                                    </Typography>
-                                </Box>
-                                {events.map((event, index) => (
-                                    <React.Fragment key={event.id}>
-                                        <EventCard
-                                            event={event}
-                                            onClick={() => onEventClick(event)}
-                                        />
-                                        {index < events.length - 1 && <Divider />}
-                                    </React.Fragment>
-                                ))}
-                            </>
-                        )}
-                    </List>
+                    // Onglet Événements
+                    events.length === 0 ? (
+                        <Box sx={{ p: 4, textAlign: 'center' }}>
+                            <EventIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2, opacity: 0.3 }} />
+                            <Typography variant="h6" color="text.secondary" gutterBottom>
+                                Aucun événement
+                            </Typography>
+                            <Typography variant="body2" color="text.disabled">
+                                Aucun événement trouvé dans cette zone
+                            </Typography>
+                        </Box>
+                    ) : (
+                        <List disablePadding>
+                            {events.map((event, index) => (
+                                <React.Fragment key={event.id}>
+                                    <EventCard
+                                        event={event}
+                                        onClick={() => onEventClick(event)}
+                                    />
+                                    {index < events.length - 1 && <Divider />}
+                                </React.Fragment>
+                            ))}
+                        </List>
+                    )
                 )}
             </Box>
         </Box>

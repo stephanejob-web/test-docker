@@ -4,23 +4,17 @@ import {
     InputBase,
     IconButton,
     Box,
-    Stack,
     List,
     ListItem,
     ListItemButton,
     ListItemText,
     CircularProgress,
-    Typography,
-    ButtonGroup,
-    Button,
-    Badge
+    Typography
 } from '@mui/material';
 import {
     Search as SearchIcon,
     Clear as ClearIcon,
-    LocationOn as LocationOnIcon,
-    Church as ChurchIcon,
-    Event as EventIcon
+    LocationOn as LocationOnIcon
 } from '@mui/icons-material';
 
 interface AddressSuggestion {
@@ -33,12 +27,6 @@ interface AddressSuggestion {
 interface SearchBarProps {
     value: string;
     onChange: (value: string) => void;
-    showChurches: boolean;
-    showEvents: boolean;
-    onToggleChurches: () => void;
-    onToggleEvents: () => void;
-    churchesCount: number;
-    eventsCount: number;
     onLocationSelect?: (lat: number, lng: number, label: string) => void;
 }
 
@@ -49,12 +37,6 @@ interface SearchBarProps {
 const SearchBar: React.FC<SearchBarProps> = React.memo(({
     value,
     onChange,
-    showChurches,
-    showEvents,
-    onToggleChurches,
-    onToggleEvents,
-    churchesCount,
-    eventsCount,
     onLocationSelect
 }) => {
     const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
@@ -240,94 +222,6 @@ const SearchBar: React.FC<SearchBarProps> = React.memo(({
                     </List>
                 </Paper>
             )}
-
-            {/* Filtres avec ButtonGroup */}
-            <Stack direction="row" spacing={1} sx={{ mt: 1.5, px: 0.5 }} alignItems="center">
-                <ButtonGroup
-                    size="small"
-                    sx={{
-                        backgroundColor: 'rgba(44, 62, 80, 0.95)',
-                        borderRadius: 2.5,
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-                        '& .MuiButtonGroup-grouped': {
-                            border: 'none',
-                            '&:not(:last-of-type)': {
-                                borderRight: '1px solid rgba(255, 255, 255, 0.1)'
-                            }
-                        },
-                        '& .MuiButton-root': {
-                            borderRadius: 2,
-                            px: 2,
-                            py: 0.75,
-                            fontWeight: 600,
-                            fontSize: '0.8rem',
-                            textTransform: 'none',
-                            transition: 'all 0.2s ease',
-                            '&:hover': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.08)'
-                            }
-                        }
-                    }}
-                >
-                    <Button
-                        onClick={onToggleChurches}
-                        sx={{
-                            color: showChurches ? '#3498db' : 'rgba(255, 255, 255, 0.6)',
-                            backgroundColor: showChurches ? 'rgba(52, 152, 219, 0.25)' : 'transparent',
-                            boxShadow: showChurches ? 'inset 0 0 0 1px rgba(52, 152, 219, 0.3)' : 'none',
-                            '&:hover': {
-                                backgroundColor: showChurches ? 'rgba(52, 152, 219, 0.35)' : 'rgba(255, 255, 255, 0.08)'
-                            }
-                        }}
-                    >
-                        <Badge
-                            badgeContent={churchesCount}
-                            color="primary"
-                            max={999}
-                            sx={{
-                                '& .MuiBadge-badge': {
-                                    backgroundColor: '#d32f2f',
-                                    color: 'white',
-                                    fontWeight: 700,
-                                    fontSize: '0.7rem'
-                                }
-                            }}
-                        >
-                            <ChurchIcon sx={{ mr: 0.75, fontSize: 18 }} />
-                        </Badge>
-                        Églises
-                    </Button>
-                    <Button
-                        onClick={onToggleEvents}
-                        sx={{
-                            color: showEvents ? '#3498db' : 'rgba(255, 255, 255, 0.6)',
-                            backgroundColor: showEvents ? 'rgba(52, 152, 219, 0.25)' : 'transparent',
-                            boxShadow: showEvents ? 'inset 0 0 0 1px rgba(52, 152, 219, 0.3)' : 'none',
-                            '&:hover': {
-                                backgroundColor: showEvents ? 'rgba(52, 152, 219, 0.35)' : 'rgba(255, 255, 255, 0.08)'
-                            }
-                        }}
-                    >
-                        <Badge
-                            badgeContent={eventsCount}
-                            color="secondary"
-                            max={999}
-                            sx={{
-                                '& .MuiBadge-badge': {
-                                    backgroundColor: '#2196f3',
-                                    color: 'white',
-                                    fontWeight: 700,
-                                    fontSize: '0.7rem'
-                                }
-                            }}
-                        >
-                            <EventIcon sx={{ mr: 0.75, fontSize: 18 }} />
-                        </Badge>
-                        Événements
-                    </Button>
-                </ButtonGroup>
-            </Stack>
         </Box>
     );
 });

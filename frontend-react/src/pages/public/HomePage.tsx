@@ -145,9 +145,7 @@ const HomePage: React.FC = () => {
     const [eventModalOpen, setEventModalOpen] = useState(false);
     const [showHelpMessage, setShowHelpMessage] = useState(true);
 
-    // Filtres simples
-    const [showChurches, setShowChurches] = useState(true);
-    const [showEvents, setShowEvents] = useState(true);
+    // Recherche
     const [search, setSearch] = useState('');
 
     // Ref pour debounce et first load
@@ -361,16 +359,6 @@ const HomePage: React.FC = () => {
         setSearch(value);
     }, []);
 
-    /**
-     * Handler: Toggle des filtres
-     */
-    const handleToggleChurches = useCallback(() => {
-        setShowChurches(prev => !prev);
-    }, []);
-
-    const handleToggleEvents = useCallback(() => {
-        setShowEvents(prev => !prev);
-    }, []);
 
     /**
      * Handler: Clic sur une église dans la liste
@@ -430,16 +418,6 @@ const HomePage: React.FC = () => {
     const churchIcon = useMemo(() => createChurchIcon(), []);
     const eventIcon = useMemo(() => createEventIcon(), []);
 
-    /**
-     * Filtrage des données selon les filtres
-     */
-    const filteredChurches = useMemo(() => {
-        return showChurches ? churches : [];
-    }, [churches, showChurches]);
-
-    const filteredEvents = useMemo(() => {
-        return showEvents ? events : [];
-    }, [events, showEvents]);
 
     return (
         <Box sx={{ position: 'relative', height: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -486,7 +464,7 @@ const HomePage: React.FC = () => {
                 {/* Marqueurs églises et événements avec clustering unifié */}
                 <MarkerClusterGroup chunkedLoading>
                     {/* Églises */}
-                    {filteredChurches.map((church) => (
+                    {churches.map((church) => (
                         <Marker
                             key={`church-${church.id}`}
                             position={[church.latitude, church.longitude]}
@@ -516,7 +494,7 @@ const HomePage: React.FC = () => {
                     ))}
 
                     {/* Événements */}
-                    {filteredEvents.map((event) => (
+                    {events.map((event) => (
                         <Marker
                             key={`event-${event.id}`}
                             position={[event.latitude, event.longitude]}
@@ -555,19 +533,13 @@ const HomePage: React.FC = () => {
             <SearchBar
                 value={search}
                 onChange={handleSearchChange}
-                showChurches={showChurches}
-                showEvents={showEvents}
-                onToggleChurches={handleToggleChurches}
-                onToggleEvents={handleToggleEvents}
-                churchesCount={filteredChurches.length}
-                eventsCount={filteredEvents.length}
                 onLocationSelect={handleLocationSelect}
             />
 
             {/* Panneau de résultats */}
             <ResultsPanel
-                churches={filteredChurches}
-                events={filteredEvents}
+                churches={churches}
+                events={events}
                 loading={loading}
                 onChurchClick={handleChurchClick}
                 onEventClick={handleEventClick}
