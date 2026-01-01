@@ -106,6 +106,7 @@ interface EventFormData {
 
 interface EventData extends EventFormData {
     id: number;
+    interested_count?: number;
 }
 
 const initialFormState: EventFormData = {
@@ -2326,6 +2327,25 @@ export default function MyEvents() {
                                                 {event.city || event.address || "Lieu non précisé"}
                                             </Typography>
                                         </Box>
+                                        {/* Compteur de personnes intéressées */}
+                                        {event.interested_count !== undefined && event.interested_count > 0 && (
+                                            <Box sx={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: 0.75,
+                                                bgcolor: 'success.light',
+                                                color: 'success.dark',
+                                                px: 1.5,
+                                                py: 0.5,
+                                                borderRadius: 2,
+                                                mt: 0.5,
+                                                boxShadow: '0 2px 8px rgba(76, 175, 80, 0.2)',
+                                            }}>
+                                                <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>
+                                                    👥 {event.interested_count} {event.interested_count === 1 ? 'personne intéressée' : 'personnes intéressées'}
+                                                </Typography>
+                                            </Box>
+                                        )}
                                     </Box>
                                     {event.status === 'CANCELLED' && event.cancellation_reason && (
                                         <Alert severity="error" sx={{ mb: 2 }} icon={<CancelIcon />}>
@@ -2679,6 +2699,25 @@ export default function MyEvents() {
                                             <Typography variant="body2" color="text.secondary" sx={{ mt: 1, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                                                 {event.description}
                                             </Typography>
+                                        )}
+                                        {/* Compteur de personnes intéressées */}
+                                        {event.interested_count !== undefined && event.interested_count > 0 && (
+                                            <Box sx={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: 0.75,
+                                                bgcolor: 'success.light',
+                                                color: 'success.dark',
+                                                px: 1.5,
+                                                py: 0.5,
+                                                borderRadius: 2,
+                                                mt: 1,
+                                                boxShadow: '0 2px 8px rgba(76, 175, 80, 0.2)',
+                                            }}>
+                                                <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>
+                                                    👥 {event.interested_count} {event.interested_count === 1 ? 'personne intéressée' : 'personnes intéressées'}
+                                                </Typography>
+                                            </Box>
                                         )}
                                     </Box>
 

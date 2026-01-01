@@ -392,17 +392,32 @@ const EventCard: React.FC<{
                             </Stack>
                         )}
 
-                        {/* Distance */}
-                        {event.distance_km !== null && (
-                            <Typography
-                                variant="body2"
-                                color="secondary.main"
-                                fontWeight={600}
-                                sx={{ mt: 0.5 }}
-                            >
-                                📍 {formatDistance(event.distance_km)}
-                            </Typography>
-                        )}
+                        {/* Distance et compteur d'intéressés */}
+                        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 0.5 }}>
+                            {event.distance_km !== null && (
+                                <Typography
+                                    variant="body2"
+                                    color="secondary.main"
+                                    fontWeight={600}
+                                >
+                                    📍 {formatDistance(event.distance_km)}
+                                </Typography>
+                            )}
+                            {event.interested_count !== undefined && event.interested_count > 0 && (
+                                <Typography
+                                    variant="body2"
+                                    color="primary.main"
+                                    fontWeight={600}
+                                    sx={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 0.5
+                                    }}
+                                >
+                                    👥 {event.interested_count} {event.interested_count === 1 ? 'intéressé' : 'intéressés'}
+                                </Typography>
+                            )}
+                        </Stack>
                     </Box>
                 </Stack>
 

@@ -19,6 +19,7 @@ export interface Event {
   event_city?: string;
   event_postal_code?: string;
   distance_km?: number;
+  interested_count?: number;
 }
 
 export interface EventDetail extends Event {
@@ -31,6 +32,7 @@ export interface EventDetail extends Event {
   primary_language_code?: string;
   primary_language_name?: string;
   primary_language_flag?: string;
+  interested_count?: number;
   details: {
     event_id: number;
     description?: string;
