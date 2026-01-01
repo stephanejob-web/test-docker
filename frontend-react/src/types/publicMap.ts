@@ -61,6 +61,8 @@ export interface Event {
     title: string;
     start_datetime: string;
     end_datetime: string | null;
+    created_at: string;
+    updated_at: string;
     longitude: number;
     latitude: number;
     church_name: string;
@@ -82,6 +84,8 @@ export interface EventDetails {
     title: string;
     start_datetime: string;
     end_datetime: string | null;
+    created_at: string;
+    updated_at: string;
     longitude: number;
     latitude: number;
     church_name: string;

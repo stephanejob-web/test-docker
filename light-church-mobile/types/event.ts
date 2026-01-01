@@ -9,6 +9,8 @@ export interface Event {
   title: string;
   start_datetime: string;
   end_datetime: string;
+  created_at: string;
+  updated_at: string;
   latitude: number;
   longitude: number;
   church_name?: string;

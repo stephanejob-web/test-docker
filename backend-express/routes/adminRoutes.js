@@ -247,6 +247,7 @@ router.get('/churches/:id', async (req, res) => {
         const [events] = await db.query(
             `SELECT e.id, e.title, e.start_datetime, e.end_datetime,
                     e.cancelled_at, e.cancellation_reason, e.cancelled_by,
+                    e.created_at, e.updated_at,
                     ed.description
              FROM events e
              LEFT JOIN event_details ed ON e.id = ed.event_id
@@ -396,6 +397,7 @@ router.get('/events', async (req, res) => {
         const [events] = await db.query(
             `SELECT e.id, e.title, e.start_datetime, e.end_datetime,
                     e.cancelled_at, e.cancellation_reason, e.cancelled_by,
+                    e.created_at, e.updated_at,
                     c.church_name, a.first_name, a.last_name
              FROM events e
              LEFT JOIN churches c ON e.church_id = c.id
