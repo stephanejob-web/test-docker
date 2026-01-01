@@ -166,6 +166,44 @@ export default function MyEvents() {
     const [sortBy, setSortBy] = useState<'created' | 'event_date'>('created'); // Sort by creation date by default
     const itemsPerPage = 9; // 9 events per page (3x3 grid)
 
+    // État pour le décompte temps réel (utilisé pour forcer le re-render toutes les minutes)
+    const [, setCurrentTime] = useState(new Date());
+
+    // Mise à jour du temps chaque minute pour le décompte
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentTime(new Date());
+        }, 60000); // Update every minute
+
+        return () => clearInterval(timer);
+    }, []);
+
+    // Fonction pour calculer le temps restant
+    const getRemainingTime = (endDatetime: string | null | undefined): { text: string; totalMinutes: number } | null => {
+        if (!endDatetime) return null;
+
+        const end = new Date(endDatetime);
+        const now = new Date();
+        const diff = end.getTime() - now.getTime();
+
+        if (diff <= 0) return null;
+
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const totalMinutes = Math.floor(diff / (1000 * 60));
+
+        let text = '';
+        if (hours > 0) {
+            text = `Fin dans ${hours}h${minutes > 0 ? ` ${minutes}min` : ''}`;
+        } else if (minutes > 0) {
+            text = `Fin dans ${minutes} min`;
+        } else {
+            text = 'Se termine maintenant';
+        }
+
+        return { text, totalMinutes };
+    };
+
     // Snackbar state
     const [snackbarOpen, setSnackbarOpen] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState('');
@@ -2242,6 +2280,46 @@ export default function MyEvents() {
                                                 </Typography>
                                             </Box>
                                         </Box>
+                                        {/* Décompte temps réel pour événements EN COURS */}
+                                        {event.status === 'ONGOING' && event.end_datetime && (() => {
+                                            const remaining = getRemainingTime(event.end_datetime);
+                                            if (!remaining) return null;
+
+                                            const isUrgent = remaining.totalMinutes <= 30;
+
+                                            return (
+                                                <Box
+                                                    sx={{
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: 0.8,
+                                                        px: 1.5,
+                                                        py: 0.8,
+                                                        borderRadius: 2,
+                                                        bgcolor: isUrgent ? 'error.main' : 'warning.main',
+                                                        color: 'white',
+                                                        fontWeight: 'bold',
+                                                        boxShadow: isUrgent ? '0 0 15px rgba(244, 67, 54, 0.5)' : '0 0 15px rgba(255, 152, 0, 0.5)',
+                                                        animation: 'pulse 2s ease-in-out infinite',
+                                                        '@keyframes pulse': {
+                                                            '0%, 100%': {
+                                                                transform: 'scale(1)',
+                                                                opacity: 1
+                                                            },
+                                                            '50%': {
+                                                                transform: 'scale(1.05)',
+                                                                opacity: 0.9
+                                                            }
+                                                        }
+                                                    }}
+                                                >
+                                                    <AccessTimeIcon sx={{ fontSize: 20 }} />
+                                                    <Typography variant="body2" sx={{ fontWeight: 'bold', fontSize: '0.95rem' }}>
+                                                        {remaining.text}
+                                                    </Typography>
+                                                </Box>
+                                            );
+                                        })()}
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                             <LocationOnIcon sx={{ fontSize: 16, color: 'secondary.main' }} />
                                             <Typography variant="body2" color="text.secondary">
@@ -2550,6 +2628,47 @@ export default function MyEvents() {
                                                 </Typography>
                                             </Box>
                                         </Box>
+                                        {/* Décompte temps réel pour événements EN COURS */}
+                                        {event.status === 'ONGOING' && event.end_datetime && (() => {
+                                            const remaining = getRemainingTime(event.end_datetime);
+                                            if (!remaining) return null;
+
+                                            const isUrgent = remaining.totalMinutes <= 30;
+
+                                            return (
+                                                <Box
+                                                    sx={{
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: 0.8,
+                                                        px: 1.5,
+                                                        py: 0.8,
+                                                        mb: 0.5,
+                                                        borderRadius: 2,
+                                                        bgcolor: isUrgent ? 'error.main' : 'warning.main',
+                                                        color: 'white',
+                                                        fontWeight: 'bold',
+                                                        boxShadow: isUrgent ? '0 0 15px rgba(244, 67, 54, 0.5)' : '0 0 15px rgba(255, 152, 0, 0.5)',
+                                                        animation: 'pulse 2s ease-in-out infinite',
+                                                        '@keyframes pulse': {
+                                                            '0%, 100%': {
+                                                                transform: 'scale(1)',
+                                                                opacity: 1
+                                                            },
+                                                            '50%': {
+                                                                transform: 'scale(1.05)',
+                                                                opacity: 0.9
+                                                            }
+                                                        }
+                                                    }}
+                                                >
+                                                    <AccessTimeIcon sx={{ fontSize: 20 }} />
+                                                    <Typography variant="body2" sx={{ fontWeight: 'bold', fontSize: '0.95rem' }}>
+                                                        {remaining.text}
+                                                    </Typography>
+                                                </Box>
+                                            );
+                                        })()}
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                             <LocationOnIcon sx={{ fontSize: 18, color: 'secondary.main' }} />
                                             <Typography variant="body2" color="text.secondary">

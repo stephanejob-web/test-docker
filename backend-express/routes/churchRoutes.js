@@ -168,6 +168,7 @@ router.get('/my-events', async (req, res) => {
         const [events] = await db.query(
             `SELECT e.id, e.title, e.start_datetime, e.end_datetime,
                     e.cancelled_at, e.cancellation_reason, e.cancelled_by,
+                    e.created_at, e.updated_at,
                     ed.address, ed.street_number, ed.street_name, ed.postal_code, ed.city,
                     ed.description, ed.image_url
              FROM events e

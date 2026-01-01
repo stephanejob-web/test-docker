@@ -3,7 +3,7 @@
  * Google Maps style with 3 snap points
  */
 
-import React, { useMemo, useCallback, forwardRef, useState } from 'react';
+import React, { useMemo, useCallback, forwardRef, useState, useEffect } from 'react';
 import { StyleSheet } from 'react-native';
 import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
 import { Box, Text } from '@/components/ui';
@@ -29,6 +29,18 @@ const ChurchesBottomSheet = forwardRef<BottomSheet, ChurchesBottomSheetProps>(
     // Internal filter state (independent from map filters)
     const [filterChurches, setFilterChurches] = useState(true);
     const [filterEvents, setFilterEvents] = useState(true);
+
+    // Timer global pour le décompte (optimisation performance mobile)
+    const [currentTime, setCurrentTime] = useState(new Date());
+
+    // Mise à jour du temps toutes les 60 secondes
+    useEffect(() => {
+      const timer = setInterval(() => {
+        setCurrentTime(new Date());
+      }, 60000); // Update every 60 seconds
+
+      return () => clearInterval(timer);
+    }, []);
 
     // Toggle filters
     const handleToggleChurches = useCallback(() => {
@@ -64,9 +76,9 @@ const ChurchesBottomSheet = forwardRef<BottomSheet, ChurchesBottomSheetProps>(
       if (item.type === 'church') {
         return <ChurchCard church={item.data as Church} onPress={() => onChurchPress(item.data as Church)} />;
       } else {
-        return <EventCard event={item.data as Event} onPress={() => onEventPress(item.data as Event)} />;
+        return <EventCard event={item.data as Event} onPress={() => onEventPress(item.data as Event)} currentTime={currentTime} />;
       }
-    }, [onChurchPress, onEventPress]);
+    }, [onChurchPress, onEventPress, currentTime]);
 
     const keyExtractor = useCallback((item: typeof data[0]) => {
       return `${item.type}-${item.data.id}`;

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Box,
     Paper,
@@ -19,7 +19,8 @@ import {
     Event as EventIcon,
     Place as PlaceIcon,
     Directions as DirectionsIcon,
-    InfoOutlined as InfoIcon
+    InfoOutlined as InfoIcon,
+    AccessTime as AccessTimeIcon
 } from '@mui/icons-material';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -52,6 +53,39 @@ const getRelativeTime = (dateTimeString: string | null | undefined) => {
         });
     } catch {
         return 'Date invalide';
+    }
+};
+
+/**
+ * Helper function pour calculer le temps restant jusqu'à la fin d'un événement
+ * Retourne un objet avec le texte et les minutes totales restantes
+ */
+const getRemainingTime = (endDatetime: string | null | undefined): { text: string; totalMinutes: number } | null => {
+    if (!endDatetime) return null;
+
+    try {
+        const end = new Date(endDatetime);
+        const now = new Date();
+        const diff = end.getTime() - now.getTime();
+
+        if (diff <= 0) return null;
+
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const totalMinutes = Math.floor(diff / (1000 * 60));
+
+        let text = '';
+        if (hours > 0) {
+            text = `Fin dans ${hours}h${minutes > 0 ? ` ${minutes}min` : ''}`;
+        } else if (minutes > 0) {
+            text = `Fin dans ${minutes} min`;
+        } else {
+            text = 'Se termine maintenant';
+        }
+
+        return { text, totalMinutes };
+    } catch {
+        return null;
     }
 };
 
@@ -181,13 +215,23 @@ const EventCard: React.FC<{
     event: Event;
     onClick: () => void;
 }> = React.memo(({ event, onClick }) => {
+    const [currentTime, setCurrentTime] = useState(new Date());
+
+    // Mettre à jour le temps chaque minute pour le décompte
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentTime(new Date());
+        }, 60000); // Update every minute
+
+        return () => clearInterval(timer);
+    }, []);
+
     const startDate = new Date(event.start_datetime);
     const endDate = event.end_datetime ? new Date(event.end_datetime) : null;
-    const now = new Date();
 
     // Calculer le statut de l'événement
-    const isOngoing = endDate && now >= startDate && now <= endDate;
-    const isUpcoming = now < startDate;
+    const isOngoing = endDate && currentTime >= startDate && currentTime <= endDate;
+    const isUpcoming = currentTime < startDate;
 
     return (
         <Box
@@ -246,6 +290,48 @@ const EventCard: React.FC<{
                                 />
                             ) : null}
                         </Stack>
+
+                        {/* Décompte temps réel pour événements EN COURS */}
+                        {isOngoing && endDate && (() => {
+                            const remaining = getRemainingTime(event.end_datetime);
+                            if (!remaining) return null;
+
+                            const isUrgent = remaining.totalMinutes <= 30;
+
+                            return (
+                                <Box
+                                    sx={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 0.8,
+                                        px: 1.5,
+                                        py: 0.8,
+                                        mb: 0.8,
+                                        borderRadius: 2,
+                                        bgcolor: isUrgent ? 'error.main' : 'warning.main',
+                                        color: 'white',
+                                        fontWeight: 'bold',
+                                        boxShadow: isUrgent ? '0 0 15px rgba(244, 67, 54, 0.5)' : '0 0 15px rgba(255, 152, 0, 0.5)',
+                                        animation: 'pulse 2s ease-in-out infinite',
+                                        '@keyframes pulse': {
+                                            '0%, 100%': {
+                                                transform: 'scale(1)',
+                                                opacity: 1
+                                            },
+                                            '50%': {
+                                                transform: 'scale(1.05)',
+                                                opacity: 0.9
+                                            }
+                                        }
+                                    }}
+                                >
+                                    <AccessTimeIcon sx={{ fontSize: 20 }} />
+                                    <Typography variant="body2" sx={{ fontWeight: 'bold', fontSize: '0.95rem' }}>
+                                        {remaining.text}
+                                    </Typography>
+                                </Box>
+                            );
+                        })()}
 
                         {/* Temps relatif */}
                         <Typography
