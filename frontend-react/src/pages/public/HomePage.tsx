@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import {
     Box,
     Fab,
@@ -31,10 +31,12 @@ import {
     formatDistance
 } from '../../services/publicMapService';
 import SearchBar from '../../components/Map/SearchBar';
-import ResultsPanel from '../../components/Map/ResultsPanel';
-import ChurchDetailsModal from '../../components/Map/ChurchDetailsModal';
-import EventDetailsModal from '../../components/Map/EventDetailsModal';
 import GlobalStats from '../../components/Map/GlobalStats';
+
+// Lazy loading des composants lourds
+const ResultsPanel = lazy(() => import('../../components/Map/ResultsPanel'));
+const ChurchDetailsModal = lazy(() => import('../../components/Map/ChurchDetailsModal'));
+const EventDetailsModal = lazy(() => import('../../components/Map/EventDetailsModal'));
 
 // Fix Leaflet default icon
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -551,23 +553,25 @@ const HomePage: React.FC = () => {
             />
 
             {/* Panneau de résultats */}
-            <ResultsPanel
-                churches={churches}
-                events={events}
-                loading={loading}
-                onChurchClick={handleChurchClick}
-                onEventClick={handleEventClick}
-                onClose={() => setResultsPanelOpen(false)}
-                open={resultsPanelOpen}
-                isGeolocated={!!userLocation}
-                isMobileView={isMobile}
-            />
+            <Suspense fallback={<Box sx={{ position: 'absolute', top: 16, left: 16, zIndex: 1000 }}><CircularProgress /></Box>}>
+                <ResultsPanel
+                    churches={churches}
+                    events={events}
+                    loading={loading}
+                    onChurchClick={handleChurchClick}
+                    onEventClick={handleEventClick}
+                    onClose={() => setResultsPanelOpen(false)}
+                    open={resultsPanelOpen}
+                    isGeolocated={!!userLocation}
+                    isMobileView={isMobile}
+                />
+            </Suspense>
 
             {/* Bouton liste sur mobile */}
             {isMobile && !resultsPanelOpen && (
                 <Fab
                     color="secondary"
-                    aria-label="afficher la liste"
+                    aria-label="Afficher la liste des églises et événements"
                     onClick={() => setResultsPanelOpen(true)}
                     sx={{
                         position: 'absolute',
@@ -584,7 +588,7 @@ const HomePage: React.FC = () => {
             {/* Bouton vue satellite/standard */}
             <Fab
                 color="secondary"
-                aria-label="vue satellite"
+                aria-label={mapType === 'standard' ? 'Basculer vers la vue satellite' : 'Basculer vers la vue standard'}
                 onClick={() => setMapType(prev => prev === 'standard' ? 'satellite' : 'standard')}
                 sx={{
                     position: 'absolute',
@@ -600,7 +604,7 @@ const HomePage: React.FC = () => {
             {/* Bouton de géolocalisation */}
             <Fab
                 color="primary"
-                aria-label="ma position"
+                aria-label="Me localiser sur la carte"
                 onClick={handleRecenterMap}
                 sx={{
                     position: 'absolute',
@@ -651,18 +655,22 @@ const HomePage: React.FC = () => {
             )}
 
             {/* Modal de détails d'église */}
-            <ChurchDetailsModal
-                open={churchModalOpen}
-                onClose={() => setChurchModalOpen(false)}
-                churchId={selectedChurchId}
-            />
+            <Suspense fallback={null}>
+                <ChurchDetailsModal
+                    open={churchModalOpen}
+                    onClose={() => setChurchModalOpen(false)}
+                    churchId={selectedChurchId}
+                />
+            </Suspense>
 
             {/* Modal de détails d'événement */}
-            <EventDetailsModal
-                open={eventModalOpen}
-                onClose={() => setEventModalOpen(false)}
-                eventId={selectedEventId}
-            />
+            <Suspense fallback={null}>
+                <EventDetailsModal
+                    open={eventModalOpen}
+                    onClose={() => setEventModalOpen(false)}
+                    eventId={selectedEventId}
+                />
+            </Suspense>
 
             {/* Message d'aide pour guider l'utilisateur */}
             <Snackbar
