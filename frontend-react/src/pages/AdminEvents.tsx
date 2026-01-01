@@ -107,7 +107,8 @@ export default function AdminEvents() {
                 eventsList = data.data || [];
             }
 
-            // Enrichir chaque événement avec le statut calculé
+            // Enrichir chaque événement avec le statut calculé côté frontend
+            // (comme dans MyEvents.tsx pour les pasteurs)
             const enrichedEvents = eventsList.map(event => ({
                 ...event,
                 status: calculateEventStatus(event)
@@ -143,7 +144,9 @@ export default function AdminEvents() {
 
         // 2. Filtrer par statut
         if (statusFilter !== 'ALL') {
-            filtered = filtered.filter(event => event.status === statusFilter);
+            filtered = filtered.filter(event => {
+                return event.status === statusFilter;
+            });
         }
 
         // 3. Paginer

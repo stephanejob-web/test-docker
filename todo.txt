@@ -1,0 +1,174 @@
+═══════════════════════════════════════════════════════════════════════════════
+TODO - CORRECTION FILTRES STATUT ÉVÉNEMENTS ADMIN
+═══════════════════════════════════════════════════════════════════════════════
+
+DATE: 2 Janvier 2026
+PRIORITÉ: HAUTE
+
+═══════════════════════════════════════════════════════════════════════════════
+PROBLÈME IDENTIFIÉ
+═══════════════════════════════════════════════════════════════════════════════
+
+Dans /dashboard/admin/events :
+- TOUS les événements s'affichent avec le statut "À venir" (UPCOMING)
+- Les événements passés ne s'affichent PAS comme "Terminé" (COMPLETED)
+- Les filtres par statut ne fonctionnent pas correctement
+
+CAUSE:
+Le frontend RECALCULE le statut côté client et ÉCRASE le bon statut retourné
+par le backend. Le calcul côté frontend est incorrect (problème de parsing
+des dates).
+
+═══════════════════════════════════════════════════════════════════════════════
+SOLUTION
+═══════════════════════════════════════════════════════════════════════════════
+
+Utiliser le statut calculé par le BACKEND (comme dans MyEvents.tsx) au lieu
+de le recalculer côté frontend.
+
+POURQUOI ÇA MARCHE:
+- Le backend calcule correctement le statut (testé avec les événements "test")
+- L'API /admin/events retourne déjà les événements avec le bon statut
+- MyEvents.tsx utilise cette même approche et ça fonctionne parfaitement
+
+═══════════════════════════════════════════════════════════════════════════════
+ÉTAPES À SUIVRE
+═══════════════════════════════════════════════════════════════════════════════
+
+1. MODIFIER LE FICHIER FRONTEND
+   Fichier: frontend-react/src/pages/AdminEvents.tsx
+
+   a) Supprimer le recalcul du statut (lignes ~110-115):
+
+      AVANT:
+      ```tsx
+      // Enrichir chaque événement avec le statut calculé côté frontend
+      const enrichedEvents = eventsList.map(event => ({
+          ...event,
+          status: calculateEventStatus(event)
+      }));
+      setAllEvents(enrichedEvents);
+      ```
+
+      APRÈS:
+      ```tsx
+      // Utiliser directement le statut calculé par le backend
+      setAllEvents(eventsList);
+      ```
+
+   b) OPTIONNEL - Supprimer la fonction calculateEventStatus (lignes ~57-86)
+      si elle n'est plus utilisée ailleurs dans le fichier
+
+   c) OPTIONNEL - Mettre à jour les dépendances de fetchEvents (ligne ~123):
+
+      AVANT:
+      ```tsx
+      }, [calculateEventStatus]);
+      ```
+
+      APRÈS:
+      ```tsx
+      }, []);
+      ```
+
+2. REBUILD LE FRONTEND
+   ```bash
+   cd frontend-react
+   npm run build
+   ```
+
+3. REBUILD LE CONTENEUR DOCKER
+   ```bash
+   cd ..
+   docker-compose up -d --build frontend
+   ```
+
+4. TESTER
+   a) Aller sur http://localhost/dashboard/admin/events
+   b) Rafraîchir la page (F5 ou Ctrl+Shift+R pour vider le cache)
+   c) Vérifier que les événements passés apparaissent comme "Terminé"
+   d) Tester les filtres:
+      - Sélectionner "Terminé" → devrait afficher les événements passés
+      - Sélectionner "À venir" → devrait afficher les événements futurs
+      - Sélectionner "En cours" → devrait afficher les événements en cours
+
+5. NETTOYAGE (OPTIONNEL)
+   a) Supprimer les logs de debug dans backend-express/routes/adminRoutes.js
+      (lignes ~414-418):
+      ```javascript
+      // DEBUG: Log first 3 events to see their status
+      console.log('🔍 Backend /admin/events - Returning events:');
+      enrichedEvents.slice(0, 3).forEach(e => {
+          console.log(`  ${e.title}: status="${e.status}" (end: ${e.end_datetime})`);
+      });
+      ```
+
+   b) Rebuild le backend si nécessaire:
+      ```bash
+      docker-compose up -d --build backend
+      ```
+
+═══════════════════════════════════════════════════════════════════════════════
+VÉRIFICATIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+☐ Les événements passés (comme "test push token") s'affichent avec le statut
+  "Terminé" dans la liste admin
+
+☐ Le filtre "Terminé" affiche uniquement les événements passés
+
+☐ Le filtre "À venir" affiche uniquement les événements futurs
+
+☐ Le filtre "En cours" affiche uniquement les événements en cours
+
+☐ Le nombre d'événements par statut est correct dans les chips de filtre
+
+═══════════════════════════════════════════════════════════════════════════════
+NOTES TECHNIQUES
+═══════════════════════════════════════════════════════════════════════════════
+
+1. BACKEND (routes/adminRoutes.js ligne 412):
+   - enrichEventsWithStatus() est appelé
+   - Le statut est calculé avec utils/eventStatus.js
+   - Retourne COMPLETED pour end_datetime < NOW()
+
+2. FRONTEND MyEvents.tsx (FONCTIONNE):
+   - Ligne 571: setEvents(response.data)
+   - Pas de recalcul du statut
+   - Utilise directement le statut du backend
+
+3. FRONTEND AdminEvents.tsx (NE FONCTIONNE PAS):
+   - Ligne 112-115: Recalcule le statut avec calculateEventStatus()
+   - Écrase le bon statut du backend
+   - Résultat: tous les événements deviennent UPCOMING
+
+═══════════════════════════════════════════════════════════════════════════════
+ÉVÉNEMENTS DE TEST
+═══════════════════════════════════════════════════════════════════════════════
+
+Événements à vérifier après la correction:
+
+1. test (id: 5)
+   - Fin: 2025-12-27 00:48:00
+   - Devrait être: COMPLETED
+
+2. test code informatique (id: 6013)
+   - Fin: 2026-01-01 14:00:00
+   - Devrait être: COMPLETED
+
+3. test push token (id: 6014)
+   - Fin: 2026-01-01 19:00:00
+   - Devrait être: COMPLETED
+
+Ces événements appartiennent à pouget@gmail.com (admin_id: 3)
+
+═══════════════════════════════════════════════════════════════════════════════
+CONTACT
+═══════════════════════════════════════════════════════════════════════════════
+
+Si des problèmes persistent après l'application de cette solution, vérifier:
+1. Les logs du backend: docker-compose logs backend --tail=50
+2. La console du navigateur pour voir les statuts reçus
+3. La réponse de l'API dans l'onglet Network de DevTools
+
+═══════════════════════════════════════════════════════════════════════════════

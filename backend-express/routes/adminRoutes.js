@@ -411,6 +411,12 @@ router.get('/events', async (req, res) => {
         // Enrich events with computed status
         const enrichedEvents = enrichEventsWithStatus(events);
 
+        // DEBUG: Log first 3 events to see their status
+        console.log('🔍 Backend /admin/events - Returning events:');
+        enrichedEvents.slice(0, 3).forEach(e => {
+            console.log(`  ${e.title}: status="${e.status}" (end: ${e.end_datetime})`);
+        });
+
         res.json({
             data: enrichedEvents,
             meta: {
