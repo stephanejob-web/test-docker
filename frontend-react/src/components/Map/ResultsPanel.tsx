@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     Box,
     Paper,
@@ -491,6 +491,17 @@ const ResultsPanel: React.FC<ResultsPanelProps> = React.memo(({
     // État pour gérer l'onglet actif
     const [activeTab, setActiveTab] = useState<'churches' | 'events'>('churches');
 
+    // États pour le redimensionnement
+    const [panelWidth, setPanelWidth] = useState(() => {
+        const saved = localStorage.getItem('resultsPanelWidth');
+        return saved ? parseInt(saved, 10) : 380;
+    });
+    const [drawerHeight, setDrawerHeight] = useState(() => {
+        const saved = localStorage.getItem('resultsDrawerHeight');
+        return saved ? parseInt(saved, 10) : 60;
+    });
+    const [isResizing, setIsResizing] = useState(false);
+
     // Smart default : Sélectionner l'onglet pertinent au chargement
     useEffect(() => {
         if (loading) return;
@@ -518,6 +529,67 @@ const ResultsPanel: React.FC<ResultsPanelProps> = React.memo(({
             setActiveTab('events');
         }
     }, [churches.length, events.length, loading]);
+
+    // Gestion du redimensionnement Desktop (largeur)
+    const handleMouseDownDesktop = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        setIsResizing(true);
+    }, []);
+
+    useEffect(() => {
+        if (!isResizing || isMobile) return;
+
+        const handleMouseMove = (e: MouseEvent) => {
+            const newWidth = e.clientX - 16; // 16px = left offset
+            const clampedWidth = Math.max(300, Math.min(700, newWidth));
+            setPanelWidth(clampedWidth);
+        };
+
+        const handleMouseUp = () => {
+            setIsResizing(false);
+            localStorage.setItem('resultsPanelWidth', panelWidth.toString());
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isResizing, isMobile, panelWidth]);
+
+    // Gestion du redimensionnement Mobile (hauteur)
+    const handleTouchStartMobile = useCallback((e: React.TouchEvent) => {
+        e.preventDefault();
+        setIsResizing(true);
+    }, []);
+
+    useEffect(() => {
+        if (!isResizing || !isMobile) return;
+
+        const handleTouchMove = (e: TouchEvent) => {
+            const touch = e.touches[0];
+            const windowHeight = window.innerHeight;
+            const touchY = touch.clientY;
+            const newHeightPercent = ((windowHeight - touchY) / windowHeight) * 100;
+            const clampedHeight = Math.max(30, Math.min(90, newHeightPercent));
+            setDrawerHeight(clampedHeight);
+        };
+
+        const handleTouchEnd = () => {
+            setIsResizing(false);
+            localStorage.setItem('resultsDrawerHeight', drawerHeight.toString());
+        };
+
+        document.addEventListener('touchmove', handleTouchMove);
+        document.addEventListener('touchend', handleTouchEnd);
+
+        return () => {
+            document.removeEventListener('touchmove', handleTouchMove);
+            document.removeEventListener('touchend', handleTouchEnd);
+        };
+    }, [isResizing, isMobile, drawerHeight]);
 
     const content = (
         <Box
@@ -723,13 +795,45 @@ const ResultsPanel: React.FC<ResultsPanelProps> = React.memo(({
                 onClose={onClose}
                 sx={{
                     '& .MuiDrawer-paper': {
-                        height: '60vh',
+                        height: `${drawerHeight}vh`,
                         borderTopLeftRadius: 16,
-                        borderTopRightRadius: 16
+                        borderTopRightRadius: 16,
+                        transition: isResizing ? 'none' : 'height 0.2s ease'
                     }
                 }}
             >
-                {content}
+                {/* Handle de redimensionnement mobile */}
+                <Box
+                    onTouchStart={handleTouchStartMobile}
+                    sx={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: 32,
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        cursor: 'ns-resize',
+                        zIndex: 1301,
+                        backgroundColor: 'transparent',
+                        '&:active': {
+                            backgroundColor: 'action.hover'
+                        }
+                    }}
+                >
+                    <Box
+                        sx={{
+                            width: 40,
+                            height: 4,
+                            backgroundColor: 'divider',
+                            borderRadius: 2
+                        }}
+                    />
+                </Box>
+                <Box sx={{ mt: 4 }}>
+                    {content}
+                </Box>
             </Drawer>
         );
     }
@@ -743,17 +847,59 @@ const ResultsPanel: React.FC<ResultsPanelProps> = React.memo(({
                 top: 16,
                 left: 16,
                 bottom: 16,
-                width: 380,
+                width: panelWidth,
                 zIndex: 1000,
                 borderRadius: 3,
                 overflow: 'hidden',
                 display: 'flex',
                 flexDirection: 'column',
                 backgroundColor: 'rgba(255, 255, 255, 0.97)',
-                backdropFilter: 'blur(8px)'
+                backdropFilter: 'blur(8px)',
+                transition: isResizing ? 'none' : 'width 0.2s ease',
+                userSelect: isResizing ? 'none' : 'auto'
             }}
         >
             {content}
+
+            {/* Handle de redimensionnement desktop */}
+            <Box
+                onMouseDown={handleMouseDownDesktop}
+                sx={{
+                    position: 'absolute',
+                    top: 0,
+                    right: 0,
+                    bottom: 0,
+                    width: 8,
+                    cursor: 'ew-resize',
+                    backgroundColor: 'transparent',
+                    transition: 'background-color 0.2s',
+                    '&:hover': {
+                        backgroundColor: 'primary.main',
+                        opacity: 0.3
+                    },
+                    '&:active': {
+                        backgroundColor: 'primary.main',
+                        opacity: 0.5
+                    },
+                    zIndex: 10
+                }}
+            >
+                {/* Indicateur visuel */}
+                <Box
+                    sx={{
+                        position: 'absolute',
+                        top: '50%',
+                        right: 2,
+                        transform: 'translateY(-50%)',
+                        width: 3,
+                        height: 40,
+                        backgroundColor: 'divider',
+                        borderRadius: 2,
+                        opacity: 0.5,
+                        pointerEvents: 'none'
+                    }}
+                />
+            </Box>
         </Paper>
     );
 });

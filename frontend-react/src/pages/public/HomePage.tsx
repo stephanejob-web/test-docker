@@ -15,7 +15,9 @@ import {
     MyLocation as MyLocationIcon,
     List as ListIcon,
     Close as CloseIcon,
-    TouchApp as TouchAppIcon
+    TouchApp as TouchAppIcon,
+    Satellite as SatelliteIcon,
+    Map as MapIcon
 } from '@mui/icons-material';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
@@ -147,6 +149,9 @@ const HomePage: React.FC = () => {
 
     // Recherche
     const [search, setSearch] = useState('');
+
+    // Type de carte (standard ou satellite)
+    const [mapType, setMapType] = useState<'standard' | 'satellite'>('standard');
 
     // Ref pour debounce et first load
     const boundsChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -435,8 +440,17 @@ const HomePage: React.FC = () => {
                 zoomControl={false}
             >
                 <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    key={mapType}
+                    attribution={
+                        mapType === 'satellite'
+                            ? '&copy; <a href="https://www.esri.com/">Esri</a> &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+                            : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    }
+                    url={
+                        mapType === 'satellite'
+                            ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+                            : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+                    }
                 />
 
                 {/* Recentrage automatique */}
@@ -566,6 +580,22 @@ const HomePage: React.FC = () => {
                     <ListIcon />
                 </Fab>
             )}
+
+            {/* Bouton vue satellite/standard */}
+            <Fab
+                color="secondary"
+                aria-label="vue satellite"
+                onClick={() => setMapType(prev => prev === 'standard' ? 'satellite' : 'standard')}
+                sx={{
+                    position: 'absolute',
+                    bottom: { xs: 180, md: 104 },
+                    right: { xs: 16, md: 24 },
+                    zIndex: 1000,
+                    boxShadow: 3
+                }}
+            >
+                {mapType === 'standard' ? <SatelliteIcon /> : <MapIcon />}
+            </Fab>
 
             {/* Bouton de géolocalisation */}
             <Fab
