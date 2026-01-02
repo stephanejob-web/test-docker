@@ -567,7 +567,12 @@ export default function MyEvents() {
                     return;
                 }
             }
-            const response = await api.get('/church/my-events');
+            // ✅ OPTIMISÉ: Filtrage backend par statut
+            const response = await api.get('/church/my-events', {
+                params: {
+                    status: statusFilter // Envoyer le filtre de statut au backend
+                }
+            });
             setEvents(Array.isArray(response.data) ? response.data : []);
         } catch (err) {
             console.error(err);
@@ -575,7 +580,7 @@ export default function MyEvents() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [statusFilter]); // ✅ Ajouter statusFilter comme dépendance
 
     useEffect(() => {
         if (isAdminMode && eventId) {
@@ -773,10 +778,9 @@ export default function MyEvents() {
         );
     };
 
-    // Filter events by status and search query (memoized for performance)
+    // ✅ OPTIMISÉ: Filtre seulement par recherche (le statut est déjà filtré par le backend)
     const filteredEvents = useMemo(() => {
         return events
-            .filter(event => statusFilter === 'ALL' || event.status === statusFilter)
             .filter(event => {
                 if (!searchQuery.trim()) return true;
                 const query = searchQuery.toLowerCase();
@@ -806,7 +810,7 @@ export default function MyEvents() {
                     }
                 }
             });
-    }, [events, statusFilter, searchQuery, sortBy]);
+    }, [events, searchQuery, sortBy]); // ✅ statusFilter retiré car filtrage backend
 
     // Pagination logic (memoized for performance)
     const totalPages = useMemo(

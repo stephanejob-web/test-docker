@@ -372,8 +372,28 @@ router.get('/events', async (req, res) => {
         let whereClause = 'WHERE 1=1';
         const params = [];
 
-        // Note: Status filtering removed - status is now computed dynamically
-        // TODO: Implement status filtering in JavaScript after enriching events with computed status
+        // ✅ Filtrage par statut avec conditions SQL dynamiques (basées sur les dates)
+        // Le statut n'est pas stocké en base mais calculé via NOW() pour garder le comportement dynamique
+        if (status && status !== 'ALL') {
+            switch (status) {
+                case 'UPCOMING':
+                    // À venir : non annulé ET date de début dans le futur
+                    whereClause += ' AND e.cancelled_at IS NULL AND NOW() < e.start_datetime';
+                    break;
+                case 'ONGOING':
+                    // En cours : non annulé ET entre date début et date fin
+                    whereClause += ' AND e.cancelled_at IS NULL AND NOW() >= e.start_datetime AND NOW() <= e.end_datetime';
+                    break;
+                case 'COMPLETED':
+                    // Terminé : non annulé ET date de fin dépassée
+                    whereClause += ' AND e.cancelled_at IS NULL AND NOW() > e.end_datetime';
+                    break;
+                case 'CANCELLED':
+                    // Annulé : cancelled_at non null
+                    whereClause += ' AND e.cancelled_at IS NOT NULL';
+                    break;
+            }
+        }
 
         // Filter by Search (Title, Church Name, Creator Name)
         if (search) {

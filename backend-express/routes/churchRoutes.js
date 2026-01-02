@@ -165,6 +165,35 @@ router.post('/my-church', validateChurch, async (req, res) => {
 // Lister mes événements
 router.get('/my-events', async (req, res) => {
     try {
+        const status = req.query.status || ''; // UPCOMING, ONGOING, COMPLETED, CANCELLED, ALL
+
+        // Construction dynamique de la clause WHERE
+        let whereClause = 'WHERE e.admin_id = ?';
+        const params = [req.user.id];
+
+        // ✅ Filtrage par statut avec conditions SQL dynamiques (basées sur les dates)
+        // Le statut n'est pas stocké en base mais calculé via NOW() pour garder le comportement dynamique
+        if (status && status !== 'ALL') {
+            switch (status) {
+                case 'UPCOMING':
+                    // À venir : non annulé ET date de début dans le futur
+                    whereClause += ' AND e.cancelled_at IS NULL AND NOW() < e.start_datetime';
+                    break;
+                case 'ONGOING':
+                    // En cours : non annulé ET entre date début et date fin
+                    whereClause += ' AND e.cancelled_at IS NULL AND NOW() >= e.start_datetime AND NOW() <= e.end_datetime';
+                    break;
+                case 'COMPLETED':
+                    // Terminé : non annulé ET date de fin dépassée
+                    whereClause += ' AND e.cancelled_at IS NULL AND NOW() > e.end_datetime';
+                    break;
+                case 'CANCELLED':
+                    // Annulé : cancelled_at non null
+                    whereClause += ' AND e.cancelled_at IS NOT NULL';
+                    break;
+            }
+        }
+
         const [events] = await db.query(
             `SELECT e.id, e.title, e.start_datetime, e.end_datetime,
                     e.cancelled_at, e.cancellation_reason, e.cancelled_by,
@@ -174,9 +203,9 @@ router.get('/my-events', async (req, res) => {
                     ed.description, ed.image_url
              FROM events e
              LEFT JOIN event_details ed ON e.id = ed.event_id
-             WHERE e.admin_id = ?
+             ${whereClause}
              ORDER BY e.start_datetime DESC`,
-            [req.user.id]
+            params
         );
         // Enrich events with computed status
         const enrichedEvents = enrichEventsWithStatus(events);
