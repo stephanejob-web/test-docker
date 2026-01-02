@@ -115,7 +115,9 @@ describe('MyEvents - Chargement Initial', () => {
         });
 
         expect(api.get).toHaveBeenCalledWith('/church/my-church');
-        expect(api.get).toHaveBeenCalledWith('/church/my-events');
+        expect(api.get).toHaveBeenCalledWith('/church/my-events', {
+            params: { status: 'ALL' }
+        });
         expect(api.get).toHaveBeenCalledWith('/settings/languages');
     });
 

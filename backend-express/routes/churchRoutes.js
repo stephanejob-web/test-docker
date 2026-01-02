@@ -5,6 +5,7 @@ const { verifyToken, requirePastor } = require('../middleware/authMiddleware');
 const { validateChurch } = require('../validators/churchValidator');
 const { validateEvent } = require('../validators/eventValidator');
 const { enrichEventsWithStatus, enrichEventWithStatus } = require('../utils/eventStatus');
+const { notifyEventInterested } = require('../services/pushService');
 
 router.use(verifyToken);
 // TODO: check if user is validated too (status === 'VALIDATED') - Good practice but simplified for now as per plan
@@ -363,6 +364,13 @@ router.post('/events/:id/cancel', async (req, res) => {
             [cancellation_reason.trim(), req.user.id, eventId]
         );
 
+        // ✅ Envoyer notification d'annulation aux utilisateurs intéressés
+        notifyEventInterested(eventId, 'cancelled', {
+            reason: cancellation_reason.trim()
+        }).catch(err => {
+            console.error('Erreur envoi notification annulation événement:', err);
+        });
+
         res.json({
             message: 'Événement annulé avec succès',
             cancellation_reason: cancellation_reason.trim()
@@ -516,6 +524,13 @@ router.put('/events/:id', validateEvent, async (req, res) => {
         }
 
         await connection.commit();
+
+        // ✅ Envoyer notification aux utilisateurs intéressés
+        // (asynchrone, ne pas bloquer la réponse)
+        notifyEventInterested(eventId, 'modified').catch(err => {
+            console.error('Erreur envoi notification modification événement:', err);
+        });
+
         res.json({ message: 'Événement mis à jour avec succès' });
 
     } catch (error) {
