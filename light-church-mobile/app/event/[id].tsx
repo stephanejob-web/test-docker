@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { ScrollView, StyleSheet, ActivityIndicator, Linking, Image, Alert } from 'react-native';
+import { ScrollView, StyleSheet, ActivityIndicator, Linking, Image, Alert, RefreshControl } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Box, Text, Button, Card } from '@/components/ui';
 import { useEventDetail, useIsInterested, useToggleEventInterest } from '@/hooks/query';
@@ -15,10 +15,11 @@ import { registerForPushNotifications, hasNotificationPermission } from '@/servi
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const eventId = Number(id);
-  const { data, isLoading, error } = useEventDetail(eventId);
-  const { data: interestData } = useIsInterested(eventId);
+  const { data, isLoading, error, refetch } = useEventDetail(eventId);
+  const { data: interestData, refetch: refetchInterest } = useIsInterested(eventId);
   const toggleInterest = useToggleEventInterest(eventId);
   const [isAddingToCalendar, setIsAddingToCalendar] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const isInterested = interestData?.is_interested || false;
   const interestedCount = data?.event?.interested_count || 0;
@@ -88,6 +89,20 @@ export default function EventDetailScreen() {
       });
     } finally {
       setIsAddingToCalendar(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        refetch(),
+        refetchInterest()
+      ]);
+    } catch (error) {
+      console.error('Erreur refresh:', error);
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -170,7 +185,18 @@ export default function EventDetailScreen() {
   const endDate = new Date(event.end_datetime);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefreshing}
+          onRefresh={handleRefresh}
+          tintColor="#4285F4"
+          colors={["#4285F4"]}
+        />
+      }
+    >
       {/* Image */}
       {event.details?.image_url && (
         <Image

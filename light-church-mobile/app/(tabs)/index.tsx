@@ -6,6 +6,7 @@
 import React, { useRef, useState, useCallback, useMemo } from 'react';
 import { StyleSheet, View, ActivityIndicator, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import BottomSheet from '@gorhom/bottom-sheet';
 import type { Region } from 'react-native-maps';
 import MapView from 'react-native-maps';
@@ -14,6 +15,7 @@ import ChurchMap from '@/components/map/ChurchMap';
 import ChurchesBottomSheet from '@/components/bottomSheet/ChurchesBottomSheet';
 import SearchBar from '@/components/map/SearchBar';
 import MyLocationButton from '@/components/map/MyLocationButton';
+import RefreshButton from '@/components/map/RefreshButton';
 import MapTypeToggle from '@/components/map/MapTypeToggle';
 import { Box, Text } from '@/components/ui';
 import { useLocation } from '@/hooks/useLocation';
@@ -24,6 +26,7 @@ import type { Church, Event } from '@/types';
 
 export default function MapScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const bottomSheetRef = useRef<BottomSheet>(null);
   const mapRef = useRef<MapView>(null);
 
@@ -45,6 +48,9 @@ export default function MapScreen() {
   // Map type (standard, satellite, hybrid)
   const [mapType, setMapType] = useState<'standard' | 'satellite' | 'hybrid'>('standard');
 
+  // Refresh state
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   // Calculate query params
   const queryParams = useMemo(() => {
     const bbox = getBoundingBox(mapRegion);
@@ -57,11 +63,19 @@ export default function MapScreen() {
   }, [mapRegion, userLocation]);
 
   // Fetch data
-  const { data: churchesData, isLoading: churchesLoading } = useChurches(queryParams, showChurches);
-  const { data: eventsData, isLoading: eventsLoading } = useEvents(queryParams, showEvents);
+  const { data: churchesData, isLoading: churchesLoading, refetch: refetchChurches } = useChurches(queryParams, showChurches);
+  const { data: eventsData, isLoading: eventsLoading, refetch: refetchEvents } = useEvents(queryParams, showEvents);
 
   const churches = churchesData?.churches || [];
   const events = eventsData?.events || [];
+
+  // Debug: Log when data changes
+  React.useEffect(() => {
+    console.log('📊 DATA UPDATE: Events count:', events.length);
+    if (events.length > 0) {
+      console.log('📊 DATA UPDATE: First event:', events[0]?.title, 'Updated:', events[0]?.updated_at);
+    }
+  }, [events]);
 
   // Handle map region change (debounced in hook)
   const handleRegionChange = useCallback((region: Region) => {
@@ -123,6 +137,37 @@ export default function MapScreen() {
     });
   }, []);
 
+  // Handle refresh button
+  const handleRefresh = useCallback(async () => {
+    console.log('🔄 REFRESH: Début du refresh...');
+    setIsRefreshing(true);
+    try {
+      // Invalider toutes les queries (listes ET détails)
+      console.log('🔄 REFRESH: Invalidation de toutes les queries...');
+      await Promise.all([
+        // Listes
+        queryClient.invalidateQueries({ queryKey: ['churches'], exact: false }),
+        queryClient.invalidateQueries({ queryKey: ['events'], exact: false }),
+        // Détails individuels
+        queryClient.invalidateQueries({ queryKey: ['church'], exact: false }),
+        queryClient.invalidateQueries({ queryKey: ['event'], exact: false }),
+      ]);
+
+      // Forcer le refetch des queries actives sur cette page
+      console.log('🔄 REFRESH: Refetch direct des données...');
+      await Promise.all([
+        refetchChurches(),
+        refetchEvents()
+      ]);
+
+      console.log('✅ REFRESH: Terminé!');
+    } catch (error) {
+      console.error('❌ REFRESH: Erreur:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [queryClient, refetchChurches, refetchEvents]);
+
   // Show loading state while getting location
   if (locationLoading) {
     return (
@@ -154,6 +199,9 @@ export default function MapScreen() {
 
       {/* My Location Button */}
       <MyLocationButton onPress={handleMyLocation} />
+
+      {/* Refresh Button */}
+      <RefreshButton onPress={handleRefresh} loading={isRefreshing} />
 
       {/* Map Type Toggle */}
       <MapTypeToggle mapType={mapType} onToggle={handleToggleMapType} />

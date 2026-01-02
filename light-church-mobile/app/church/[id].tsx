@@ -2,8 +2,8 @@
  * Church Detail Page
  */
 
-import React from 'react';
-import { ScrollView, StyleSheet, ActivityIndicator, Linking } from 'react-native';
+import React, { useState } from 'react';
+import { ScrollView, StyleSheet, ActivityIndicator, Linking, RefreshControl } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Box, Text, Button, Card } from '@/components/ui';
 import { useChurchDetail } from '@/hooks/query';
@@ -12,7 +12,8 @@ import { fr } from 'date-fns/locale';
 
 export default function ChurchDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data, isLoading, error } = useChurchDetail(Number(id));
+  const { data, isLoading, error, refetch } = useChurchDetail(Number(id));
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleOpenMaps = () => {
     if (!data?.church) return;
@@ -36,6 +37,17 @@ export default function ChurchDetailScreen() {
     Linking.openURL(`mailto:${data.church.email}`);
   };
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refetch();
+    } catch (error) {
+      console.error('Erreur refresh:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <Box flex={1} justifyContent="center" alignItems="center" backgroundColor="background">
@@ -57,7 +69,18 @@ export default function ChurchDetailScreen() {
   const church = data.church;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefreshing}
+          onRefresh={handleRefresh}
+          tintColor="#4285F4"
+          colors={["#4285F4"]}
+        />
+      }
+    >
       {/* Header */}
       <Box padding="m">
         <Text variant="header" marginBottom="s">
