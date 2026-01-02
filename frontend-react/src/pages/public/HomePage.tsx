@@ -456,7 +456,7 @@ const HomePage: React.FC = () => {
     /**
      * Handler: Sélection d'une adresse dans l'autocomplete
      */
-    const handleLocationSelect = useCallback((lat: number, lng: number, label: string) => {
+    const handleLocationSelect = useCallback((lat: number, lng: number, _label: string) => {
         // ✅ Ne recentrer que si la carte est prête
         if (!isMapReady) {
             console.warn('Carte pas encore prête, impossible de recentrer');

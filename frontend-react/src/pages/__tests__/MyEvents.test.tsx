@@ -95,7 +95,7 @@ describe('MyEvents - Chargement Initial', () => {
     });
 
     it('devrait charger les données de l\'église et les événements', async () => {
-        vi.mocked(api.get).mockImplementation((url, config?) => {
+        vi.mocked(api.get).mockImplementation((url) => {
             if (url === '/church/my-church') {
                 return Promise.resolve({ data: mockChurchData });
             }
