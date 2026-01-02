@@ -471,8 +471,6 @@ const HomePage: React.FC = () => {
         if (isMobile) {
             setResultsPanelOpen(false);
         }
-
-        console.log(`📍 Navigation vers: ${label} (${lat}, ${lng})`);
     }, [isMobile, isMapReady]);
 
     /**

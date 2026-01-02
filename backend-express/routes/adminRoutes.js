@@ -86,7 +86,6 @@ router.get('/pending-users', async (req, res) => {
 
 // Modifier un utilisateur
 router.put('/users/:id', async (req, res) => {
-    console.log('PUT /users/:id body:', req.body);
     const { status, role } = req.body;
     const targetUserId = parseInt(req.params.id);
 
@@ -430,12 +429,6 @@ router.get('/events', async (req, res) => {
 
         // Enrich events with computed status
         const enrichedEvents = enrichEventsWithStatus(events);
-
-        // DEBUG: Log first 3 events to see their status
-        console.log('🔍 Backend /admin/events - Returning events:');
-        enrichedEvents.slice(0, 3).forEach(e => {
-            console.log(`  ${e.title}: status="${e.status}" (end: ${e.end_datetime})`);
-        });
 
         res.json({
             data: enrichedEvents,

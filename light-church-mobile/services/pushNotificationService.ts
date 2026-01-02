@@ -26,7 +26,6 @@ Notifications.setNotificationHandler({
  */
 export async function requestPushPermissions(): Promise<boolean> {
   if (!Device.isDevice) {
-    console.log('Push notifications only work on physical devices');
     return false;
   }
 
@@ -39,7 +38,6 @@ export async function requestPushPermissions(): Promise<boolean> {
   }
 
   if (finalStatus !== 'granted') {
-    console.log('Failed to get push token for push notification');
     return false;
   }
 
@@ -80,8 +78,6 @@ export async function registerForPushNotifications(): Promise<string | null> {
     // Sauvegarder localement
     await AsyncStorage.setItem(PUSH_TOKEN_KEY, expoPushToken);
 
-    console.log('Push notification registered:', { deviceId, expoPushToken });
-
     return deviceId;
   } catch (error) {
     console.error('Error registering for push notifications:', error);
@@ -101,7 +97,6 @@ export async function getDeviceId(): Promise<string | null> {
     if (!deviceId) {
       deviceId = `${Platform.OS}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
       await AsyncStorage.setItem(DEVICE_ID_KEY, deviceId);
-      console.log('Created device_id without notifications:', deviceId);
     }
 
     return deviceId;
