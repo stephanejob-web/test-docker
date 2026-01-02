@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import {
     Box,
     Fab,
@@ -15,7 +15,10 @@ import {
     MyLocation as MyLocationIcon,
     List as ListIcon,
     Close as CloseIcon,
-    TouchApp as TouchAppIcon
+    TouchApp as TouchAppIcon,
+    Satellite as SatelliteIcon,
+    Map as MapIcon,
+    LocationOn as LocationOnIcon
 } from '@mui/icons-material';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
@@ -29,10 +32,12 @@ import {
     formatDistance
 } from '../../services/publicMapService';
 import SearchBar from '../../components/Map/SearchBar';
-import ResultsPanel from '../../components/Map/ResultsPanel';
-import ChurchDetailsModal from '../../components/Map/ChurchDetailsModal';
-import EventDetailsModal from '../../components/Map/EventDetailsModal';
 import GlobalStats from '../../components/Map/GlobalStats';
+
+// Lazy loading des composants lourds
+const ResultsPanel = lazy(() => import('../../components/Map/ResultsPanel'));
+const ChurchDetailsModal = lazy(() => import('../../components/Map/ChurchDetailsModal'));
+const EventDetailsModal = lazy(() => import('../../components/Map/EventDetailsModal'));
 
 // Fix Leaflet default icon
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -132,10 +137,12 @@ const HomePage: React.FC = () => {
     const [churches, setChurches] = useState<Church[]>([]);
     const [events, setEvents] = useState<Event[]>([]);
     const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
-    const [mapCenter, setMapCenter] = useState<[number, number]>([20, 0]); // Vue monde par défaut
-    const [mapZoom, setMapZoom] = useState<number>(2); // Zoom monde
+    const [mapCenter, setMapCenter] = useState<[number, number]>([48.8566, 2.3522]); // ✅ Paris par défaut
+    const [mapZoom, setMapZoom] = useState<number>(6); // ✅ Vue France
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isMapReady, setIsMapReady] = useState(false);
+    const [geoBlocked, setGeoBlocked] = useState(false); // ✅ Géolocalisation bloquée
 
     // UI States
     const [resultsPanelOpen, setResultsPanelOpen] = useState(!isMobile); // Fermé par défaut sur mobile
@@ -145,10 +152,11 @@ const HomePage: React.FC = () => {
     const [eventModalOpen, setEventModalOpen] = useState(false);
     const [showHelpMessage, setShowHelpMessage] = useState(true);
 
-    // Filtres simples
-    const [showChurches, setShowChurches] = useState(true);
-    const [showEvents, setShowEvents] = useState(true);
+    // Recherche
     const [search, setSearch] = useState('');
+
+    // Type de carte (standard ou satellite)
+    const [mapType, setMapType] = useState<'standard' | 'satellite'>('standard');
 
     // Ref pour debounce et first load
     const boundsChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -167,7 +175,7 @@ const HomePage: React.FC = () => {
                 // Obtenir la géolocalisation
                 const position = await getUserLocation();
 
-                let lat = 48.8566;
+                let lat = 48.8566; // Paris par défaut
                 let lng = 2.3522;
                 let zoom = 13;
 
@@ -178,18 +186,24 @@ const HomePage: React.FC = () => {
                     setMapCenter([lat, lng]);
                     setMapZoom(zoom);
                 } else {
-                    // Vue mondiale par défaut
-                    setMapCenter([20, 0]);
-                    setMapZoom(2);
+                    // ✅ Géolocalisation refusée ou indisponible -> bloquer la carte
+                    setGeoBlocked(true);
+                    setLoading(false);
+                    return;
                 }
 
                 // Les données seront chargées par le MapEventsHandler
                 // après le premier rendu de la carte
             } catch (err: any) {
                 console.error('Error initializing map:', err);
-                setError(err.message || 'Erreur lors du chargement de la carte');
+                // ✅ NOUVELLE APPROCHE: Bloquer la carte et demander à l'utilisateur
+                setGeoBlocked(true);
+                setLoading(false);
+                return; // Ne pas charger la carte
             } finally {
                 setLoading(false);
+                // ✅ Marquer la carte comme prête après initialisation
+                setTimeout(() => setIsMapReady(true), 500);
             }
         };
 
@@ -327,6 +341,12 @@ const HomePage: React.FC = () => {
      * Handler: Recentrer sur la position utilisateur
      */
     const handleRecenterMap = useCallback(async () => {
+        // ✅ Ne recentrer que si la carte est prête
+        if (!isMapReady) {
+            console.warn('Carte pas encore prête, impossible de recentrer');
+            return;
+        }
+
         if (userLocation) {
             setMapCenter([userLocation.latitude, userLocation.longitude]);
             setMapZoom(13);
@@ -352,7 +372,42 @@ const HomePage: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [userLocation]);
+    }, [userLocation, isMapReady]);
+
+    /**
+     * Handler: Continuer sans géolocalisation
+     */
+    const handleContinueWithoutGeo = useCallback(() => {
+        setGeoBlocked(false);
+        setMapCenter([48.8566, 2.3522]); // Paris
+        setMapZoom(6); // Vue France
+        setTimeout(() => setIsMapReady(true), 500);
+    }, []);
+
+    /**
+     * Handler: Réessayer la géolocalisation
+     */
+    const handleRetryGeo = useCallback(async () => {
+        setLoading(true);
+        setGeoBlocked(false);
+        try {
+            const position = await getUserLocation();
+            if (position) {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                setUserLocation({ latitude: lat, longitude: lng });
+                setMapCenter([lat, lng]);
+                setMapZoom(13);
+                setTimeout(() => setIsMapReady(true), 500);
+            } else {
+                setGeoBlocked(true);
+            }
+        } catch (err) {
+            setGeoBlocked(true);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     /**
      * Handler: Changement de recherche
@@ -361,16 +416,6 @@ const HomePage: React.FC = () => {
         setSearch(value);
     }, []);
 
-    /**
-     * Handler: Toggle des filtres
-     */
-    const handleToggleChurches = useCallback(() => {
-        setShowChurches(prev => !prev);
-    }, []);
-
-    const handleToggleEvents = useCallback(() => {
-        setShowEvents(prev => !prev);
-    }, []);
 
     /**
      * Handler: Clic sur une église dans la liste
@@ -412,6 +457,12 @@ const HomePage: React.FC = () => {
      * Handler: Sélection d'une adresse dans l'autocomplete
      */
     const handleLocationSelect = useCallback((lat: number, lng: number, label: string) => {
+        // ✅ Ne recentrer que si la carte est prête
+        if (!isMapReady) {
+            console.warn('Carte pas encore prête, impossible de recentrer');
+            return;
+        }
+
         // Centrer la carte sur l'adresse sélectionnée
         setMapCenter([lat, lng]);
         setMapZoom(13);
@@ -420,9 +471,7 @@ const HomePage: React.FC = () => {
         if (isMobile) {
             setResultsPanelOpen(false);
         }
-
-        console.log(`📍 Navigation vers: ${label} (${lat}, ${lng})`);
-    }, [isMobile]);
+    }, [isMobile, isMapReady]);
 
     /**
      * Icônes memoizées pour éviter les re-créations
@@ -430,16 +479,99 @@ const HomePage: React.FC = () => {
     const churchIcon = useMemo(() => createChurchIcon(), []);
     const eventIcon = useMemo(() => createEventIcon(), []);
 
-    /**
-     * Filtrage des données selon les filtres
-     */
-    const filteredChurches = useMemo(() => {
-        return showChurches ? churches : [];
-    }, [churches, showChurches]);
 
-    const filteredEvents = useMemo(() => {
-        return showEvents ? events : [];
-    }, [events, showEvents]);
+    // ✅ Écran de blocage si géolocalisation refusée
+    if (geoBlocked) {
+        return (
+            <Box sx={{
+                height: '100%',
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                p: 3
+            }}>
+                <Paper
+                    elevation={24}
+                    sx={{
+                        maxWidth: 500,
+                        p: 4,
+                        textAlign: 'center',
+                        borderRadius: 4,
+                        background: 'rgba(255, 255, 255, 0.95)',
+                        backdropFilter: 'blur(10px)'
+                    }}
+                >
+                    <Box sx={{ mb: 3 }}>
+                        <LocationOnIcon sx={{ fontSize: 80, color: '#667eea' }} />
+                    </Box>
+                    <Typography variant="h4" gutterBottom fontWeight="bold" color="primary">
+                        Géolocalisation requise
+                    </Typography>
+                    <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+                        Pour afficher les églises et événements près de vous, nous avons besoin d'accéder à votre position.
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <Box
+                            component="button"
+                            onClick={handleRetryGeo}
+                            sx={{
+                                bgcolor: 'primary.main',
+                                color: 'white',
+                                py: 2,
+                                px: 3,
+                                borderRadius: 2,
+                                border: 'none',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 1,
+                                '&:hover': {
+                                    bgcolor: 'primary.dark',
+                                    transform: 'translateY(-2px)',
+                                    boxShadow: 6
+                                },
+                                transition: 'all 0.3s'
+                            }}
+                        >
+                            <MyLocationIcon />
+                            <Typography variant="button" fontWeight="bold">
+                                Activer la géolocalisation
+                            </Typography>
+                        </Box>
+                        <Box
+                            component="button"
+                            onClick={handleContinueWithoutGeo}
+                            sx={{
+                                bgcolor: 'grey.200',
+                                color: 'text.primary',
+                                py: 1.5,
+                                px: 3,
+                                borderRadius: 2,
+                                border: 'none',
+                                cursor: 'pointer',
+                                '&:hover': {
+                                    bgcolor: 'grey.300',
+                                    transform: 'translateY(-2px)',
+                                    boxShadow: 4
+                                },
+                                transition: 'all 0.3s'
+                            }}
+                        >
+                            <Typography variant="button">
+                                Continuer sans géolocalisation (Vue France)
+                            </Typography>
+                        </Box>
+                    </Box>
+                    <Typography variant="caption" color="text.disabled" sx={{ mt: 3, display: 'block' }}>
+                        💡 Votre position n'est jamais stockée ni partagée
+                    </Typography>
+                </Paper>
+            </Box>
+        );
+    }
 
     return (
         <Box sx={{ position: 'relative', height: '100%', width: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -457,8 +589,17 @@ const HomePage: React.FC = () => {
                 zoomControl={false}
             >
                 <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    key={mapType}
+                    attribution={
+                        mapType === 'satellite'
+                            ? '&copy; <a href="https://www.esri.com/">Esri</a> &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+                            : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    }
+                    url={
+                        mapType === 'satellite'
+                            ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+                            : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+                    }
                 />
 
                 {/* Recentrage automatique */}
@@ -484,9 +625,11 @@ const HomePage: React.FC = () => {
                 )}
 
                 {/* Marqueurs églises et événements avec clustering unifié */}
-                <MarkerClusterGroup chunkedLoading>
-                    {/* Églises */}
-                    {filteredChurches.map((church) => (
+                {/* ✅ FIX: Afficher les markers seulement quand la carte est initialisée */}
+                {!loading && (
+                    <MarkerClusterGroup chunkedLoading>
+                        {/* Églises */}
+                        {churches.map((church) => (
                         <Marker
                             key={`church-${church.id}`}
                             position={[church.latitude, church.longitude]}
@@ -516,7 +659,7 @@ const HomePage: React.FC = () => {
                     ))}
 
                     {/* Événements */}
-                    {filteredEvents.map((event) => (
+                    {events.map((event) => (
                         <Marker
                             key={`event-${event.id}`}
                             position={[event.latitude, event.longitude]}
@@ -548,40 +691,37 @@ const HomePage: React.FC = () => {
                             </Popup>
                         </Marker>
                     ))}
-                </MarkerClusterGroup>
+                    </MarkerClusterGroup>
+                )}
             </MapContainer>
 
             {/* Barre de recherche */}
             <SearchBar
                 value={search}
                 onChange={handleSearchChange}
-                showChurches={showChurches}
-                showEvents={showEvents}
-                onToggleChurches={handleToggleChurches}
-                onToggleEvents={handleToggleEvents}
-                churchesCount={filteredChurches.length}
-                eventsCount={filteredEvents.length}
                 onLocationSelect={handleLocationSelect}
             />
 
             {/* Panneau de résultats */}
-            <ResultsPanel
-                churches={filteredChurches}
-                events={filteredEvents}
-                loading={loading}
-                onChurchClick={handleChurchClick}
-                onEventClick={handleEventClick}
-                onClose={() => setResultsPanelOpen(false)}
-                open={resultsPanelOpen}
-                isGeolocated={!!userLocation}
-                isMobileView={isMobile}
-            />
+            <Suspense fallback={<Box sx={{ position: 'absolute', top: 16, left: 16, zIndex: 1000 }}><CircularProgress /></Box>}>
+                <ResultsPanel
+                    churches={churches}
+                    events={events}
+                    loading={loading}
+                    onChurchClick={handleChurchClick}
+                    onEventClick={handleEventClick}
+                    onClose={() => setResultsPanelOpen(false)}
+                    open={resultsPanelOpen}
+                    isGeolocated={!!userLocation}
+                    isMobileView={isMobile}
+                />
+            </Suspense>
 
             {/* Bouton liste sur mobile */}
             {isMobile && !resultsPanelOpen && (
                 <Fab
                     color="secondary"
-                    aria-label="afficher la liste"
+                    aria-label="Afficher la liste des églises et événements"
                     onClick={() => setResultsPanelOpen(true)}
                     sx={{
                         position: 'absolute',
@@ -595,10 +735,26 @@ const HomePage: React.FC = () => {
                 </Fab>
             )}
 
+            {/* Bouton vue satellite/standard */}
+            <Fab
+                color="secondary"
+                aria-label={mapType === 'standard' ? 'Basculer vers la vue satellite' : 'Basculer vers la vue standard'}
+                onClick={() => setMapType(prev => prev === 'standard' ? 'satellite' : 'standard')}
+                sx={{
+                    position: 'absolute',
+                    bottom: { xs: 180, md: 104 },
+                    right: { xs: 16, md: 24 },
+                    zIndex: 1000,
+                    boxShadow: 3
+                }}
+            >
+                {mapType === 'standard' ? <SatelliteIcon /> : <MapIcon />}
+            </Fab>
+
             {/* Bouton de géolocalisation */}
             <Fab
                 color="primary"
-                aria-label="ma position"
+                aria-label="Me localiser sur la carte"
                 onClick={handleRecenterMap}
                 sx={{
                     position: 'absolute',
@@ -649,18 +805,22 @@ const HomePage: React.FC = () => {
             )}
 
             {/* Modal de détails d'église */}
-            <ChurchDetailsModal
-                open={churchModalOpen}
-                onClose={() => setChurchModalOpen(false)}
-                churchId={selectedChurchId}
-            />
+            <Suspense fallback={null}>
+                <ChurchDetailsModal
+                    open={churchModalOpen}
+                    onClose={() => setChurchModalOpen(false)}
+                    churchId={selectedChurchId}
+                />
+            </Suspense>
 
             {/* Modal de détails d'événement */}
-            <EventDetailsModal
-                open={eventModalOpen}
-                onClose={() => setEventModalOpen(false)}
-                eventId={selectedEventId}
-            />
+            <Suspense fallback={null}>
+                <EventDetailsModal
+                    open={eventModalOpen}
+                    onClose={() => setEventModalOpen(false)}
+                    eventId={selectedEventId}
+                />
+            </Suspense>
 
             {/* Message d'aide pour guider l'utilisateur */}
             <Snackbar

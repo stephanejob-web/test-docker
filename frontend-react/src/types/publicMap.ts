@@ -71,6 +71,7 @@ export interface Event {
     event_city: string | null;
     event_postal_code: string | null;
     distance_km: number | null;
+    interested_count?: number;
 }
 
 export interface Language {
@@ -142,6 +143,7 @@ export interface EventDetails {
         schedules: ChurchSchedule[];
         socials: ChurchSocial[];
     } | null;
+    interested_count?: number;
 }
 
 export interface Denomination {

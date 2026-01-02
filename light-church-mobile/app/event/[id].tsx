@@ -2,19 +2,26 @@
  * Event Detail Page
  */
 
-import React, { useState } from 'react';
-import { ScrollView, StyleSheet, ActivityIndicator, Linking, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { ScrollView, StyleSheet, ActivityIndicator, Linking, Image, Alert } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Box, Text, Button, Card } from '@/components/ui';
-import { useEventDetail } from '@/hooks/query';
+import { useEventDetail, useIsInterested, useToggleEventInterest } from '@/hooks/query';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { addEventToCalendar } from '@/utils/calendar';
+import { registerForPushNotifications, hasNotificationPermission } from '@/services/pushNotificationService';
 
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data, isLoading, error } = useEventDetail(Number(id));
+  const eventId = Number(id);
+  const { data, isLoading, error } = useEventDetail(eventId);
+  const { data: interestData } = useIsInterested(eventId);
+  const toggleInterest = useToggleEventInterest(eventId);
   const [isAddingToCalendar, setIsAddingToCalendar] = useState(false);
+
+  const isInterested = interestData?.is_interested || false;
+  const interestedCount = data?.event?.interested_count || 0;
 
   const handleOpenMaps = () => {
     if (!data?.event) return;
@@ -81,6 +88,62 @@ export default function EventDetailScreen() {
       });
     } finally {
       setIsAddingToCalendar(false);
+    }
+  };
+
+  const handleToggleInterest = async () => {
+    try {
+      // Vérifier si les notifications sont activées
+      const hasPermission = await hasNotificationPermission();
+
+      if (!hasPermission && !isInterested) {
+        // Demander l'autorisation si pas encore intéressé
+        Alert.alert(
+          'Notifications requises',
+          'Pour montrer votre intérêt et recevoir des notifications sur cet événement, vous devez activer les notifications push.',
+          [
+            { text: 'Annuler', style: 'cancel' },
+            {
+              text: 'Activer',
+              onPress: async () => {
+                const deviceId = await registerForPushNotifications();
+                if (deviceId) {
+                  toggleInterest.mutate(isInterested);
+                } else {
+                  Alert.alert(
+                    'Erreur',
+                    'Impossible d\'activer les notifications. Veuillez vérifier les paramètres de votre appareil.'
+                  );
+                }
+              },
+            },
+          ]
+        );
+        return;
+      }
+
+      // Toggle interest
+      toggleInterest.mutate(isInterested, {
+        onSuccess: (data) => {
+          const message = isInterested
+            ? 'Vous ne recevrez plus de notifications pour cet événement'
+            : `Vous serez notifié des modifications de cet événement (${data.interested_count} personnes intéressées)`;
+          Alert.alert('Succès', message);
+        },
+        onError: (error: any) => {
+          console.error('Error toggling interest:', error);
+          console.error('Error response:', error.response?.data);
+
+          const errorMessage = error.response?.data?.message
+            || error.message
+            || 'Une erreur est survenue lors de l\'enregistrement';
+
+          Alert.alert('Erreur', errorMessage);
+        },
+      });
+    } catch (error: any) {
+      console.error('Error toggling interest (catch):', error);
+      Alert.alert('Erreur', error.message || 'Une erreur est survenue');
     }
   };
 
@@ -152,8 +215,36 @@ export default function EventDetailScreen() {
         </Box>
       </Box>
 
+      {/* Interested Count Badge */}
+      {interestedCount > 0 && (
+        <Box paddingHorizontal="m" marginBottom="s">
+          <Box
+            backgroundColor="primary"
+            paddingHorizontal="m"
+            paddingVertical="s"
+            borderRadius="m"
+            alignSelf="flex-start"
+          >
+            <Text variant="caption" color="textInverse" fontWeight="600">
+              👥 {interestedCount} {interestedCount === 1 ? 'personne intéressée' : 'personnes intéressées'}
+            </Text>
+          </Box>
+        </Box>
+      )}
+
       {/* Actions */}
       <Box paddingHorizontal="m" gap="s" marginBottom="m">
+        {/* Interest Button - Full Width */}
+        <Button
+          onPress={handleToggleInterest}
+          variant={isInterested ? "outline" : "primary"}
+          size="medium"
+          disabled={toggleInterest.isPending}
+        >
+          {toggleInterest.isPending ? '⏳ ' : isInterested ? '✓ ' : '⭐ '}
+          {isInterested ? 'Ne plus suivre' : 'Ça m\'intéresse'}
+        </Button>
+
         {/* Primary Actions Row */}
         <Box flexDirection="row" gap="s">
           <Box flex={1}>

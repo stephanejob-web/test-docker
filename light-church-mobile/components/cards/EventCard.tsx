@@ -143,11 +143,18 @@ export default React.memo(function EventCard({ event, onPress, currentTime }: Ev
             )}
           </Box>
 
-          {event.distance_km !== undefined && (
-            <Text variant="small" color="primary" marginTop="xs">
-              📍 {formatDistance(event.distance_km)}
-            </Text>
-          )}
+          <Box flexDirection="row" alignItems="center" flexWrap="wrap" marginTop="xs" gap="s">
+            {event.distance_km !== undefined && (
+              <Text variant="small" color="primary">
+                📍 {formatDistance(event.distance_km)}
+              </Text>
+            )}
+            {event.interested_count !== undefined && event.interested_count > 0 && (
+              <Text variant="small" color="textSecondary">
+                👥 {event.interested_count}
+              </Text>
+            )}
+          </Box>
         </Box>
 
         {/* Chevron */}

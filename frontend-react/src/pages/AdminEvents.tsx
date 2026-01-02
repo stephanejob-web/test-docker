@@ -54,6 +54,12 @@ export default function AdminEvents() {
     const [page, setPage] = useState(1);
     const itemsPerPage = 10;
 
+    // ✅ Métadonnées de pagination depuis le backend
+    const [paginationMeta, setPaginationMeta] = useState({
+        total: 0,
+        totalPages: 1
+    });
+
     /**
      * Calcule le statut dynamique d'un événement basé sur les dates
      */
@@ -86,79 +92,70 @@ export default function AdminEvents() {
     }, []);
 
     /**
-     * Récupère tous les événements depuis l'API
+     * ✅ OPTIMISÉ: Récupère les événements avec filtrage et pagination BACKEND
      */
     const fetchEvents = useCallback(async () => {
         setLoading(true);
         try {
             const { data } = await api.get('/admin/events', {
                 params: {
-                    page: 1,
-                    limit: 1000, // Récupère tous les événements
-                    search: '' // On gère la recherche côté client
+                    page,
+                    limit: itemsPerPage,
+                    search,
+                    status: statusFilter // ✅ Filtrage backend par statut
                 }
             });
 
             // Handle both legacy array format and new paginated format
             let eventsList: Event[] = [];
+            let total = 0;
+            let totalPages = 1;
+
             if (Array.isArray(data)) {
+                // Legacy format (pas de pagination)
                 eventsList = data;
+                total = data.length;
+                totalPages = Math.ceil(total / itemsPerPage);
             } else {
+                // New paginated format
                 eventsList = data.data || [];
+                total = data.meta?.total || 0;
+                totalPages = data.meta?.totalPages || 1;
             }
 
-            // Enrichir chaque événement avec le statut calculé
+            // ✅ Le statut est DÉJÀ calculé côté backend via enrichEventsWithStatus()
+            // Enrichir à nouveau côté frontend pour garantir la cohérence (double sécurité)
             const enrichedEvents = eventsList.map(event => ({
                 ...event,
-                status: calculateEventStatus(event)
+                status: event.status || calculateEventStatus(event) // Utiliser backend si dispo, sinon calculer
             }));
 
             setAllEvents(enrichedEvents);
+            setPaginationMeta({ total, totalPages }); // ✅ Stocker les métadonnées de pagination
         } catch (err) {
             console.error('Erreur lors du chargement des événements:', err);
+            setAllEvents([]);
         } finally {
             setLoading(false);
         }
-    }, [calculateEventStatus]);
+    }, [page, itemsPerPage, search, statusFilter, calculateEventStatus]);
 
+    // ✅ Recharger les événements quand les filtres ou la page changent
     useEffect(() => {
         fetchEvents();
     }, [fetchEvents]);
 
     /**
-     * Filtre et pagine les événements côté client
+     * ✅ OPTIMISÉ: Les événements sont déjà filtrés et paginés par le backend
+     * On retourne directement les données sans traitement supplémentaire
      */
     const filteredAndPaginatedEvents = useMemo(() => {
-        // 1. Filtrer par recherche
-        let filtered = allEvents.filter(event => {
-            if (!search.trim()) return true;
-            const searchLower = search.toLowerCase();
-            return (
-                event.title?.toLowerCase().includes(searchLower) ||
-                event.church_name?.toLowerCase().includes(searchLower) ||
-                event.first_name?.toLowerCase().includes(searchLower) ||
-                event.last_name?.toLowerCase().includes(searchLower)
-            );
-        });
-
-        // 2. Filtrer par statut
-        if (statusFilter !== 'ALL') {
-            filtered = filtered.filter(event => event.status === statusFilter);
-        }
-
-        // 3. Paginer
-        const totalFiltered = filtered.length;
-        const totalPages = Math.ceil(totalFiltered / itemsPerPage);
-        const startIndex = (page - 1) * itemsPerPage;
-        const endIndex = startIndex + itemsPerPage;
-        const paginated = filtered.slice(startIndex, endIndex);
-
         return {
-            events: paginated,
-            total: totalFiltered,
-            totalPages: totalPages
+            events: allEvents,
+            total: paginationMeta.total, // ✅ Utiliser les vraies métadonnées du backend
+            totalPages: paginationMeta.totalPages
         };
-    }, [allEvents, search, statusFilter, page, itemsPerPage]);
+    }, [allEvents, paginationMeta]);
 
     /**
      * Navigue vers la page de détails de l'événement

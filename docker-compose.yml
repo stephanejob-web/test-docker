@@ -30,6 +30,8 @@ services:
       dockerfile: Dockerfile
     container_name: backend-express
     restart: unless-stopped
+    volumes:
+      - ./backend-express/uploads:/app/uploads
     environment:
       DB_HOST: mysql
       DB_USER: ${MYSQL_USER}

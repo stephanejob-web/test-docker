@@ -106,6 +106,7 @@ interface EventFormData {
 
 interface EventData extends EventFormData {
     id: number;
+    interested_count?: number;
 }
 
 const initialFormState: EventFormData = {
@@ -566,7 +567,12 @@ export default function MyEvents() {
                     return;
                 }
             }
-            const response = await api.get('/church/my-events');
+            // ✅ OPTIMISÉ: Filtrage backend par statut
+            const response = await api.get('/church/my-events', {
+                params: {
+                    status: statusFilter // Envoyer le filtre de statut au backend
+                }
+            });
             setEvents(Array.isArray(response.data) ? response.data : []);
         } catch (err) {
             console.error(err);
@@ -574,7 +580,7 @@ export default function MyEvents() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [statusFilter]); // ✅ Ajouter statusFilter comme dépendance
 
     useEffect(() => {
         if (isAdminMode && eventId) {
@@ -772,10 +778,9 @@ export default function MyEvents() {
         );
     };
 
-    // Filter events by status and search query (memoized for performance)
+    // ✅ OPTIMISÉ: Filtre seulement par recherche (le statut est déjà filtré par le backend)
     const filteredEvents = useMemo(() => {
         return events
-            .filter(event => statusFilter === 'ALL' || event.status === statusFilter)
             .filter(event => {
                 if (!searchQuery.trim()) return true;
                 const query = searchQuery.toLowerCase();
@@ -805,7 +810,7 @@ export default function MyEvents() {
                     }
                 }
             });
-    }, [events, statusFilter, searchQuery, sortBy]);
+    }, [events, searchQuery, sortBy]); // ✅ statusFilter retiré car filtrage backend
 
     // Pagination logic (memoized for performance)
     const totalPages = useMemo(
@@ -2326,6 +2331,25 @@ export default function MyEvents() {
                                                 {event.city || event.address || "Lieu non précisé"}
                                             </Typography>
                                         </Box>
+                                        {/* Compteur de personnes intéressées */}
+                                        {event.interested_count !== undefined && event.interested_count > 0 && (
+                                            <Box sx={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: 0.75,
+                                                bgcolor: 'success.light',
+                                                color: 'success.dark',
+                                                px: 1.5,
+                                                py: 0.5,
+                                                borderRadius: 2,
+                                                mt: 0.5,
+                                                boxShadow: '0 2px 8px rgba(76, 175, 80, 0.2)',
+                                            }}>
+                                                <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>
+                                                    👥 {event.interested_count} {event.interested_count === 1 ? 'personne intéressée' : 'personnes intéressées'}
+                                                </Typography>
+                                            </Box>
+                                        )}
                                     </Box>
                                     {event.status === 'CANCELLED' && event.cancellation_reason && (
                                         <Alert severity="error" sx={{ mb: 2 }} icon={<CancelIcon />}>
@@ -2679,6 +2703,25 @@ export default function MyEvents() {
                                             <Typography variant="body2" color="text.secondary" sx={{ mt: 1, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                                                 {event.description}
                                             </Typography>
+                                        )}
+                                        {/* Compteur de personnes intéressées */}
+                                        {event.interested_count !== undefined && event.interested_count > 0 && (
+                                            <Box sx={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: 0.75,
+                                                bgcolor: 'success.light',
+                                                color: 'success.dark',
+                                                px: 1.5,
+                                                py: 0.5,
+                                                borderRadius: 2,
+                                                mt: 1,
+                                                boxShadow: '0 2px 8px rgba(76, 175, 80, 0.2)',
+                                            }}>
+                                                <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>
+                                                    👥 {event.interested_count} {event.interested_count === 1 ? 'personne intéressée' : 'personnes intéressées'}
+                                                </Typography>
+                                            </Box>
                                         )}
                                     </Box>
 

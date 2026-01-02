@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     Box,
     Paper,
@@ -11,7 +11,10 @@ import {
     useMediaQuery,
     useTheme,
     Button,
-    Chip
+    Chip,
+    Tabs,
+    Tab,
+    Skeleton
 } from '@mui/material';
 import {
     Close as CloseIcon,
@@ -392,17 +395,32 @@ const EventCard: React.FC<{
                             </Stack>
                         )}
 
-                        {/* Distance */}
-                        {event.distance_km !== null && (
-                            <Typography
-                                variant="body2"
-                                color="secondary.main"
-                                fontWeight={600}
-                                sx={{ mt: 0.5 }}
-                            >
-                                📍 {formatDistance(event.distance_km)}
-                            </Typography>
-                        )}
+                        {/* Distance et compteur d'intéressés */}
+                        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 0.5 }}>
+                            {event.distance_km !== null && (
+                                <Typography
+                                    variant="body2"
+                                    color="secondary.main"
+                                    fontWeight={600}
+                                >
+                                    📍 {formatDistance(event.distance_km)}
+                                </Typography>
+                            )}
+                            {event.interested_count !== undefined && event.interested_count > 0 && (
+                                <Typography
+                                    variant="body2"
+                                    color="primary.main"
+                                    fontWeight={600}
+                                    sx={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 0.5
+                                    }}
+                                >
+                                    👥 {event.interested_count} {event.interested_count === 1 ? 'intéressé' : 'intéressés'}
+                                </Typography>
+                            )}
+                        </Stack>
                     </Box>
                 </Stack>
 
@@ -470,6 +488,109 @@ const ResultsPanel: React.FC<ResultsPanelProps> = React.memo(({
 
     const totalResults = churches.length + events.length;
 
+    // État pour gérer l'onglet actif
+    const [activeTab, setActiveTab] = useState<'churches' | 'events'>('churches');
+
+    // États pour le redimensionnement
+    const [panelWidth, setPanelWidth] = useState(() => {
+        const saved = localStorage.getItem('resultsPanelWidth');
+        return saved ? parseInt(saved, 10) : 380;
+    });
+    const [drawerHeight, setDrawerHeight] = useState(() => {
+        const saved = localStorage.getItem('resultsDrawerHeight');
+        return saved ? parseInt(saved, 10) : 60;
+    });
+    const [isResizing, setIsResizing] = useState(false);
+
+    // Smart default : Sélectionner l'onglet pertinent au chargement
+    useEffect(() => {
+        if (loading) return;
+
+        // Vérifier s'il y a des événements en cours
+        const now = new Date();
+        const ongoingEvents = events.filter(event => {
+            const start = new Date(event.start_datetime);
+            const end = event.end_datetime ? new Date(event.end_datetime) : null;
+            return end && now >= start && now <= end;
+        });
+
+        // Si événements en cours, afficher l'onglet événements
+        if (ongoingEvents.length > 0) {
+            setActiveTab('events');
+        }
+        // Sinon, afficher l'onglet avec le plus de résultats
+        else if (events.length > churches.length) {
+            setActiveTab('events');
+        } else if (churches.length > 0) {
+            setActiveTab('churches');
+        }
+        // Si que des événements et pas d'églises
+        else if (events.length > 0 && churches.length === 0) {
+            setActiveTab('events');
+        }
+    }, [churches.length, events.length, loading]);
+
+    // Gestion du redimensionnement Desktop (largeur)
+    const handleMouseDownDesktop = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        setIsResizing(true);
+    }, []);
+
+    useEffect(() => {
+        if (!isResizing || isMobile) return;
+
+        const handleMouseMove = (e: MouseEvent) => {
+            const newWidth = e.clientX - 16; // 16px = left offset
+            const clampedWidth = Math.max(300, Math.min(700, newWidth));
+            setPanelWidth(clampedWidth);
+        };
+
+        const handleMouseUp = () => {
+            setIsResizing(false);
+            localStorage.setItem('resultsPanelWidth', panelWidth.toString());
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isResizing, isMobile, panelWidth]);
+
+    // Gestion du redimensionnement Mobile (hauteur)
+    const handleTouchStartMobile = useCallback((e: React.TouchEvent) => {
+        e.preventDefault();
+        setIsResizing(true);
+    }, []);
+
+    useEffect(() => {
+        if (!isResizing || !isMobile) return;
+
+        const handleTouchMove = (e: TouchEvent) => {
+            const touch = e.touches[0];
+            const windowHeight = window.innerHeight;
+            const touchY = touch.clientY;
+            const newHeightPercent = ((windowHeight - touchY) / windowHeight) * 100;
+            const clampedHeight = Math.max(30, Math.min(90, newHeightPercent));
+            setDrawerHeight(clampedHeight);
+        };
+
+        const handleTouchEnd = () => {
+            setIsResizing(false);
+            localStorage.setItem('resultsDrawerHeight', drawerHeight.toString());
+        };
+
+        document.addEventListener('touchmove', handleTouchMove);
+        document.addEventListener('touchend', handleTouchEnd);
+
+        return () => {
+            document.removeEventListener('touchmove', handleTouchMove);
+            document.removeEventListener('touchend', handleTouchEnd);
+        };
+    }, [isResizing, isMobile, drawerHeight]);
+
     const content = (
         <Box
             sx={{
@@ -491,8 +612,7 @@ const ResultsPanel: React.FC<ResultsPanelProps> = React.memo(({
                     sx={{
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'space-between',
-                        mb: isGeolocated ? 1 : 0
+                        justifyContent: 'space-between'
                     }}
                 >
                     <Typography variant="h6" fontWeight={600}>
@@ -504,96 +624,163 @@ const ResultsPanel: React.FC<ResultsPanelProps> = React.memo(({
                         </IconButton>
                     )}
                 </Box>
-                {/* Indicateur de tri par distance */}
-                {isGeolocated && totalResults > 0 && (
-                    <Box
-                        sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 0.5
-                        }}
-                    >
-                        <PlaceIcon
-                            sx={{
-                                fontSize: 16,
-                                color: 'primary.main'
-                            }}
-                        />
-                        <Typography
-                            variant="caption"
-                            color="primary.main"
-                            fontWeight={600}
-                        >
-                            {isMobileView
-                                ? 'Dans un rayon de 15km autour de vous'
-                                : 'Triés par distance (du plus proche au plus éloigné)'
-                            }
-                        </Typography>
-                    </Box>
-                )}
             </Box>
 
-            {/* Liste des résultats */}
+            {/* Onglets */}
+            <Tabs
+                value={activeTab}
+                onChange={(_, newValue) => setActiveTab(newValue)}
+                variant="fullWidth"
+                sx={{
+                    borderBottom: 1,
+                    borderColor: 'divider',
+                    minHeight: 48,
+                    '& .MuiTab-root': {
+                        fontWeight: 600,
+                        fontSize: '0.95rem',
+                        textTransform: 'none',
+                        minHeight: 48,
+                        py: 1
+                    }
+                }}
+            >
+                <Tab
+                    value="churches"
+                    label={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <ChurchIcon sx={{ fontSize: 20 }} />
+                            <span>Églises</span>
+                            <Chip
+                                label={churches.length}
+                                size="small"
+                                color="primary"
+                                sx={{
+                                    height: 22,
+                                    fontSize: '0.75rem',
+                                    fontWeight: 700,
+                                    minWidth: 32
+                                }}
+                            />
+                        </Box>
+                    }
+                />
+                <Tab
+                    value="events"
+                    label={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <EventIcon sx={{ fontSize: 20 }} />
+                            <span>Événements</span>
+                            <Chip
+                                label={events.length}
+                                size="small"
+                                color="secondary"
+                                sx={{
+                                    height: 22,
+                                    fontSize: '0.75rem',
+                                    fontWeight: 700,
+                                    minWidth: 32
+                                }}
+                            />
+                        </Box>
+                    }
+                />
+            </Tabs>
+
+            {/* Indicateur de tri par distance */}
+            {isGeolocated && totalResults > 0 && (
+                <Box
+                    sx={{
+                        px: 2,
+                        py: 1,
+                        backgroundColor: 'action.hover',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5
+                    }}
+                >
+                    <PlaceIcon
+                        sx={{
+                            fontSize: 16,
+                            color: 'primary.main'
+                        }}
+                    />
+                    <Typography
+                        variant="caption"
+                        color="primary.main"
+                        fontWeight={600}
+                    >
+                        {isMobileView
+                            ? 'Dans un rayon de 15km'
+                            : 'Triés par distance'}
+                    </Typography>
+                </Box>
+            )}
+
+            {/* Liste des résultats selon l'onglet actif */}
             <Box sx={{ flex: 1, overflow: 'auto' }}>
                 {loading ? (
-                    <Box sx={{ p: 3, textAlign: 'center' }}>
-                        <Typography color="text.secondary">
-                            Chargement...
-                        </Typography>
+                    // Skeleton loaders
+                    <Box sx={{ p: 2 }}>
+                        {[1, 2, 3].map(i => (
+                            <Box key={i} sx={{ mb: 2 }}>
+                                <Skeleton
+                                    variant="rectangular"
+                                    height={120}
+                                    sx={{ borderRadius: 2 }}
+                                />
+                            </Box>
+                        ))}
                     </Box>
-                ) : totalResults === 0 ? (
-                    <Box sx={{ p: 3, textAlign: 'center' }}>
-                        <Typography color="text.secondary">
-                            Aucun résultat dans cette zone
-                        </Typography>
-                    </Box>
+                ) : activeTab === 'churches' ? (
+                    // Onglet Églises
+                    churches.length === 0 ? (
+                        <Box sx={{ p: 4, textAlign: 'center' }}>
+                            <ChurchIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2, opacity: 0.3 }} />
+                            <Typography variant="h6" color="text.secondary" gutterBottom>
+                                Aucune église
+                            </Typography>
+                            <Typography variant="body2" color="text.disabled">
+                                Aucune église trouvée dans cette zone
+                            </Typography>
+                        </Box>
+                    ) : (
+                        <List disablePadding>
+                            {churches.map((church, index) => (
+                                <React.Fragment key={church.id}>
+                                    <ChurchCard
+                                        church={church}
+                                        onClick={() => onChurchClick(church)}
+                                    />
+                                    {index < churches.length - 1 && <Divider />}
+                                </React.Fragment>
+                            ))}
+                        </List>
+                    )
                 ) : (
-                    <List disablePadding>
-                        {/* Section Églises */}
-                        {churches.length > 0 && (
-                            <>
-                                <Box sx={{ p: 2, backgroundColor: 'action.hover' }}>
-                                    <Typography variant="overline" fontWeight={700} color="primary">
-                                        Églises ({churches.length})
-                                    </Typography>
-                                </Box>
-                                {churches.map((church, index) => (
-                                    <React.Fragment key={church.id}>
-                                        <ChurchCard
-                                            church={church}
-                                            onClick={() => onChurchClick(church)}
-                                        />
-                                        {index < churches.length - 1 && <Divider />}
-                                    </React.Fragment>
-                                ))}
-                            </>
-                        )}
-
-                        {/* Séparateur entre églises et événements */}
-                        {churches.length > 0 && events.length > 0 && (
-                            <Divider sx={{ my: 2 }} />
-                        )}
-
-                        {/* Section Événements */}
-                        {events.length > 0 && (
-                            <>
-                                <Box sx={{ p: 2, backgroundColor: 'action.hover' }}>
-                                    <Typography variant="overline" fontWeight={700} color="secondary">
-                                        Événements ({events.length})
-                                    </Typography>
-                                </Box>
-                                {events.map((event, index) => (
-                                    <React.Fragment key={event.id}>
-                                        <EventCard
-                                            event={event}
-                                            onClick={() => onEventClick(event)}
-                                        />
-                                        {index < events.length - 1 && <Divider />}
-                                    </React.Fragment>
-                                ))}
-                            </>
-                        )}
-                    </List>
+                    // Onglet Événements
+                    events.length === 0 ? (
+                        <Box sx={{ p: 4, textAlign: 'center' }}>
+                            <EventIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2, opacity: 0.3 }} />
+                            <Typography variant="h6" color="text.secondary" gutterBottom>
+                                Aucun événement
+                            </Typography>
+                            <Typography variant="body2" color="text.disabled">
+                                Aucun événement trouvé dans cette zone
+                            </Typography>
+                        </Box>
+                    ) : (
+                        <List disablePadding>
+                            {events.map((event, index) => (
+                                <React.Fragment key={event.id}>
+                                    <EventCard
+                                        event={event}
+                                        onClick={() => onEventClick(event)}
+                                    />
+                                    {index < events.length - 1 && <Divider />}
+                                </React.Fragment>
+                            ))}
+                        </List>
+                    )
                 )}
             </Box>
         </Box>
@@ -608,13 +795,45 @@ const ResultsPanel: React.FC<ResultsPanelProps> = React.memo(({
                 onClose={onClose}
                 sx={{
                     '& .MuiDrawer-paper': {
-                        height: '60vh',
+                        height: `${drawerHeight}vh`,
                         borderTopLeftRadius: 16,
-                        borderTopRightRadius: 16
+                        borderTopRightRadius: 16,
+                        transition: isResizing ? 'none' : 'height 0.2s ease'
                     }
                 }}
             >
-                {content}
+                {/* Handle de redimensionnement mobile */}
+                <Box
+                    onTouchStart={handleTouchStartMobile}
+                    sx={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: 32,
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        cursor: 'ns-resize',
+                        zIndex: 1301,
+                        backgroundColor: 'transparent',
+                        '&:active': {
+                            backgroundColor: 'action.hover'
+                        }
+                    }}
+                >
+                    <Box
+                        sx={{
+                            width: 40,
+                            height: 4,
+                            backgroundColor: 'divider',
+                            borderRadius: 2
+                        }}
+                    />
+                </Box>
+                <Box sx={{ mt: 4 }}>
+                    {content}
+                </Box>
             </Drawer>
         );
     }
@@ -628,17 +847,59 @@ const ResultsPanel: React.FC<ResultsPanelProps> = React.memo(({
                 top: 16,
                 left: 16,
                 bottom: 16,
-                width: 380,
+                width: panelWidth,
                 zIndex: 1000,
                 borderRadius: 3,
                 overflow: 'hidden',
                 display: 'flex',
                 flexDirection: 'column',
                 backgroundColor: 'rgba(255, 255, 255, 0.97)',
-                backdropFilter: 'blur(8px)'
+                backdropFilter: 'blur(8px)',
+                transition: isResizing ? 'none' : 'width 0.2s ease',
+                userSelect: isResizing ? 'none' : 'auto'
             }}
         >
             {content}
+
+            {/* Handle de redimensionnement desktop */}
+            <Box
+                onMouseDown={handleMouseDownDesktop}
+                sx={{
+                    position: 'absolute',
+                    top: 0,
+                    right: 0,
+                    bottom: 0,
+                    width: 8,
+                    cursor: 'ew-resize',
+                    backgroundColor: 'transparent',
+                    transition: 'background-color 0.2s',
+                    '&:hover': {
+                        backgroundColor: 'primary.main',
+                        opacity: 0.3
+                    },
+                    '&:active': {
+                        backgroundColor: 'primary.main',
+                        opacity: 0.5
+                    },
+                    zIndex: 10
+                }}
+            >
+                {/* Indicateur visuel */}
+                <Box
+                    sx={{
+                        position: 'absolute',
+                        top: '50%',
+                        right: 2,
+                        transform: 'translateY(-50%)',
+                        width: 3,
+                        height: 40,
+                        backgroundColor: 'divider',
+                        borderRadius: 2,
+                        opacity: 0.5,
+                        pointerEvents: 'none'
+                    }}
+                />
+            </Box>
         </Paper>
     );
 });

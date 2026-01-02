@@ -322,6 +322,7 @@ router.get('/events', [
                 e.end_datetime,
                 e.created_at,
                 e.updated_at,
+                COALESCE(e.interested_count, 0) as interested_count,
                 ST_X(COALESCE(e.event_location, c.location)) as longitude,
                 ST_Y(COALESCE(e.event_location, c.location)) as latitude,
                 c.church_name,
@@ -363,6 +364,279 @@ router.get('/events', [
 });
 
 /**
+ * Route publique : POST /api/public/push-tokens
+ * Enregistre ou met à jour le push token d'un device
+ * Body: { device_id: string, push_token: string, platform: 'ios' | 'android' }
+ */
+router.post('/push-tokens', async (req, res) => {
+    try {
+        const { device_id, push_token, platform } = req.body;
+
+        // Validation
+        if (!device_id || !push_token || !platform) {
+            return res.status(400).json({
+                success: false,
+                message: 'device_id, push_token et platform sont requis'
+            });
+        }
+
+        if (!['ios', 'android'].includes(platform)) {
+            return res.status(400).json({
+                success: false,
+                message: 'platform doit être "ios" ou "android"'
+            });
+        }
+
+        // Obtenir language_id par défaut (français)
+        const [languages] = await db.query(
+            'SELECT id FROM languages WHERE code = ? LIMIT 1',
+            ['fr']
+        );
+
+        const languageId = languages.length > 0 ? languages[0].id : 10;
+
+        // INSERT ou UPDATE si device_id existe déjà
+        await db.query(
+            `INSERT INTO push_tokens (device_id, push_token, platform, language_id, created_at, updated_at)
+             VALUES (?, ?, ?, ?, NOW(), NOW())
+             ON DUPLICATE KEY UPDATE
+                push_token = VALUES(push_token),
+                platform = VALUES(platform),
+                updated_at = NOW()`,
+            [device_id, push_token, platform, languageId]
+        );
+
+        res.json({
+            success: true,
+            message: 'Push token enregistré avec succès',
+            device_id: device_id
+        });
+
+    } catch (err) {
+        console.error('Error saving push token:', err);
+        res.status(500).json({
+            success: false,
+            message: 'Erreur lors de l\'enregistrement du push token'
+        });
+    }
+});
+
+/**
+ * Route publique : POST /api/public/events/:eventId/interest
+ * Permet à un utilisateur mobile de montrer son intérêt pour un événement
+ * Body: { device_id: string }
+ */
+router.post('/events/:eventId/interest', [
+    param('eventId').isInt({ min: 1 })
+], async (req, res) => {
+    try {
+        const eventId = parseInt(req.params.eventId);
+        const { device_id } = req.body;
+
+        if (!device_id) {
+            return res.status(400).json({
+                success: false,
+                message: 'device_id est requis'
+            });
+        }
+
+        // Vérifier que l'événement existe et n'est pas annulé
+        const [events] = await db.query(
+            `SELECT id, cancelled_at FROM events WHERE id = ?`,
+            [eventId]
+        );
+
+        if (events.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Événement non trouvé'
+            });
+        }
+
+        if (events[0].cancelled_at) {
+            return res.status(400).json({
+                success: false,
+                message: 'Cet événement a été annulé'
+            });
+        }
+
+        // Vérifier que le device_id existe dans push_tokens, sinon le créer
+        const [devices] = await db.query(
+            `SELECT device_id FROM push_tokens WHERE device_id = ?`,
+            [device_id]
+        );
+
+        if (devices.length === 0) {
+            // Créer automatiquement une entrée pour ce device (utile pour Expo Go sans notifications)
+            const [languages] = await db.query('SELECT id FROM languages WHERE code = ? LIMIT 1', ['fr']);
+            const languageId = languages.length > 0 ? languages[0].id : 10;
+
+            await db.query(
+                `INSERT INTO push_tokens (device_id, push_token, platform, language_id)
+                 VALUES (?, ?, ?, ?)`,
+                [device_id, 'expo-go-mock-token', 'ios', languageId]
+            );
+        }
+
+        // Insérer l'intérêt (ignore si déjà existant grâce à UNIQUE)
+        await db.query(
+            `INSERT IGNORE INTO event_interests (event_id, device_id) VALUES (?, ?)`,
+            [eventId, device_id]
+        );
+
+        // Mettre à jour le compteur
+        await db.query(
+            `UPDATE events SET interested_count = (
+                SELECT COUNT(*) FROM event_interests WHERE event_id = ?
+            ) WHERE id = ?`,
+            [eventId, eventId]
+        );
+
+        // Récupérer le nouveau total
+        const [result] = await db.query(
+            `SELECT interested_count FROM events WHERE id = ?`,
+            [eventId]
+        );
+
+        res.json({
+            success: true,
+            message: 'Intérêt enregistré avec succès',
+            interested_count: result[0].interested_count || 0
+        });
+
+    } catch (err) {
+        console.error('Error adding interest:', err);
+        res.status(500).json({
+            success: false,
+            message: 'Erreur lors de l\'enregistrement de l\'intérêt'
+        });
+    }
+});
+
+/**
+ * Route publique : DELETE /api/public/events/:eventId/interest
+ * Permet à un utilisateur mobile de retirer son intérêt pour un événement
+ * Body: { device_id: string }
+ */
+router.delete('/events/:eventId/interest', [
+    param('eventId').isInt({ min: 1 })
+], async (req, res) => {
+    try {
+        const eventId = parseInt(req.params.eventId);
+        const { device_id } = req.body;
+
+        if (!device_id) {
+            return res.status(400).json({
+                success: false,
+                message: 'device_id est requis'
+            });
+        }
+
+        // Supprimer l'intérêt
+        const [result] = await db.query(
+            `DELETE FROM event_interests WHERE event_id = ? AND device_id = ?`,
+            [eventId, device_id]
+        );
+
+        // Mettre à jour le compteur
+        await db.query(
+            `UPDATE events SET interested_count = (
+                SELECT COUNT(*) FROM event_interests WHERE event_id = ?
+            ) WHERE id = ?`,
+            [eventId, eventId]
+        );
+
+        // Récupérer le nouveau total
+        const [countResult] = await db.query(
+            `SELECT interested_count FROM events WHERE id = ?`,
+            [eventId]
+        );
+
+        res.json({
+            success: true,
+            message: 'Intérêt retiré avec succès',
+            interested_count: countResult[0].interested_count || 0,
+            removed: result.affectedRows > 0
+        });
+
+    } catch (err) {
+        console.error('Error removing interest:', err);
+        res.status(500).json({
+            success: false,
+            message: 'Erreur lors du retrait de l\'intérêt'
+        });
+    }
+});
+
+/**
+ * Route publique : GET /api/public/events/:eventId/interested-count
+ * Récupère le nombre de personnes intéressées par un événement
+ */
+router.get('/events/:eventId/interested-count', [
+    param('eventId').isInt({ min: 1 })
+], async (req, res) => {
+    try {
+        const eventId = parseInt(req.params.eventId);
+
+        const [result] = await db.query(
+            `SELECT interested_count FROM events WHERE id = ?`,
+            [eventId]
+        );
+
+        if (result.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Événement non trouvé'
+            });
+        }
+
+        res.json({
+            success: true,
+            interested_count: result[0].interested_count || 0
+        });
+
+    } catch (err) {
+        console.error('Error fetching interested count:', err);
+        res.status(500).json({
+            success: false,
+            message: 'Erreur lors de la récupération du compteur'
+        });
+    }
+});
+
+/**
+ * Route publique : GET /api/public/events/:eventId/is-interested
+ * Vérifie si un device est intéressé par un événement
+ * Query: device_id
+ */
+router.get('/events/:eventId/is-interested', [
+    param('eventId').isInt({ min: 1 }),
+    query('device_id').notEmpty()
+], async (req, res) => {
+    try {
+        const eventId = parseInt(req.params.eventId);
+        const { device_id } = req.query;
+
+        const [result] = await db.query(
+            `SELECT id FROM event_interests WHERE event_id = ? AND device_id = ?`,
+            [eventId, device_id]
+        );
+
+        res.json({
+            success: true,
+            is_interested: result.length > 0
+        });
+
+    } catch (err) {
+        console.error('Error checking interest:', err);
+        res.status(500).json({
+            success: false,
+            message: 'Erreur lors de la vérification'
+        });
+    }
+});
+
+/**
  * Route publique : GET /api/public/events/:id
  * Retourne les détails complets d'un événement
  */
@@ -380,6 +654,7 @@ router.get('/events/:id', [
                 e.end_datetime,
                 e.created_at,
                 e.updated_at,
+                COALESCE(e.interested_count, 0) as interested_count,
                 ST_X(COALESCE(e.event_location, c.location)) as longitude,
                 ST_Y(COALESCE(e.event_location, c.location)) as latitude,
                 c.church_name,
