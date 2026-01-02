@@ -95,7 +95,7 @@ describe('MyEvents - Chargement Initial', () => {
     });
 
     it('devrait charger les données de l\'église et les événements', async () => {
-        vi.mocked(api.get).mockImplementation((url) => {
+        vi.mocked(api.get).mockImplementation((url, config?) => {
             if (url === '/church/my-church') {
                 return Promise.resolve({ data: mockChurchData });
             }
@@ -115,7 +115,9 @@ describe('MyEvents - Chargement Initial', () => {
         });
 
         expect(api.get).toHaveBeenCalledWith('/church/my-church');
-        expect(api.get).toHaveBeenCalledWith('/church/my-events');
+        expect(api.get).toHaveBeenCalledWith('/church/my-events', {
+            params: { status: 'ALL' }
+        });
         expect(api.get).toHaveBeenCalledWith('/settings/languages');
     });
 
