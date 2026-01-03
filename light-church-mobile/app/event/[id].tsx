@@ -4,6 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, ActivityIndicator, Linking, Image, Alert, RefreshControl, TouchableOpacity, View, Platform } from 'react-native';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -266,18 +267,40 @@ export default function EventDetailScreen() {
           </Text>
         )}
 
-        <Box flexDirection="row" alignItems="center" gap="s" flexWrap="wrap">
-          <Box flexDirection="row" alignItems="center" gap="xs">
-            <Ionicons name="calendar-outline" size={16} color="#5F6368" />
-            <Text variant="body" color="textSecondary">
-              {format(startDate, 'EEEE d MMMM yyyy', { locale: fr })}
+        <Box flexDirection="row" alignItems="center" marginTop="s" marginBottom="s">
+          {/* Date Badge */}
+          <Box
+            width={56}
+            height={56}
+            borderRadius="l"
+            backgroundColor="card"
+            justifyContent="center"
+            alignItems="center"
+            marginRight="m"
+            borderWidth={1}
+            borderColor="border"
+          >
+            <Text variant="small" color="error" fontWeight="700" textTransform="uppercase" fontSize={10}>
+              {format(startDate, 'MMM', { locale: fr }).toUpperCase()}
+            </Text>
+            <Text variant="title" color="text" fontWeight="700" fontSize={22} lineHeight={26}>
+              {format(startDate, 'dd', { locale: fr })}
             </Text>
           </Box>
-          <Box flexDirection="row" alignItems="center" gap="xs">
-            <Ionicons name="time-outline" size={16} color="#5F6368" />
-            <Text variant="body" color="textSecondary">
-              {format(startDate, 'HH:mm', { locale: fr })} - {format(endDate, 'HH:mm', { locale: fr })}
-            </Text>
+
+          <Box flex={1}>
+            <Box flexDirection="row" alignItems="center" gap="xs" marginBottom="xs">
+              <Ionicons name="time-outline" size={16} color="#5F6368" />
+              <Text variant="body" color="textSecondary">
+                {format(startDate, 'EEEE', { locale: fr })} • {format(startDate, 'HH:mm', { locale: fr })} - {format(endDate, 'HH:mm', { locale: fr })}
+              </Text>
+            </Box>
+            <Box flexDirection="row" alignItems="center" gap="xs">
+              <Ionicons name="location-outline" size={16} color="#5F6368" />
+              <Text variant="body" color="textSecondary" numberOfLines={1}>
+                {event.details?.city || event.church?.city || 'Lieu à confirmer'}
+              </Text>
+            </Box>
           </Box>
         </Box>
 
@@ -396,81 +419,135 @@ export default function EventDetailScreen() {
       )}
 
       {/* Organizer Contact */}
-      {(event.organizer_name || event.pastor_email) && (
+      {(event.organizer_name || event.pastor_email || event.pastor_first_name || event.pastor_last_name) && (
         <Card marginHorizontal="m" marginBottom="m">
           <Text variant="subtitle" marginBottom="m">
             Contact Organisateur
           </Text>
 
-          {event.organizer_name && (
-            <Box marginBottom="s">
-              <Text variant="caption" color="textSecondary">
-                Organisateur
-              </Text>
-              <Text variant="body">{event.organizer_name}</Text>
-            </Box>
-          )}
+          <Box gap="m">
+            {/* Organizer Name */}
+            {event.organizer_name && (
+              <Box flexDirection="row" gap="m">
+                <Ionicons name="business-outline" size={20} color="#5F6368" style={{ marginTop: 2 }} />
+                <Box flex={1}>
+                  <Text variant="body">{event.organizer_name}</Text>
+                  <Text variant="caption" color="textSecondary">
+                    Organisateur
+                  </Text>
+                </Box>
+              </Box>
+            )}
 
-          {(event.pastor_first_name || event.pastor_last_name) && (
-            <Box marginBottom="s">
-              <Text variant="caption" color="textSecondary">
-                Pasteur responsable
-              </Text>
-              <Text variant="body">
-                {event.pastor_first_name} {event.pastor_last_name}
-              </Text>
-            </Box>
-          )}
+            {/* Pastor */}
+            {(event.pastor_first_name || event.pastor_last_name) && (
+              <Box flexDirection="row" gap="m">
+                <Ionicons name="person-outline" size={20} color="#5F6368" style={{ marginTop: 2 }} />
+                <Box flex={1}>
+                  <Text variant="body">
+                    {event.pastor_first_name} {event.pastor_last_name}
+                  </Text>
+                  <Text variant="caption" color="textSecondary">
+                    Pasteur responsable
+                  </Text>
+                </Box>
+              </Box>
+            )}
 
-          {event.pastor_email && (
-            <Box>
-              <Text variant="caption" color="textSecondary">
-                Email
-              </Text>
-              <Text variant="body" color="primary" onPress={handleEmail}>
-                {event.pastor_email}
-              </Text>
-            </Box>
-          )}
+            {/* Email */}
+            {event.pastor_email && (
+              <Box flexDirection="row" gap="m">
+                <Ionicons name="mail-outline" size={20} color="#5F6368" style={{ marginTop: 2 }} />
+                <Box flex={1}>
+                  <Text variant="body" color="primary" onPress={handleEmail}>
+                    {event.pastor_email}
+                  </Text>
+                </Box>
+              </Box>
+            )}
+          </Box>
         </Card>
       )}
 
-      {/* Details */}
+      {/* Details - Google Maps Style */}
       <Card marginHorizontal="m" marginBottom="m">
         <Text variant="subtitle" marginBottom="m">
           Détails de l'événement
         </Text>
 
-        {event.details?.speaker_name && (
-          <Box marginBottom="s">
-            <Text variant="caption" color="textSecondary">
-              Intervenant
-            </Text>
-            <Text variant="body">{event.details.speaker_name}</Text>
-          </Box>
-        )}
+        <Box gap="m">
+          {/* Speaker */}
+          {event.details?.speaker_name && (
+            <Box flexDirection="row" gap="m">
+              <Ionicons name="mic-outline" size={20} color="#5F6368" style={{ marginTop: 2 }} />
+              <Box flex={1}>
+                <Text variant="body">{event.details.speaker_name}</Text>
+                <Text variant="caption" color="textSecondary">
+                  Intervenant
+                </Text>
+              </Box>
+            </Box>
+          )}
 
-        {event.details?.max_seats && (
-          <Box marginBottom="s">
-            <Text variant="caption" color="textSecondary">
-              Places disponibles
-            </Text>
-            <Text variant="body">{event.details.max_seats} personnes</Text>
-          </Box>
-        )}
+          {/* Seats */}
+          {event.details?.max_seats && (
+            <Box flexDirection="row" gap="m">
+              <Ionicons name="ticket-outline" size={20} color="#5F6368" style={{ marginTop: 2 }} />
+              <Box flex={1}>
+                <Text variant="body">{event.details.max_seats} places</Text>
+                <Text variant="caption" color="textSecondary">
+                  Places disponibles
+                </Text>
+              </Box>
+            </Box>
+          )}
 
-        {event.details?.address && (
-          <Box>
-            <Text variant="caption" color="textSecondary">
-              Lieu
-            </Text>
-            <Text variant="body">
-              {event.details.address}
-              {'\n'}
-              {event.details.postal_code} {event.details.city}
-            </Text>
-          </Box>
-        )}
+          {/* Location & Map */}
+          {event.details?.address && (
+            <Box flexDirection="row" gap="m">
+              <Ionicons name="location-outline" size={20} color="#5F6368" style={{ marginTop: 2 }} />
+              <Box flex={1}>
+                <Text variant="body">
+                  {event.details.address}
+                  {'\n'}
+                  {event.details.postal_code} {event.details.city}
+                </Text>
+
+                {/* Mini Map */}
+                <Box
+                  height={150}
+                  borderRadius="m"
+                  overflow="hidden"
+                  marginTop="m"
+                  borderWidth={1}
+                  borderColor="border"
+                >
+                  <MapView
+                    provider={PROVIDER_GOOGLE}
+                    style={{ flex: 1 }}
+                    initialRegion={{
+                      latitude: event.latitude,
+                      longitude: event.longitude,
+                      latitudeDelta: 0.005,
+                      longitudeDelta: 0.005,
+                    }}
+                    liteMode={Platform.OS === 'android'}
+                    scrollEnabled={false}
+                    zoomEnabled={false}
+                    pitchEnabled={false}
+                    rotateEnabled={false}
+                    onPress={handleOpenMaps}
+                  >
+                    <Marker
+                      coordinate={{ latitude: event.latitude, longitude: event.longitude }}
+                      pinColor="#EA4335"
+                    />
+                  </MapView>
+                </Box>
+              </Box>
+            </Box>
+          )}
+        </Box>
       </Card>
 
       {/* Church Info */}

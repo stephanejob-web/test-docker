@@ -72,7 +72,7 @@ export default React.memo(function ChurchCard({ church, onPress }: ChurchCardPro
         </Box>
 
         {/* Chevron */}
-        <Ionicons name="chevron-forward" size={20} color="#DADCE0" />
+        <Ionicons name="chevron-forward" size={20} color="#4285F4" />
       </Box>
     </TouchableOpacity>
   );
