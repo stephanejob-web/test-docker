@@ -5,7 +5,7 @@
 import React, { useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, ActivityIndicator, Linking, Image, Alert, RefreshControl, TouchableOpacity, View, Platform } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Box, Text, Card } from '@/components/ui';
@@ -18,6 +18,7 @@ import { useToast } from '@/contexts/ToastContext';
 
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const toast = useToast();
   const eventId = Number(id);
@@ -550,57 +551,31 @@ export default function EventDetailScreen() {
         </Box>
       </Card>
 
-      {/* Church Info */}
+      {/* Church Info - Link Only */}
       {event.church && (
         <Card marginHorizontal="m" marginBottom="m">
-          <Text variant="subtitle" marginBottom="m">
-            Organisé par
-          </Text>
-
-          <Text variant="body" fontWeight="600" marginBottom="xs">
-            {event.church.church_name}
-          </Text>
-
-          {event.church.denomination_name && (
-            <Text variant="caption" color="primary" marginBottom="s">
-              {event.church.denomination_name}
-            </Text>
-          )}
-
-          {(event.church.details?.pastor_first_name || event.church.details?.pastor_last_name) && (
-            <Box marginBottom="s">
-              <Text variant="caption" color="textSecondary">
-                Pasteur
-              </Text>
-              <Text variant="body">
-                {event.church.details.pastor_first_name} {event.church.details.pastor_last_name}
-              </Text>
+          <TouchableOpacity
+            onPress={() => router.push(`/church/${event.church!.id}`)}
+            activeOpacity={0.7}
+          >
+            <Box flexDirection="row" justifyContent="space-between" alignItems="center">
+              <Box flex={1}>
+                <Text variant="subtitle" marginBottom="xs">Organisé par</Text>
+                <Text variant="body" fontWeight="600" color="primary">
+                  {event.church.church_name}
+                </Text>
+                {event.church.denomination_name && (
+                  <Text variant="caption" color="textSecondary">
+                    {event.church.denomination_name}
+                  </Text>
+                )}
+                <Text variant="caption" color="textTertiary" marginTop="s">
+                  Voir le profil complet de l'église, ses horaires et son adresse.
+                </Text>
+              </Box>
+              <Ionicons name="chevron-forward" size={24} color="#4285F4" />
             </Box>
-          )}
-
-          {event.church.details?.phone && (
-            <Box marginBottom="s">
-              <Text variant="caption" color="textSecondary">
-                Téléphone de l'église
-              </Text>
-              <Text variant="body" color="primary" onPress={handleChurchPhone}>
-                {event.church.details.phone}
-              </Text>
-            </Box>
-          )}
-
-          {event.church.details?.address && (
-            <Box>
-              <Text variant="caption" color="textSecondary">
-                Adresse de l'église
-              </Text>
-              <Text variant="body">
-                {event.church.details.address}
-                {'\n'}
-                {event.church.details.postal_code} {event.church.details.city}
-              </Text>
-            </Box>
-          )}
+          </TouchableOpacity>
         </Card>
       )}
 
@@ -622,40 +597,7 @@ export default function EventDetailScreen() {
         </Card>
       )}
 
-      {/* Church Schedules */}
-      {event.church?.schedules && event.church.schedules.length > 0 && (
-        <Card marginHorizontal="m" marginBottom="m">
-          <Text variant="subtitle" marginBottom="m">
-            Horaires de l'église
-          </Text>
-          {event.church.schedules.slice(0, 3).map((schedule, index) => (
-            <Box
-              key={index}
-              flexDirection="row"
-              justifyContent="space-between"
-              marginBottom="s"
-              paddingBottom="s"
-              borderBottomWidth={index < Math.min(event.church!.schedules.length, 3) - 1 ? 1 : 0}
-              borderBottomColor="border"
-            >
-              <Box>
-                <Text variant="body">{schedule.day_of_week}</Text>
-                <Text variant="caption" color="textSecondary">
-                  {schedule.activity_type}
-                </Text>
-              </Box>
-              <Text variant="body" fontWeight="600">
-                {schedule.start_time.slice(0, 5)}
-              </Text>
-            </Box>
-          ))}
-          {event.church.schedules.length > 3 && (
-            <Text variant="caption" color="textSecondary" marginTop="s">
-              + {event.church.schedules.length - 3} autres horaires
-            </Text>
-          )}
-        </Card>
-      )}
+
 
       {/* YouTube Live */}
       {event.details?.youtube_live && (
