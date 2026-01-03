@@ -17,6 +17,7 @@ import SearchBar from '@/components/map/SearchBar';
 import MyLocationButton from '@/components/map/MyLocationButton';
 import RefreshButton from '@/components/map/RefreshButton';
 import MapTypeToggle from '@/components/map/MapTypeToggle';
+import MapTypeModal from '@/components/map/MapTypeModal';
 import { Box, Text } from '@/components/ui';
 import { useLocation } from '@/hooks/useLocation';
 import { useChurches, useEvents } from '@/hooks/query';
@@ -45,8 +46,11 @@ export default function MapScreen() {
   const [showChurches, setShowChurches] = useState(true);
   const [showEvents, setShowEvents] = useState(true);
 
-  // Map type (standard, satellite, hybrid)
-  const [mapType, setMapType] = useState<'standard' | 'satellite' | 'hybrid'>('standard');
+  // Map type (standard, satellite)
+  const [mapType, setMapType] = useState<'standard' | 'satellite'>('standard');
+
+  // Map type modal visibility
+  const [showMapTypeModal, setShowMapTypeModal] = useState(false);
 
   // Refresh state
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -128,13 +132,14 @@ export default function MapScreen() {
     setMapRegion(newRegion);
   }, [userLocation]);
 
-  // Handle map type toggle
+  // Handle map type toggle - open modal
   const handleToggleMapType = useCallback(() => {
-    setMapType(prev => {
-      if (prev === 'standard') return 'satellite';
-      if (prev === 'satellite') return 'hybrid';
-      return 'standard';
-    });
+    setShowMapTypeModal(true);
+  }, []);
+
+  // Handle map type selection from modal
+  const handleSelectMapType = useCallback((type: 'standard' | 'satellite') => {
+    setMapType(type);
   }, []);
 
   // Handle refresh button
@@ -204,7 +209,15 @@ export default function MapScreen() {
       <RefreshButton onPress={handleRefresh} loading={isRefreshing} />
 
       {/* Map Type Toggle */}
-      <MapTypeToggle mapType={mapType} onToggle={handleToggleMapType} />
+      <MapTypeToggle onPress={handleToggleMapType} />
+
+      {/* Map Type Modal */}
+      <MapTypeModal
+        visible={showMapTypeModal}
+        currentMapType={mapType}
+        onClose={() => setShowMapTypeModal(false)}
+        onSelectMapType={handleSelectMapType}
+      />
 
       {/* Loading indicator */}
       {(churchesLoading || eventsLoading) && (
