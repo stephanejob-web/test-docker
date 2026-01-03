@@ -3,10 +3,11 @@
  */
 
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, ActivityIndicator, Linking, RefreshControl } from 'react-native';
+import { ScrollView, StyleSheet, ActivityIndicator, Linking, RefreshControl, TouchableOpacity, View, Platform } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Box, Text, Button, Card } from '@/components/ui';
+import { Ionicons } from '@expo/vector-icons';
+import { Box, Text, Card } from '@/components/ui';
 import { useChurchDetail } from '@/hooks/query';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -91,21 +92,30 @@ export default function ChurchDetailScreen() {
         </Text>
       </Box>
 
-      {/* Actions */}
-      <Box flexDirection="row" paddingHorizontal="m" gap="s" marginBottom="m">
-        <Box flex={1}>
-          <Button onPress={handleOpenMaps} variant="primary" size="medium">
-            🚗 Itinéraire
-          </Button>
-        </Box>
-        {church.details?.phone && (
-          <Box flex={1}>
-            <Button onPress={handleCall} variant="outline" size="medium">
-              📞 Appeler
-            </Button>
-          </Box>
-        )}
-      </Box>
+      {/* Actions - Google Maps iOS Style */}
+      <View style={buttonStyles.container}>
+        <View style={buttonStyles.row}>
+          <TouchableOpacity
+            style={[buttonStyles.button, buttonStyles.buttonPrimary, buttonStyles.buttonHalf]}
+            onPress={handleOpenMaps}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="navigate" size={20} color="#FFFFFF" style={buttonStyles.icon} />
+            <Text style={buttonStyles.buttonTextPrimary}>Itinéraire</Text>
+          </TouchableOpacity>
+
+          {church.details?.phone && (
+            <TouchableOpacity
+              style={[buttonStyles.button, buttonStyles.buttonSecondary, buttonStyles.buttonHalf]}
+              onPress={handleCall}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="call-outline" size={20} color="#4285F4" style={buttonStyles.icon} />
+              <Text style={buttonStyles.buttonTextSecondary}>Appeler</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
 
       {/* Info Card */}
       <Card marginHorizontal="m" marginBottom="m">
@@ -175,9 +185,14 @@ export default function ChurchDetailScreen() {
             <Text variant="caption" color="textSecondary">
               Statut
             </Text>
-            <Text variant="body" color={church.details.status === 'ACTIVE' ? 'success' : 'textSecondary'}>
-              {church.details.status === 'ACTIVE' ? '✓ Active' : church.details.status}
-            </Text>
+            <Box flexDirection="row" alignItems="center" gap="xs">
+              {church.details.status === 'ACTIVE' && (
+                <Ionicons name="checkmark-circle" size={16} color="#34A853" />
+              )}
+              <Text variant="body" color={church.details.status === 'ACTIVE' ? 'success' : 'textSecondary'}>
+                {church.details.status === 'ACTIVE' ? 'Active' : church.details.status}
+              </Text>
+            </Box>
           </Box>
         )}
       </Card>
@@ -267,5 +282,60 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingBottom: 40,
+  },
+});
+
+const buttonStyles = StyleSheet.create({
+  container: {
+    paddingHorizontal: 16,
+    gap: 10,
+    marginBottom: 16,
+  },
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 48,
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  buttonPrimary: {
+    backgroundColor: '#4285F4',
+  },
+  buttonSecondary: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#DADCE0',
+  },
+  buttonHalf: {
+    flex: 1,
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  icon: {
+    marginRight: 8,
+  },
+  buttonTextPrimary: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  buttonTextSecondary: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#4285F4',
   },
 });
