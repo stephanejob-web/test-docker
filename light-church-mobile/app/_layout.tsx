@@ -25,17 +25,22 @@ export default function RootLayout() {
           <ToastProvider>
             <ThemeProvider theme={theme}>
               <NavigationThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-              <Stack>
-                <Stack.Screen
-                  name="(tabs)"
-                  options={{
-                    headerShown: false,
+                <Stack
+                  screenOptions={{
+                    headerBackTitleVisible: false, // Hide "tabs" or previous screen name
+                    headerTintColor: '#4285F4', // Google Blue for back arrow
                   }}
-                />
-              </Stack>
-              <StatusBar style="auto" />
-            </NavigationThemeProvider>
-          </ThemeProvider>
+                >
+                  <Stack.Screen
+                    name="(tabs)"
+                    options={{
+                      headerShown: false,
+                    }}
+                  />
+                </Stack>
+                <StatusBar style="auto" />
+              </NavigationThemeProvider>
+            </ThemeProvider>
           </ToastProvider>
         </TimeProvider>
       </QueryProvider>

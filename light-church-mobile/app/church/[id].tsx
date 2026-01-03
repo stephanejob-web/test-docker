@@ -4,6 +4,7 @@
 
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, ActivityIndicator, Linking, RefreshControl, TouchableOpacity, View, Platform } from 'react-native';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -83,13 +84,28 @@ export default function ChurchDetailScreen() {
       }
     >
       {/* Header */}
-      <Box padding="m">
-        <Text variant="header" marginBottom="s">
-          {church.church_name}
-        </Text>
-        <Text variant="body" color="primary">
-          {church.denomination_name}
-        </Text>
+      <Box padding="m" flexDirection="row" alignItems="center">
+        <Box
+          width={64}
+          height={64}
+          borderRadius="l"
+          backgroundColor="card"
+          justifyContent="center"
+          alignItems="center"
+          marginRight="m"
+          borderWidth={1}
+          borderColor="border"
+        >
+          <Ionicons name="business" size={32} color="#4285F4" />
+        </Box>
+        <Box flex={1}>
+          <Text variant="header" marginBottom="xs">
+            {church.church_name}
+          </Text>
+          <Text variant="body" color="primary" fontWeight="500">
+            {church.denomination_name}
+          </Text>
+        </Box>
       </Box>
 
       {/* Actions - Google Maps iOS Style */}
@@ -117,84 +133,127 @@ export default function ChurchDetailScreen() {
         </View>
       </View>
 
-      {/* Info Card */}
+      {/* Info Card - Google Maps Style */}
       <Card marginHorizontal="m" marginBottom="m">
         <Text variant="subtitle" marginBottom="m">
           Informations
         </Text>
 
-        {(church.details?.pastor_first_name || church.details?.pastor_last_name) && (
-          <Box marginBottom="s">
-            <Text variant="caption" color="textSecondary">
-              Pasteur
-            </Text>
-            <Text variant="body">
-              {church.details.pastor_first_name} {church.details.pastor_last_name}
-            </Text>
-          </Box>
-        )}
-
-        {church.email && (
-          <Box marginBottom="s">
-            <Text variant="caption" color="textSecondary">
-              Email
-            </Text>
-            <Text variant="body" color="primary" onPress={handleEmail}>
-              {church.email}
-            </Text>
-          </Box>
-        )}
-
-        {church.details?.address && (
-          <Box marginBottom="s">
-            <Text variant="caption" color="textSecondary">
-              Adresse
-            </Text>
-            <Text variant="body">
-              {church.details.address}
-              {'\n'}
-              {church.details.postal_code} {church.details.city}
-            </Text>
-          </Box>
-        )}
-
-        {church.details?.phone && (
-          <Box marginBottom="s">
-            <Text variant="caption" color="textSecondary">
-              Téléphone
-            </Text>
-            <Text variant="body" color="primary" onPress={handleCall}>
-              {church.details.phone}
-            </Text>
-          </Box>
-        )}
-
-        {church.details?.website && (
-          <Box marginBottom="s">
-            <Text variant="caption" color="textSecondary">
-              Site web
-            </Text>
-            <Text variant="body" color="primary" onPress={handleWebsite}>
-              {church.details.website}
-            </Text>
-          </Box>
-        )}
-
-        {church.details?.status && (
-          <Box>
-            <Text variant="caption" color="textSecondary">
-              Statut
-            </Text>
-            <Box flexDirection="row" alignItems="center" gap="xs">
-              {church.details.status === 'ACTIVE' && (
-                <Ionicons name="checkmark-circle" size={16} color="#34A853" />
-              )}
-              <Text variant="body" color={church.details.status === 'ACTIVE' ? 'success' : 'textSecondary'}>
-                {church.details.status === 'ACTIVE' ? 'Active' : church.details.status}
-              </Text>
+        <Box gap="m">
+          {/* Pastor */}
+          {(church.details?.pastor_first_name || church.details?.pastor_last_name) && (
+            <Box flexDirection="row" gap="m">
+              <Ionicons name="person-outline" size={20} color="#5F6368" style={{ marginTop: 2 }} />
+              <Box flex={1}>
+                <Text variant="body">
+                  {church.details.pastor_first_name} {church.details.pastor_last_name}
+                </Text>
+                <Text variant="caption" color="textSecondary">
+                  Pasteur
+                </Text>
+              </Box>
             </Box>
-          </Box>
-        )}
+          )}
+
+          {/* Address */}
+          {church.details?.address && (
+            <Box flexDirection="row" gap="m">
+              <Ionicons name="location-outline" size={20} color="#5F6368" style={{ marginTop: 2 }} />
+              <Box flex={1}>
+                <Text variant="body">
+                  {church.details.address}
+                  {'\n'}
+                  {church.details.postal_code} {church.details.city}
+                </Text>
+
+                {/* Mini Map */}
+                <Box
+                  height={150}
+                  borderRadius="m"
+                  overflow="hidden"
+                  marginTop="m"
+                  borderWidth={1}
+                  borderColor="border"
+                >
+                  <MapView
+                    provider={PROVIDER_GOOGLE}
+                    style={{ flex: 1 }}
+                    initialRegion={{
+                      latitude: church.latitude,
+                      longitude: church.longitude,
+                      latitudeDelta: 0.005,
+                      longitudeDelta: 0.005,
+                    }}
+                    liteMode={Platform.OS === 'android'}
+                    scrollEnabled={false}
+                    zoomEnabled={false}
+                    pitchEnabled={false}
+                    rotateEnabled={false}
+                    onPress={handleOpenMaps}
+                  >
+                    <Marker
+                      coordinate={{ latitude: church.latitude, longitude: church.longitude }}
+                      pinColor="#EA4335"
+                    />
+                  </MapView>
+                </Box>
+              </Box>
+            </Box>
+          )}
+
+          {/* Phone */}
+          {church.details?.phone && (
+            <Box flexDirection="row" gap="m">
+              <Ionicons name="call-outline" size={20} color="#5F6368" style={{ marginTop: 2 }} />
+              <Box flex={1}>
+                <Text variant="body" color="primary" onPress={handleCall}>
+                  {church.details.phone}
+                </Text>
+              </Box>
+            </Box>
+          )}
+
+          {/* Email */}
+          {church.email && (
+            <Box flexDirection="row" gap="m">
+              <Ionicons name="mail-outline" size={20} color="#5F6368" style={{ marginTop: 2 }} />
+              <Box flex={1}>
+                <Text variant="body" color="primary" onPress={handleEmail}>
+                  {church.email}
+                </Text>
+              </Box>
+            </Box>
+          )}
+
+          {/* Website */}
+          {church.details?.website && (
+            <Box flexDirection="row" gap="m">
+              <Ionicons name="globe-outline" size={20} color="#5F6368" style={{ marginTop: 2 }} />
+              <Box flex={1}>
+                <Text variant="body" color="primary" onPress={handleWebsite}>
+                  {church.details.website}
+                </Text>
+              </Box>
+            </Box>
+          )}
+
+          {/* Status */}
+          {church.details?.status && (
+            <Box flexDirection="row" gap="m">
+              <Ionicons name="information-circle-outline" size={20} color="#5F6368" style={{ marginTop: 2 }} />
+              <Box flex={1}>
+                <Box flexDirection="row" alignItems="center" gap="xs">
+                  <Text variant="body" color={church.details.status === 'ACTIVE' ? 'success' : 'textSecondary'}>
+                    {church.details.status === 'ACTIVE' ? 'Active' : church.details.status}
+                  </Text>
+                  {church.details.status === 'ACTIVE' && (
+                    <Ionicons name="checkmark-circle" size={16} color="#34A853" />
+                  )}
+                </Box>
+              </Box>
+            </Box>
+          )}
+        </Box>
       </Card>
 
       {/* Schedules */}
