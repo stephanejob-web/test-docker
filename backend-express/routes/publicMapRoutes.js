@@ -519,11 +519,12 @@ router.post('/events/:eventId/interest', [
  * Body: { device_id: string }
  */
 router.delete('/events/:eventId/interest', [
-    param('eventId').isInt({ min: 1 })
+    param('eventId').isInt({ min: 1 }),
+    query('device_id').notEmpty().withMessage('device_id est requis')
 ], async (req, res) => {
     try {
         const eventId = parseInt(req.params.eventId);
-        const { device_id } = req.body;
+        const { device_id } = req.query; // Changed from req.body to req.query
 
         if (!device_id) {
             return res.status(400).json({
@@ -632,6 +633,77 @@ router.get('/events/:eventId/is-interested', [
         res.status(500).json({
             success: false,
             message: 'Erreur lors de la vérification'
+        });
+    }
+});
+
+/**
+ * Route publique : GET /api/public/events/interested
+ * Récupère tous les événements où l'utilisateur a cliqué "Ça m'intéresse"
+ * Query params:
+ *   - device_id (required): ID unique du device
+ *   - limit (optional): Nombre max de résultats (default: 50)
+ *
+ * OPTIMISATIONS:
+ * - JOIN optimisé avec index sur event_interests(device_id)
+ * - Seulement les champs nécessaires
+ * - Tri par date de début (événements à venir en premier)
+ * NOTE: DOIT être AVANT /events/:id pour éviter conflit de routing
+ */
+router.get('/events/interested', [
+    query('device_id').notEmpty().withMessage('device_id est requis'),
+    query('limit').optional().isInt({ min: 1, max: 100 })
+], async (req, res) => {
+    try {
+        const { device_id, limit = 50 } = req.query;
+
+        if (!device_id) {
+            return res.status(400).json({
+                success: false,
+                message: 'device_id est requis'
+            });
+        }
+
+        // Query optimisée: JOIN avec index, seulement les champs nécessaires
+        const [events] = await db.query(`
+            SELECT
+                e.id,
+                e.title,
+                e.start_datetime,
+                e.end_datetime,
+                e.cancelled_at,
+                e.cancellation_reason,
+                e.interested_count,
+                e.church_id,
+                c.church_name,
+                ed.city,
+                ST_X(COALESCE(e.event_location, c.location)) as longitude,
+                ST_Y(COALESCE(e.event_location, c.location)) as latitude,
+                ei.created_at as interested_at
+            FROM event_interests ei
+            INNER JOIN events e ON ei.event_id = e.id
+            LEFT JOIN churches c ON e.church_id = c.id
+            LEFT JOIN event_details ed ON e.id = ed.event_id
+            WHERE ei.device_id = ?
+            ORDER BY e.start_datetime ASC
+            LIMIT ?
+        `, [device_id, parseInt(limit)]);
+
+        // Enrichir avec le statut dynamique (comme dans l'autre endpoint)
+        const { enrichEventsWithStatus } = require('../utils/eventStatus');
+        const enrichedEvents = enrichEventsWithStatus(events);
+
+        res.json({
+            success: true,
+            count: enrichedEvents.length,
+            events: enrichedEvents
+        });
+
+    } catch (err) {
+        console.error('Error fetching interested events:', err);
+        res.status(500).json({
+            success: false,
+            message: 'Erreur lors du chargement des événements'
         });
     }
 });

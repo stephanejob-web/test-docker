@@ -22,9 +22,12 @@ export default function RootLayout() {
         <ThemeProvider theme={theme}>
           <NavigationThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
             <Stack>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="church/[id]" options={{ title: 'Détails Église' }} />
-              <Stack.Screen name="event/[id]" options={{ title: 'Détails Événement' }} />
+              <Stack.Screen
+                name="(tabs)"
+                options={{
+                  headerShown: false,
+                }}
+              />
             </Stack>
             <StatusBar style="auto" />
           </NavigationThemeProvider>

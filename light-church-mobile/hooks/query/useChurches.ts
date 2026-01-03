@@ -12,10 +12,7 @@ import type { ChurchesQueryParams } from '@/types';
 export function useChurches(params: ChurchesQueryParams, enabled = true) {
   return useQuery({
     queryKey: ['churches', params],
-    queryFn: () => {
-      console.log('📡 API: Fetching churches...');
-      return fetchChurches(params);
-    },
+    queryFn: () => fetchChurches(params),
     enabled: enabled && (
       // Ensure we have either bounding box or lat/lng
       !!(params.north && params.south && params.east && params.west) ||

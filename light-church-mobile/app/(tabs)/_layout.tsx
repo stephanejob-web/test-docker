@@ -4,9 +4,14 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useInterestedEvents } from '@/hooks/query/useInterestedEvents';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+
+  // Get saved events count for badge
+  const { data: savedEvents = [] } = useInterestedEvents();
+  const savedCount = savedEvents.length;
 
   // Google Maps style colors
   const activeColor = '#4285F4'; // Google Blue
@@ -47,7 +52,7 @@ export default function TabLayout() {
         }}
       />
 
-      {/* Enregistrés - Saved/Favorites (future feature) */}
+      {/* Enregistrés - Saved/Favorites */}
       <Tabs.Screen
         name="saved"
         options={{
@@ -59,6 +64,17 @@ export default function TabLayout() {
               color={color}
             />
           ),
+          tabBarBadge: savedCount > 0 ? savedCount : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: '#EA4335', // Google Red
+            color: '#FFFFFF',
+            fontSize: 11,
+            fontWeight: '600',
+            minWidth: 18,
+            height: 18,
+            borderRadius: 9,
+            top: 2,
+          },
         }}
       />
 

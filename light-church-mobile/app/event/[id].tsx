@@ -115,7 +115,7 @@ export default function EventDetailScreen() {
         // Demander l'autorisation si pas encore intéressé
         Alert.alert(
           'Notifications requises',
-          'Pour montrer votre intérêt et recevoir des notifications sur cet événement, vous devez activer les notifications push.',
+          'Pour participer et recevoir des notifications sur cet événement, vous devez activer les notifications push.',
           [
             { text: 'Annuler', style: 'cancel' },
             {
@@ -123,7 +123,8 @@ export default function EventDetailScreen() {
               onPress: async () => {
                 const deviceId = await registerForPushNotifications();
                 if (deviceId) {
-                  toggleInterest.mutate(isInterested);
+                  // Confirmation de participation après activation notifications
+                  confirmParticipation(deviceId);
                 } else {
                   Alert.alert(
                     'Erreur',
@@ -137,29 +138,70 @@ export default function EventDetailScreen() {
         return;
       }
 
-      // Toggle interest
-      toggleInterest.mutate(isInterested, {
-        onSuccess: (data) => {
-          const message = isInterested
-            ? 'Vous ne recevrez plus de notifications pour cet événement'
-            : `Vous serez notifié des modifications de cet événement (${data.interested_count} personnes intéressées)`;
-          Alert.alert('Succès', message);
-        },
-        onError: (error: any) => {
-          console.error('Error toggling interest:', error);
-          console.error('Error response:', error.response?.data);
-
-          const errorMessage = error.response?.data?.message
-            || error.message
-            || 'Une erreur est survenue lors de l\'enregistrement';
-
-          Alert.alert('Erreur', errorMessage);
-        },
-      });
+      // Si l'utilisateur veut retirer sa participation
+      if (isInterested) {
+        Alert.alert(
+          'Ne plus participer',
+          `L'église compte sur votre présence. Êtes-vous certain de ne plus participer ?`,
+          [
+            { text: 'Annuler', style: 'cancel' },
+            {
+              text: 'Ne plus participer',
+              style: 'destructive',
+              onPress: () => {
+                toggleInterest.mutate(isInterested, {
+                  onSuccess: () => {
+                    Alert.alert('Participation retirée', 'Vous ne recevrez plus de notifications pour cet événement');
+                  },
+                  onError: handleToggleError,
+                });
+              },
+            },
+          ]
+        );
+      } else {
+        // Confirmation de participation
+        confirmParticipation();
+      }
     } catch (error: any) {
       console.error('Error toggling interest (catch):', error);
       Alert.alert('Erreur', error.message || 'Une erreur est survenue');
     }
+  };
+
+  const confirmParticipation = (deviceId?: string) => {
+    Alert.alert(
+      'Confirmer votre participation',
+      'En participant, vous indiquez votre intention d\'assister à cet événement. L\'église compte sur vous !',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Je participe',
+          onPress: () => {
+            toggleInterest.mutate(isInterested, {
+              onSuccess: (data) => {
+                Alert.alert(
+                  'Participation confirmée',
+                  `Vous serez notifié des modifications de cet événement. ${data.interested_count} ${data.interested_count === 1 ? 'participant' : 'participants'}.`
+                );
+              },
+              onError: handleToggleError,
+            });
+          },
+        },
+      ]
+    );
+  };
+
+  const handleToggleError = (error: any) => {
+    console.error('Error toggling interest:', error);
+    console.error('Error response:', error.response?.data);
+
+    const errorMessage = error.response?.data?.message
+      || error.message
+      || 'Une erreur est survenue lors de l\'enregistrement';
+
+    Alert.alert('Erreur', errorMessage);
   };
 
   if (isLoading) {
@@ -241,7 +283,7 @@ export default function EventDetailScreen() {
         </Box>
       </Box>
 
-      {/* Interested Count Badge */}
+      {/* Participants Count Badge */}
       {interestedCount > 0 && (
         <Box paddingHorizontal="m" marginBottom="s">
           <Box
@@ -252,7 +294,7 @@ export default function EventDetailScreen() {
             alignSelf="flex-start"
           >
             <Text variant="caption" color="textInverse" fontWeight="600">
-              👥 {interestedCount} {interestedCount === 1 ? 'personne intéressée' : 'personnes intéressées'}
+              👥 {interestedCount} {interestedCount === 1 ? 'participant' : 'participants'}
             </Text>
           </Box>
         </Box>
@@ -260,15 +302,15 @@ export default function EventDetailScreen() {
 
       {/* Actions */}
       <Box paddingHorizontal="m" gap="s" marginBottom="m">
-        {/* Interest Button - Full Width */}
+        {/* Participation Button - Full Width */}
         <Button
           onPress={handleToggleInterest}
           variant={isInterested ? "outline" : "primary"}
           size="medium"
           disabled={toggleInterest.isPending}
         >
-          {toggleInterest.isPending ? '⏳ ' : isInterested ? '✓ ' : '⭐ '}
-          {isInterested ? 'Ne plus suivre' : 'Ça m\'intéresse'}
+          {toggleInterest.isPending ? '⏳ ' : isInterested ? '✓ ' : '🙋 '}
+          {isInterested ? 'Ne plus participer' : 'Je participe'}
         </Button>
 
         {/* Primary Actions Row */}

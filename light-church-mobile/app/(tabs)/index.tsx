@@ -73,13 +73,6 @@ export default function MapScreen() {
   const churches = churchesData?.churches || [];
   const events = eventsData?.events || [];
 
-  // Debug: Log when data changes
-  React.useEffect(() => {
-    console.log('📊 DATA UPDATE: Events count:', events.length);
-    if (events.length > 0) {
-      console.log('📊 DATA UPDATE: First event:', events[0]?.title, 'Updated:', events[0]?.updated_at);
-    }
-  }, [events]);
 
   // Handle map region change (debounced in hook)
   const handleRegionChange = useCallback((region: Region) => {
@@ -144,11 +137,9 @@ export default function MapScreen() {
 
   // Handle refresh button
   const handleRefresh = useCallback(async () => {
-    console.log('🔄 REFRESH: Début du refresh...');
     setIsRefreshing(true);
     try {
       // Invalider toutes les queries (listes ET détails)
-      console.log('🔄 REFRESH: Invalidation de toutes les queries...');
       await Promise.all([
         // Listes
         queryClient.invalidateQueries({ queryKey: ['churches'], exact: false }),
@@ -159,15 +150,12 @@ export default function MapScreen() {
       ]);
 
       // Forcer le refetch des queries actives sur cette page
-      console.log('🔄 REFRESH: Refetch direct des données...');
       await Promise.all([
         refetchChurches(),
         refetchEvents()
       ]);
-
-      console.log('✅ REFRESH: Terminé!');
     } catch (error) {
-      console.error('❌ REFRESH: Erreur:', error);
+      // Silently handle errors
     } finally {
       setIsRefreshing(false);
     }
