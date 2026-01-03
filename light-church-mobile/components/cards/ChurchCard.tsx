@@ -1,10 +1,12 @@
 /**
  * Church Card for list display
+ * Premium UI with shadows and icons
  */
 
 import React from 'react';
-import { TouchableOpacity, StyleSheet } from 'react-native';
+import { TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Box, Text } from '@/components/ui';
+import { Ionicons } from '@expo/vector-icons';
 import type { Church } from '@/types';
 import { formatDistance } from '@/utils/geo';
 
@@ -15,14 +17,14 @@ interface ChurchCardProps {
 
 export default React.memo(function ChurchCard({ church, onPress }: ChurchCardProps) {
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={styles.container}>
       <Box
         backgroundColor="surface"
-        borderBottomWidth={1}
-        borderBottomColor="border"
+        borderRadius="l"
         padding="m"
         flexDirection="row"
         alignItems="center"
+        style={styles.shadow}
       >
         {/* Icon */}
         <Box
@@ -34,9 +36,7 @@ export default React.memo(function ChurchCard({ church, onPress }: ChurchCardPro
           alignItems="center"
           marginRight="m"
         >
-          <Text variant="title" color="primary">
-            ⛪
-          </Text>
+          <Ionicons name="business" size={24} color="#4285F4" />
         </Box>
 
         {/* Content */}
@@ -46,7 +46,7 @@ export default React.memo(function ChurchCard({ church, onPress }: ChurchCardPro
           </Text>
 
           <Box flexDirection="row" alignItems="center" flexWrap="wrap">
-            <Text variant="caption" color="textSecondary">
+            <Text variant="caption" color="textSecondary" numberOfLines={1}>
               {church.denomination_name}
             </Text>
             {church.distance_km !== undefined && (
@@ -54,7 +54,7 @@ export default React.memo(function ChurchCard({ church, onPress }: ChurchCardPro
                 <Text variant="caption" color="textSecondary" marginHorizontal="xs">
                   •
                 </Text>
-                <Text variant="caption" color="primary">
+                <Text variant="caption" color="primary" fontWeight="600">
                   {formatDistance(church.distance_km)}
                 </Text>
               </>
@@ -62,17 +62,39 @@ export default React.memo(function ChurchCard({ church, onPress }: ChurchCardPro
           </Box>
 
           {church.city && (
-            <Text variant="small" color="textTertiary" marginTop="xs">
-              {church.city}
-            </Text>
+            <Box flexDirection="row" alignItems="center" marginTop="xs">
+              <Ionicons name="location-outline" size={12} color="#80868B" style={{ marginRight: 2 }} />
+              <Text variant="small" color="textTertiary">
+                {church.city}
+              </Text>
+            </Box>
           )}
         </Box>
 
         {/* Chevron */}
-        <Text variant="title" color="border">
-          ›
-        </Text>
+        <Ionicons name="chevron-forward" size={20} color="#DADCE0" />
       </Box>
     </TouchableOpacity>
   );
 });
+
+const styles = StyleSheet.create({
+  container: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+  },
+  shadow: {
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+});
+

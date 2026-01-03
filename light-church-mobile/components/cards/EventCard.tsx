@@ -1,10 +1,12 @@
 /**
  * Event Card for list display
+ * Premium UI with shadows and refined layout
  */
 
 import React, { useMemo } from 'react';
-import { TouchableOpacity, StyleSheet } from 'react-native';
+import { TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Box, Text } from '@/components/ui';
+import { Ionicons } from '@expo/vector-icons';
 import { useCurrentTime } from '@/contexts/TimeContext';
 import type { Event } from '@/types';
 import { formatDistance } from '@/utils/geo';
@@ -19,12 +21,12 @@ interface EventCardProps {
 /**
  * Helper function pour calculer le temps restant jusqu'à la fin d'un événement
  */
-const getRemainingTime = (endDatetime: string | null | undefined): { text: string; totalMinutes: number } | null => {
+const getRemainingTime = (endDatetime: string | null | undefined, currentTime: Date): { text: string; totalMinutes: number } | null => {
   if (!endDatetime) return null;
 
   try {
     const end = new Date(endDatetime);
-    const now = new Date();
+    const now = currentTime;
     const diff = end.getTime() - now.getTime();
 
     if (diff <= 0) return null;
@@ -54,7 +56,8 @@ export default React.memo(function EventCard({ event, onPress }: EventCardProps)
 
   const startDate = new Date(event.start_datetime);
   const endDate = event.end_datetime ? new Date(event.end_datetime) : null;
-  const formattedDate = format(startDate, 'dd MMM', { locale: fr });
+  const formattedDay = format(startDate, 'dd', { locale: fr });
+  const formattedMonth = format(startDate, 'MMM', { locale: fr }).toUpperCase();
   const formattedTime = format(startDate, 'HH:mm', { locale: fr });
 
   // Calculer le statut de l'événement
@@ -68,36 +71,38 @@ export default React.memo(function EventCard({ event, onPress }: EventCardProps)
   // Calculer le temps restant si ONGOING
   const remaining = useMemo(() => {
     if (eventStatus === 'ONGOING' && event.end_datetime) {
-      return getRemainingTime(event.end_datetime);
+      return getRemainingTime(event.end_datetime, currentTime);
     }
     return null;
   }, [eventStatus, event.end_datetime, currentTime]);
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={styles.container}>
       <Box
         backgroundColor="surface"
-        borderBottomWidth={1}
-        borderBottomColor="border"
+        borderRadius="l"
         padding="m"
         flexDirection="row"
         alignItems="center"
+        style={styles.shadow}
       >
         {/* Date Badge */}
         <Box
-          width={48}
-          height={48}
-          borderRadius="m"
-          backgroundColor="warning"
+          width={54}
+          height={54}
+          borderRadius="l"
+          backgroundColor="card"
           justifyContent="center"
           alignItems="center"
           marginRight="m"
+          borderWidth={1}
+          borderColor="border"
         >
-          <Text variant="small" color="textInverse" fontWeight="700">
-            {formattedDate.split(' ')[0]}
+          <Text variant="small" color="error" fontWeight="700" textTransform="uppercase" fontSize={10}>
+            {formattedMonth}
           </Text>
-          <Text variant="small" color="textInverse" fontSize={10}>
-            {formattedDate.split(' ')[1]}
+          <Text variant="title" color="text" fontWeight="700" fontSize={20} lineHeight={24}>
+            {formattedDay}
           </Text>
         </Box>
 
@@ -117,20 +122,24 @@ export default React.memo(function EventCard({ event, onPress }: EventCardProps)
               style={[
                 styles.countdownBadge,
                 {
-                  backgroundColor: remaining.totalMinutes <= 30 ? '#f44336' : '#ff9800',
+                  backgroundColor: remaining.totalMinutes <= 30 ? '#EA4335' : '#FBBC04',
                 },
               ]}
             >
-              <Text
-                variant="small"
-                style={styles.countdownText}
-              >
-                ⏰ {remaining.text}
-              </Text>
+              <Box flexDirection="row" alignItems="center" gap="xs">
+                <Ionicons name="time" size={12} color="#FFFFFF" />
+                <Text
+                  variant="small"
+                  style={styles.countdownText}
+                >
+                  {remaining.text}
+                </Text>
+              </Box>
             </Box>
           )}
 
-          <Box flexDirection="row" alignItems="center" flexWrap="wrap">
+          <Box flexDirection="row" alignItems="center" flexWrap="wrap" marginBottom="xs">
+            <Ionicons name="time-outline" size={14} color="#80868B" style={{ marginRight: 4 }} />
             <Text variant="caption" color="textSecondary">
               {formattedTime}
             </Text>
@@ -139,48 +148,65 @@ export default React.memo(function EventCard({ event, onPress }: EventCardProps)
                 <Text variant="caption" color="textSecondary" marginHorizontal="xs">
                   •
                 </Text>
-                <Text variant="caption" color="textSecondary">
+                <Text variant="caption" color="textSecondary" numberOfLines={1} style={{ flex: 1 }}>
                   {event.church_name}
                 </Text>
               </>
             )}
           </Box>
 
-          <Box flexDirection="row" alignItems="center" flexWrap="wrap" marginTop="xs" gap="s">
+          <Box flexDirection="row" alignItems="center" flexWrap="wrap" gap="m">
             {event.distance_km !== undefined && (
-              <Text variant="small" color="primary">
-                📍 {formatDistance(event.distance_km)}
-              </Text>
+              <Box flexDirection="row" alignItems="center">
+                <Ionicons name="location-sharp" size={12} color="#4285F4" style={{ marginRight: 2 }} />
+                <Text variant="small" color="primary" fontWeight="500">
+                  {formatDistance(event.distance_km)}
+                </Text>
+              </Box>
             )}
             {event.interested_count !== undefined && event.interested_count > 0 && (
-              <Text variant="small" color="textSecondary">
-                👥 {event.interested_count}
-              </Text>
+              <Box flexDirection="row" alignItems="center">
+                <Ionicons name="people" size={12} color="#80868B" style={{ marginRight: 2 }} />
+                <Text variant="small" color="textSecondary">
+                  {event.interested_count}
+                </Text>
+              </Box>
             )}
           </Box>
         </Box>
 
         {/* Chevron */}
-        <Text variant="title" color="border">
-          ›
-        </Text>
+        <Ionicons name="chevron-forward" size={20} color="#DADCE0" />
       </Box>
     </TouchableOpacity>
   );
 });
 
 const styles = StyleSheet.create({
+  container: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+  },
+  shadow: {
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
   countdownBadge: {
     alignSelf: 'flex-start',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
   },
   countdownText: {
     color: '#FFFFFF',
     fontWeight: '700',
-    fontSize: 13,
+    fontSize: 12,
   },
 });
+
