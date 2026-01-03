@@ -766,9 +766,10 @@ router.get('/events/:id', [
         // Traductions disponibles pour l'événement
         const [translations] = await db.query(`
             SELECT
-                l.code,
-                l.name_fr,
-                l.flag_emoji
+                l.id as language_id,
+                l.code as language_code,
+                l.name_fr as language_name,
+                l.flag_emoji as language_flag
             FROM event_translations et
             INNER JOIN languages l ON l.id = et.language_id
             WHERE et.event_id = ?
