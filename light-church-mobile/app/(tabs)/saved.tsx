@@ -14,11 +14,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Box, Text } from '@/components/ui';
 import EventCard from '@/components/cards/EventCard';
 import { useInterestedEvents, useRemoveInterest } from '@/hooks/query/useInterestedEvents';
+import { useToast } from '@/contexts/ToastContext';
 import type { Event } from '@/types';
 
 export default function SavedScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const toast = useToast();
 
   // Fetch interested events with React Query cache
   const { data: events = [], isLoading, isError, refetch, isRefetching } = useInterestedEvents();
@@ -51,14 +53,13 @@ export default function SavedScreen() {
             onPress: () => {
               removeInterestMutation.mutate(event.id, {
                 onSuccess: () => {
-                  // Success feedback (optional toast here)
+                  toast.showInfo('Vous ne recevrez plus de notifications pour cet événement');
                 },
                 onError: (error) => {
-                  Alert.alert(
-                    'Erreur',
-                    'Impossible de retirer votre participation. Vérifiez votre connexion.',
-                    [{ text: 'OK' }]
-                  );
+                  toast.showError('Impossible de retirer votre participation', {
+                    label: 'Réessayer',
+                    onPress: () => handleRemoveInterest(event),
+                  });
                 },
               });
             },
@@ -66,7 +67,7 @@ export default function SavedScreen() {
         ]
       );
     },
-    [removeInterestMutation]
+    [removeInterestMutation, toast]
   );
 
   // Render single event item (memoized)

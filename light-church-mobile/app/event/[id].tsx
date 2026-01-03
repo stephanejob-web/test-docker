@@ -13,10 +13,12 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { addEventToCalendar } from '@/utils/calendar';
 import { registerForPushNotifications, hasNotificationPermission } from '@/services/pushNotificationService';
+import { useToast } from '@/contexts/ToastContext';
 
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
+  const toast = useToast();
   const eventId = Number(id);
   const { data, isLoading, error, refetch } = useEventDetail(eventId);
   const { data: interestData, refetch: refetchInterest } = useIsInterested(eventId);
@@ -127,8 +129,7 @@ export default function EventDetailScreen() {
                   // Confirmation de participation après activation notifications
                   confirmParticipation(deviceId);
                 } else {
-                  Alert.alert(
-                    'Erreur',
+                  toast.showError(
                     'Impossible d\'activer les notifications. Veuillez vérifier les paramètres de votre appareil.'
                   );
                 }
@@ -152,7 +153,7 @@ export default function EventDetailScreen() {
               onPress: () => {
                 toggleInterest.mutate(isInterested, {
                   onSuccess: () => {
-                    Alert.alert('Participation retirée', 'Vous ne recevrez plus de notifications pour cet événement');
+                    toast.showInfo('Vous ne recevrez plus de notifications pour cet événement');
                   },
                   onError: handleToggleError,
                 });
@@ -166,7 +167,7 @@ export default function EventDetailScreen() {
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Une erreur est survenue';
-      Alert.alert('Erreur', message);
+      toast.showError(message);
     }
   };
 
@@ -181,9 +182,8 @@ export default function EventDetailScreen() {
           onPress: () => {
             toggleInterest.mutate(isInterested, {
               onSuccess: (data) => {
-                Alert.alert(
-                  'Participation confirmée',
-                  `Vous serez notifié des modifications de cet événement. ${data.interested_count} ${data.interested_count === 1 ? 'participant' : 'participants'}.`
+                toast.showSuccess(
+                  `Participation confirmée ! ${data.interested_count} ${data.interested_count === 1 ? 'participant' : 'participants'}.`
                 );
               },
               onError: handleToggleError,
@@ -204,7 +204,10 @@ export default function EventDetailScreen() {
       errorMessage = error.message;
     }
 
-    Alert.alert('Erreur', errorMessage);
+    toast.showError(errorMessage, {
+      label: 'Réessayer',
+      onPress: () => handleToggleInterest(),
+    });
   };
 
   if (isLoading) {
