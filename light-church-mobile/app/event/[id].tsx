@@ -66,7 +66,9 @@ export default function EventDetailScreen() {
       let location = '';
       if (event.details?.address) {
         location = event.details.address;
-        if (event.details.postal_code && event.details.city) {
+        // Only add postal code and city if not already in address
+        if (event.details.postal_code && event.details.city &&
+            !event.details.address.includes(event.details.postal_code)) {
           location += `, ${event.details.postal_code} ${event.details.city}`;
         }
       }
@@ -314,6 +316,27 @@ export default function EventDetailScreen() {
           {event.primary_language_flag && event.primary_language_name && (
             <Text variant="body" color="textSecondary">
               {event.primary_language_flag} {event.primary_language_name}
+              {event.translations && event.translations.length > 0 && (
+                <Text color="textTertiary">
+                  {' (Traduit en : '}
+                  {event.translations.map((t: any, index) => {
+                    // Handle various potential data structures safely
+                    const name = t.language_name || t.language?.name || t.language?.name_native || t.name;
+                    // Ensure flag is a string, fallback to empty string if missing
+                    const flag = t.language_flag || t.language?.flag || t.language?.flag_emoji || t.flag || '';
+
+                    if (!name) return null;
+
+                    return (
+                      <Text key={t.language_id || t.id || index}>
+                        {index > 0 ? ', ' : ''}
+                        {flag ? `${flag} ` : ''}{name}
+                      </Text>
+                    );
+                  })}
+                  {')'}
+                </Text>
+              )}
             </Text>
           )}
         </Box>
@@ -510,8 +533,14 @@ export default function EventDetailScreen() {
               <Box flex={1}>
                 <Text variant="body">
                   {event.details.address}
-                  {'\n'}
-                  {event.details.postal_code} {event.details.city}
+                  {/* Only show postal code and city if not already in address */}
+                  {event.details.postal_code && event.details.city &&
+                   !event.details.address?.includes(event.details.postal_code) && (
+                    <>
+                      {'\n'}
+                      {event.details.postal_code} {event.details.city}
+                    </>
+                  )}
                 </Text>
 
                 {/* Mini Map */}
