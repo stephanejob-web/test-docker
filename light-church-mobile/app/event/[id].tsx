@@ -3,10 +3,11 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { ScrollView, StyleSheet, ActivityIndicator, Linking, Image, Alert, RefreshControl } from 'react-native';
+import { ScrollView, StyleSheet, ActivityIndicator, Linking, Image, Alert, RefreshControl, TouchableOpacity, View, Platform } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Box, Text, Button, Card } from '@/components/ui';
+import { Ionicons } from '@expo/vector-icons';
+import { Box, Text, Card } from '@/components/ui';
 import { useEventDetail, useIsInterested, useToggleEventInterest } from '@/hooks/query';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -263,12 +264,18 @@ export default function EventDetailScreen() {
         )}
 
         <Box flexDirection="row" alignItems="center" gap="s" flexWrap="wrap">
-          <Text variant="body" color="textSecondary">
-            📅 {format(startDate, 'EEEE d MMMM yyyy', { locale: fr })}
-          </Text>
-          <Text variant="body" color="textSecondary">
-            🕐 {format(startDate, 'HH:mm', { locale: fr })} - {format(endDate, 'HH:mm', { locale: fr })}
-          </Text>
+          <Box flexDirection="row" alignItems="center" gap="xs">
+            <Ionicons name="calendar-outline" size={16} color="#5F6368" />
+            <Text variant="body" color="textSecondary">
+              {format(startDate, 'EEEE d MMMM yyyy', { locale: fr })}
+            </Text>
+          </Box>
+          <Box flexDirection="row" alignItems="center" gap="xs">
+            <Ionicons name="time-outline" size={16} color="#5F6368" />
+            <Text variant="body" color="textSecondary">
+              {format(startDate, 'HH:mm', { locale: fr })} - {format(endDate, 'HH:mm', { locale: fr })}
+            </Text>
+          </Box>
         </Box>
 
         <Box flexDirection="row" alignItems="center" gap="s" flexWrap="wrap" marginTop="s">
@@ -294,48 +301,84 @@ export default function EventDetailScreen() {
             paddingVertical="s"
             borderRadius="m"
             alignSelf="flex-start"
+            flexDirection="row"
+            alignItems="center"
+            gap="xs"
           >
+            <Ionicons name="people" size={16} color="#FFFFFF" />
             <Text variant="caption" color="textInverse" fontWeight="600">
-              👥 {interestedCount} {interestedCount === 1 ? 'participant' : 'participants'}
+              {interestedCount} {interestedCount === 1 ? 'participant' : 'participants'}
             </Text>
           </Box>
         </Box>
       )}
 
-      {/* Actions */}
-      <Box paddingHorizontal="m" gap="s" marginBottom="m">
-        {/* Participation Button - Full Width */}
-        <Button
+      {/* Actions - Google Maps iOS Style */}
+      <View style={buttonStyles.container}>
+        {/* Participation Button - Full Width Primary */}
+        <TouchableOpacity
+          style={[
+            buttonStyles.button,
+            isInterested ? buttonStyles.buttonSecondary : buttonStyles.buttonPrimary,
+            toggleInterest.isPending && buttonStyles.buttonDisabled
+          ]}
           onPress={handleToggleInterest}
-          variant={isInterested ? "outline" : "primary"}
-          size="medium"
           disabled={toggleInterest.isPending}
+          activeOpacity={0.8}
         >
-          {toggleInterest.isPending ? '⏳ ' : isInterested ? '✓ ' : '🙋 '}
-          {isInterested ? 'Ne plus participer' : 'Je participe'}
-        </Button>
+          {toggleInterest.isPending ? (
+            <ActivityIndicator size="small" color={isInterested ? "#4285F4" : "#FFFFFF"} style={buttonStyles.icon} />
+          ) : (
+            <Ionicons
+              name={isInterested ? "checkmark-circle" : "person-add"}
+              size={20}
+              color={isInterested ? "#4285F4" : "#FFFFFF"}
+              style={buttonStyles.icon}
+            />
+          )}
+          <Text style={[buttonStyles.buttonText, isInterested ? buttonStyles.buttonTextSecondary : buttonStyles.buttonTextPrimary]}>
+            {isInterested ? 'Ne plus participer' : 'Je participe'}
+          </Text>
+        </TouchableOpacity>
 
         {/* Primary Actions Row */}
-        <Box flexDirection="row" gap="s">
-          <Box flex={1}>
-            <Button onPress={handleAddToCalendar} variant="primary" size="medium" disabled={isAddingToCalendar}>
-              {isAddingToCalendar ? '⏳' : '📅'} Ajouter au calendrier
-            </Button>
-          </Box>
-          <Box flex={1}>
-            <Button onPress={handleOpenMaps} variant="outline" size="medium">
-              🚗 Itinéraire
-            </Button>
-          </Box>
-        </Box>
+        <View style={buttonStyles.row}>
+          <TouchableOpacity
+            style={[buttonStyles.button, buttonStyles.buttonPrimary, buttonStyles.buttonHalf]}
+            onPress={handleAddToCalendar}
+            disabled={isAddingToCalendar}
+            activeOpacity={0.8}
+          >
+            {isAddingToCalendar ? (
+              <ActivityIndicator size="small" color="#FFFFFF" style={buttonStyles.icon} />
+            ) : (
+              <Ionicons name="calendar" size={20} color="#FFFFFF" style={buttonStyles.icon} />
+            )}
+            <Text style={buttonStyles.buttonTextPrimary}>Calendrier</Text>
+          </TouchableOpacity>
 
-        {/* Secondary Actions Row */}
+          <TouchableOpacity
+            style={[buttonStyles.button, buttonStyles.buttonSecondary, buttonStyles.buttonHalf]}
+            onPress={handleOpenMaps}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="navigate" size={20} color="#4285F4" style={buttonStyles.icon} />
+            <Text style={buttonStyles.buttonTextSecondary}>Itinéraire</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Registration Button */}
         {event.details?.registration_link && (
-          <Button onPress={handleRegister} variant="outline" size="medium">
-            📝 S'inscrire à l'événement
-          </Button>
+          <TouchableOpacity
+            style={[buttonStyles.button, buttonStyles.buttonSecondary]}
+            onPress={handleRegister}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="create-outline" size={20} color="#4285F4" style={buttonStyles.icon} />
+            <Text style={buttonStyles.buttonTextSecondary}>S'inscrire à l'événement</Text>
+          </TouchableOpacity>
         )}
-      </Box>
+      </View>
 
       {/* Description */}
       {event.details?.description && (
@@ -540,13 +583,16 @@ export default function EventDetailScreen() {
           <Text variant="subtitle" marginBottom="m">
             Diffusion en direct
           </Text>
-          <Text
-            variant="body"
-            color="primary"
+          <TouchableOpacity
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
             onPress={() => Linking.openURL(event.details!.youtube_live!)}
+            activeOpacity={0.7}
           >
-            📺 Regarder sur YouTube
-          </Text>
+            <Ionicons name="logo-youtube" size={20} color="#4285F4" />
+            <Text variant="body" color="primary">
+              Regarder sur YouTube
+            </Text>
+          </TouchableOpacity>
         </Card>
       )}
     </ScrollView>
@@ -564,5 +610,63 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: 250,
+  },
+});
+
+const buttonStyles = StyleSheet.create({
+  container: {
+    paddingHorizontal: 16,
+    gap: 10,
+    marginBottom: 16,
+  },
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 48,
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  buttonPrimary: {
+    backgroundColor: '#4285F4',
+  },
+  buttonSecondary: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#DADCE0',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  buttonHalf: {
+    flex: 1,
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  icon: {
+    marginRight: 8,
+  },
+  buttonText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  buttonTextPrimary: {
+    color: '#FFFFFF',
+  },
+  buttonTextSecondary: {
+    color: '#4285F4',
   },
 });
