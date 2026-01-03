@@ -4,7 +4,7 @@
  */
 
 import React, { useRef, useState, useCallback, useMemo } from 'react';
-import { StyleSheet, View, ActivityIndicator, Alert } from 'react-native';
+import { StyleSheet, View, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import BottomSheet from '@gorhom/bottom-sheet';
@@ -23,11 +23,13 @@ import { useLocation } from '@/hooks/useLocation';
 import { useChurches, useEvents } from '@/hooks/query';
 import { getBoundingBox } from '@/utils/geo';
 import { MAP_CONFIG } from '@/constants/config';
+import { useToast } from '@/contexts/ToastContext';
 import type { Church, Event } from '@/types';
 
 export default function MapScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const toast = useToast();
   const bottomSheetRef = useRef<BottomSheet>(null);
   const mapRef = useRef<MapView>(null);
 
@@ -105,11 +107,7 @@ export default function MapScreen() {
   // Handle "My Location" button press
   const handleMyLocation = useCallback(() => {
     if (!userLocation) {
-      Alert.alert(
-        'Position non disponible',
-        'Impossible de récupérer votre position actuelle.',
-        [{ text: 'OK' }]
-      );
+      toast.showWarning('Impossible de récupérer votre position actuelle');
       return;
     }
 
@@ -123,7 +121,7 @@ export default function MapScreen() {
     // Animate map to user location
     mapRef.current?.animateToRegion(newRegion, 500);
     setMapRegion(newRegion);
-  }, [userLocation]);
+  }, [userLocation, toast]);
 
   // Handle map type toggle - open modal
   const handleToggleMapType = useCallback(() => {
@@ -154,12 +152,16 @@ export default function MapScreen() {
         refetchChurches(),
         refetchEvents()
       ]);
+      toast.showSuccess('Données actualisées');
     } catch (error) {
-      // Silently handle errors
+      toast.showError('Impossible d\'actualiser les données', {
+        label: 'Réessayer',
+        onPress: handleRefresh,
+      });
     } finally {
       setIsRefreshing(false);
     }
-  }, [queryClient, refetchChurches, refetchEvents]);
+  }, [queryClient, refetchChurches, refetchEvents, toast]);
 
   // Show loading state while getting location
   if (locationLoading) {

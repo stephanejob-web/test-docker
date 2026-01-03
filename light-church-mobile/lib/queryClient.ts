@@ -17,9 +17,9 @@ export const queryClient = new QueryClient({
       refetchOnWindowFocus: false, // Mobile doesn't have window focus
       refetchOnReconnect: true, // Refetch when connection restored
 
-      // Retry configuration
-      retry: 2,
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+      // Retry configuration - Enhanced for better error recovery
+      retry: 3, // Increased from 2 to 3 for better resilience
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
 
       // Performance
       refetchInterval: false, // No polling to save battery

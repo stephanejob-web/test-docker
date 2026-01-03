@@ -3,8 +3,8 @@
  * Google Maps style with 3 snap points
  */
 
-import React, { useMemo, useCallback, forwardRef, useState } from 'react';
-import { StyleSheet } from 'react-native';
+import React, { useMemo, useCallback, forwardRef, useState, useDeferredValue } from 'react';
+import { StyleSheet, ActivityIndicator } from 'react-native';
 import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
 import { Box, Text } from '@/components/ui';
 import ChurchCard from '@/components/cards/ChurchCard';
@@ -36,6 +36,12 @@ const ChurchesBottomSheet = forwardRef<BottomSheet, ChurchesBottomSheetProps>(
     const [searchQuery, setSearchQuery] = useState('');
     const debouncedSearchQuery = useDebounce(searchQuery, 300); // Google Maps style: 300ms debounce
 
+    // Deferred value for non-blocking filtering (React 18+)
+    const deferredSearchQuery = useDeferredValue(debouncedSearchQuery);
+
+    // Check if filtering is in progress (UI remains responsive)
+    const isFiltering = deferredSearchQuery !== debouncedSearchQuery;
+
     // Toggle filters
     const handleToggleChurches = useCallback(() => {
       setFilterChurches(prev => !prev);
@@ -46,6 +52,7 @@ const ChurchesBottomSheet = forwardRef<BottomSheet, ChurchesBottomSheetProps>(
     }, []);
 
     // Combine and filter data based on internal filters + search query
+    // Using deferredSearchQuery for non-blocking filtering
     const data = useMemo(() => {
       const items: Array<{ type: 'church' | 'event'; data: Church | Event }> = [];
 
@@ -59,9 +66,10 @@ const ChurchesBottomSheet = forwardRef<BottomSheet, ChurchesBottomSheetProps>(
       }
 
       // Apply search filter (Google Maps style: simple string matching)
+      // Using deferredSearchQuery keeps UI responsive during filtering
       let filteredItems = items;
-      if (debouncedSearchQuery.trim()) {
-        const query = debouncedSearchQuery.toLowerCase().trim();
+      if (deferredSearchQuery.trim()) {
+        const query = deferredSearchQuery.toLowerCase().trim();
 
         filteredItems = items.filter(item => {
           if (item.type === 'church') {
@@ -88,7 +96,7 @@ const ChurchesBottomSheet = forwardRef<BottomSheet, ChurchesBottomSheetProps>(
         const distB = 'distance_km' in b.data ? b.data.distance_km : Infinity;
         return (distA || Infinity) - (distB || Infinity);
       });
-    }, [churches, events, initialShowChurches, initialShowEvents, filterChurches, filterEvents, debouncedSearchQuery]);
+    }, [churches, events, initialShowChurches, initialShowEvents, filterChurches, filterEvents, deferredSearchQuery]);
 
     const renderItem = useCallback(({ item }: { item: typeof data[0] }) => {
       if (item.type === 'church') {
@@ -137,12 +145,30 @@ const ChurchesBottomSheet = forwardRef<BottomSheet, ChurchesBottomSheetProps>(
 
         {/* Search Input (Google Maps style - only if >15 results) */}
         {showSearchBar && (
-          <SearchInput
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholder="Filtrer les résultats..."
-            resultCount={debouncedSearchQuery.trim() ? data.length : undefined}
-          />
+          <Box>
+            <SearchInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Filtrer les résultats..."
+              resultCount={deferredSearchQuery.trim() ? data.length : undefined}
+            />
+            {/* Loading indicator during non-blocking filter */}
+            {isFiltering && (
+              <Box
+                position="absolute"
+                right={16}
+                top={20}
+                flexDirection="row"
+                alignItems="center"
+                gap="xs"
+              >
+                <ActivityIndicator size="small" color="#4285F4" />
+                <Text variant="caption" color="textSecondary">
+                  Filtrage...
+                </Text>
+              </Box>
+            )}
+          </Box>
         )}
 
         {/* Filter Chips */}
