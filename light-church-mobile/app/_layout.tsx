@@ -7,6 +7,7 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { QueryProvider } from '@/contexts/QueryProvider';
+import { TimeProvider } from '@/contexts/TimeContext';
 import theme from '@/theme/theme';
 
 export const unstable_settings = {
@@ -19,8 +20,9 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryProvider>
-        <ThemeProvider theme={theme}>
-          <NavigationThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <TimeProvider>
+          <ThemeProvider theme={theme}>
+            <NavigationThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
             <Stack>
               <Stack.Screen
                 name="(tabs)"
@@ -32,6 +34,7 @@ export default function RootLayout() {
             <StatusBar style="auto" />
           </NavigationThemeProvider>
         </ThemeProvider>
+        </TimeProvider>
       </QueryProvider>
     </GestureHandlerRootView>
   );

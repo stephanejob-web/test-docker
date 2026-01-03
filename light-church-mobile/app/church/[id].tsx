@@ -5,6 +5,7 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, ActivityIndicator, Linking, RefreshControl } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Box, Text, Button, Card } from '@/components/ui';
 import { useChurchDetail } from '@/hooks/query';
 import { format } from 'date-fns';
@@ -12,6 +13,7 @@ import { fr } from 'date-fns/locale';
 
 export default function ChurchDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const insets = useSafeAreaInsets();
   const { data, isLoading, error, refetch } = useChurchDetail(Number(id));
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -41,8 +43,6 @@ export default function ChurchDetailScreen() {
     setIsRefreshing(true);
     try {
       await refetch();
-    } catch (error) {
-      console.error('Erreur refresh:', error);
     } finally {
       setIsRefreshing(false);
     }
@@ -71,7 +71,7 @@ export default function ChurchDetailScreen() {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 40 }]}
       refreshControl={
         <RefreshControl
           refreshing={isRefreshing}

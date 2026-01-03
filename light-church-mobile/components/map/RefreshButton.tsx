@@ -14,22 +14,31 @@ interface RefreshButtonProps {
 
 export default function RefreshButton({ onPress, loading = false }: RefreshButtonProps) {
   const spinValue = useRef(new Animated.Value(0)).current;
+  const animationRef = useRef<Animated.CompositeAnimation | null>(null);
 
   // Start rotation animation when loading
   React.useEffect(() => {
     if (loading) {
       spinValue.setValue(0);
-      Animated.loop(
+      animationRef.current = Animated.loop(
         Animated.timing(spinValue, {
           toValue: 1,
           duration: 1000,
           easing: Easing.linear,
           useNativeDriver: true,
         })
-      ).start();
+      );
+      animationRef.current.start();
     } else {
       spinValue.stopAnimation();
+      animationRef.current?.stop();
     }
+
+    // Cleanup: stop animation on unmount to prevent memory leak
+    return () => {
+      animationRef.current?.stop();
+      spinValue.stopAnimation();
+    };
   }, [loading, spinValue]);
 
   const spin = spinValue.interpolate({

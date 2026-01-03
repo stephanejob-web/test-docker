@@ -5,6 +5,7 @@
 import React, { useMemo } from 'react';
 import { TouchableOpacity, StyleSheet } from 'react-native';
 import { Box, Text } from '@/components/ui';
+import { useCurrentTime } from '@/contexts/TimeContext';
 import type { Event } from '@/types';
 import { formatDistance } from '@/utils/geo';
 import { format } from 'date-fns';
@@ -13,7 +14,6 @@ import { fr } from 'date-fns/locale';
 interface EventCardProps {
   event: Event;
   onPress: () => void;
-  currentTime?: Date; // Timer global pour performance
 }
 
 /**
@@ -48,15 +48,18 @@ const getRemainingTime = (endDatetime: string | null | undefined): { text: strin
   }
 };
 
-export default React.memo(function EventCard({ event, onPress, currentTime }: EventCardProps) {
+export default React.memo(function EventCard({ event, onPress }: EventCardProps) {
+  // Use global time context - only this component re-renders every minute
+  const currentTime = useCurrentTime();
+
   const startDate = new Date(event.start_datetime);
   const endDate = event.end_datetime ? new Date(event.end_datetime) : null;
   const formattedDate = format(startDate, 'dd MMM', { locale: fr });
   const formattedTime = format(startDate, 'HH:mm', { locale: fr });
 
-  // Calculer le statut de l'événement (utilise currentTime pour trigger re-renders)
+  // Calculer le statut de l'événement
   const eventStatus = useMemo(() => {
-    const now = currentTime || new Date();
+    const now = currentTime;
     if (endDate && now >= startDate && now <= endDate) return 'ONGOING';
     if (now < startDate) return 'UPCOMING';
     return 'COMPLETED';

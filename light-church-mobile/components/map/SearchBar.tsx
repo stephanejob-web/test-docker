@@ -58,7 +58,6 @@ export default function SearchBar({ onLocationSelect }: SearchBarProps) {
 
         // Check if response has expected structure
         if (!data || !data.features || !Array.isArray(data.features)) {
-          console.warn('Unexpected API response format:', data);
           setSuggestions([]);
           setIsOpen(false);
           return;
@@ -73,8 +72,8 @@ export default function SearchBar({ onLocationSelect }: SearchBarProps) {
 
         setSuggestions(formattedSuggestions);
         setIsOpen(formattedSuggestions.length > 0);
-      } catch (error) {
-        console.error('Address API error:', error);
+      } catch {
+        // Silently handle API errors
         setSuggestions([]);
         setIsOpen(false);
       } finally {

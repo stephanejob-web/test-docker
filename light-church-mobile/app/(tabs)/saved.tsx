@@ -5,7 +5,7 @@
  * DESIGN: Google Maps inspired UI/UX
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { View, StyleSheet, RefreshControl, Alert, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,22 +19,12 @@ import type { Event } from '@/types';
 export default function SavedScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [currentTime, setCurrentTime] = useState(new Date());
 
   // Fetch interested events with React Query cache
   const { data: events = [], isLoading, isError, refetch, isRefetching } = useInterestedEvents();
 
   // Remove interest mutation with optimistic updates
   const removeInterestMutation = useRemoveInterest();
-
-  // Update timer every 60 seconds (performance optimization)
-  React.useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 60000);
-
-    return () => clearInterval(timer);
-  }, []);
 
   // Handler: Navigate to event detail
   const handleEventPress = useCallback(
@@ -84,7 +74,7 @@ export default function SavedScreen() {
     ({ item }: { item: Event }) => (
       <View style={styles.cardContainer}>
         <View style={styles.eventCardWrapper}>
-          <EventCard event={item} onPress={() => handleEventPress(item)} currentTime={currentTime} />
+          <EventCard event={item} onPress={() => handleEventPress(item)} />
         </View>
 
         {/* Action Buttons - Google Maps Style */}
@@ -107,7 +97,7 @@ export default function SavedScreen() {
         </View>
       </View>
     ),
-    [handleEventPress, handleRemoveInterest, currentTime]
+    [handleEventPress, handleRemoveInterest]
   );
 
   // Key extractor (memoized)

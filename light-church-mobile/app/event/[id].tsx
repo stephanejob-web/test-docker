@@ -5,6 +5,7 @@
 import React, { useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, ActivityIndicator, Linking, Image, Alert, RefreshControl } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Box, Text, Button, Card } from '@/components/ui';
 import { useEventDetail, useIsInterested, useToggleEventInterest } from '@/hooks/query';
 import { format } from 'date-fns';
@@ -14,6 +15,7 @@ import { registerForPushNotifications, hasNotificationPermission } from '@/servi
 
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const insets = useSafeAreaInsets();
   const eventId = Number(id);
   const { data, isLoading, error, refetch } = useEventDetail(eventId);
   const { data: interestData, refetch: refetchInterest } = useIsInterested(eventId);
@@ -99,8 +101,6 @@ export default function EventDetailScreen() {
         refetch(),
         refetchInterest()
       ]);
-    } catch (error) {
-      console.error('Erreur refresh:', error);
     } finally {
       setIsRefreshing(false);
     }
@@ -163,9 +163,9 @@ export default function EventDetailScreen() {
         // Confirmation de participation
         confirmParticipation();
       }
-    } catch (error: any) {
-      console.error('Error toggling interest (catch):', error);
-      Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Une erreur est survenue';
+      Alert.alert('Erreur', message);
     }
   };
 
@@ -193,13 +193,15 @@ export default function EventDetailScreen() {
     );
   };
 
-  const handleToggleError = (error: any) => {
-    console.error('Error toggling interest:', error);
-    console.error('Error response:', error.response?.data);
+  const handleToggleError = (error: unknown) => {
+    let errorMessage = 'Une erreur est survenue lors de l\'enregistrement';
 
-    const errorMessage = error.response?.data?.message
-      || error.message
-      || 'Une erreur est survenue lors de l\'enregistrement';
+    if (error && typeof error === 'object' && 'response' in error) {
+      const response = (error as { response?: { data?: { message?: string } } }).response;
+      errorMessage = response?.data?.message || errorMessage;
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
 
     Alert.alert('Erreur', errorMessage);
   };
@@ -229,7 +231,7 @@ export default function EventDetailScreen() {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 40 }]}
       refreshControl={
         <RefreshControl
           refreshing={isRefreshing}
