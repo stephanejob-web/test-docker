@@ -94,6 +94,9 @@ export interface EventDetails {
     organizer_name: string;
     primary_language: Language | null;
     translations: Language[];
+    cancelled_at?: string | null;
+    cancellation_reason?: string | null;
+    cancelled_by?: number | null;
     details: {
         event_id?: number;
         description?: string;
