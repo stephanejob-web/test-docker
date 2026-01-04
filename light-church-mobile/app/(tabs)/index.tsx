@@ -3,7 +3,7 @@
  * Google Maps style with bottom sheet
  */
 
-import React, { useRef, useState, useCallback, useMemo } from 'react';
+import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import { StyleSheet, View, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -56,6 +56,8 @@ export default function MapScreen() {
 
   // Refresh state
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
+  const [showRefreshBadge, setShowRefreshBadge] = useState(false);
 
   // Calculate query params
   const queryParams = useMemo(() => {
@@ -75,6 +77,21 @@ export default function MapScreen() {
   const churches = churchesData?.churches || [];
   const events = eventsData?.events || [];
 
+  // Check if refresh is needed (every minute)
+  useEffect(() => {
+    const checkRefreshNeeded = () => {
+      const minutesSinceRefresh = (Date.now() - lastRefreshTime.getTime()) / (1000 * 60);
+      setShowRefreshBadge(minutesSinceRefresh > 5);
+    };
+
+    // Check immediately
+    checkRefreshNeeded();
+
+    // Check every minute
+    const interval = setInterval(checkRefreshNeeded, 60000);
+
+    return () => clearInterval(interval);
+  }, [lastRefreshTime]);
 
   // Handle map region change (debounced in hook)
   const handleRegionChange = useCallback((region: Region) => {
@@ -136,6 +153,9 @@ export default function MapScreen() {
   // Handle refresh button
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
+    setLastRefreshTime(new Date());
+    setShowRefreshBadge(false);
+
     try {
       // Invalider toutes les queries (listes ET détails)
       await Promise.all([
@@ -196,7 +216,7 @@ export default function MapScreen() {
       <MyLocationButton onPress={handleMyLocation} />
 
       {/* Refresh Button */}
-      <RefreshButton onPress={handleRefresh} loading={isRefreshing} />
+      <RefreshButton onPress={handleRefresh} loading={isRefreshing} showBadge={showRefreshBadge} />
 
       {/* Map Type Toggle */}
       <MapTypeToggle onPress={handleToggleMapType} />

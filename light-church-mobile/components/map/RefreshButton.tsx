@@ -10,9 +10,10 @@ import { Ionicons } from '@expo/vector-icons';
 interface RefreshButtonProps {
   onPress: () => void;
   loading?: boolean;
+  showBadge?: boolean;
 }
 
-export default function RefreshButton({ onPress, loading = false }: RefreshButtonProps) {
+export default function RefreshButton({ onPress, loading = false, showBadge = false }: RefreshButtonProps) {
   const spinValue = useRef(new Animated.Value(0)).current;
   const animationRef = useRef<Animated.CompositeAnimation | null>(null);
 
@@ -60,6 +61,11 @@ export default function RefreshButton({ onPress, loading = false }: RefreshButto
           color="#4285F4"
         />
       </Animated.View>
+
+      {/* Badge rouge - Google Maps style */}
+      {showBadge && !loading && (
+        <Animated.View style={styles.badge} />
+      )}
     </TouchableOpacity>
   );
 }
@@ -81,5 +87,16 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
     zIndex: 1000,
+  },
+  badge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#EA4335',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
 });
