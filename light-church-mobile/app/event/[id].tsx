@@ -30,6 +30,7 @@ export default function EventDetailScreen() {
 
   const isInterested = interestData?.is_interested || false;
   const interestedCount = data?.event?.interested_count || 0;
+  const isCancelled = Boolean(data?.event?.cancelled_at);
 
   const handleOpenMaps = () => {
     if (!data?.event) return;
@@ -264,6 +265,43 @@ export default function EventDetailScreen() {
           {event.title}
         </Text>
 
+        {/* Badge ANNULÉ (Google Maps style) */}
+        {isCancelled && (
+          <Box
+            backgroundColor="error"
+            paddingHorizontal="m"
+            paddingVertical="s"
+            borderRadius="s"
+            alignSelf="flex-start"
+            marginBottom="m"
+          >
+            <Text variant="body" fontWeight="700" style={{ color: '#FFFFFF' }}>
+              ❌ ÉVÉNEMENT ANNULÉ
+            </Text>
+          </Box>
+        )}
+
+        {/* Raison d'annulation */}
+        {isCancelled && event.cancellation_reason && (
+          <Box
+            backgroundColor="card"
+            padding="m"
+            borderRadius="m"
+            marginBottom="m"
+            style={{ borderLeftWidth: 4, borderLeftColor: '#EA4335' }}
+          >
+            <Box flexDirection="row" alignItems="center" marginBottom="xs">
+              <Ionicons name="information-circle" size={18} color="#EA4335" />
+              <Text variant="subtitle" fontWeight="700" marginLeft="xs" style={{ color: '#EA4335' }}>
+                Raison de l'annulation
+              </Text>
+            </Box>
+            <Text variant="body" color="textSecondary">
+              {event.cancellation_reason}
+            </Text>
+          </Box>
+        )}
+
         {event.denomination_name && (
           <Text variant="body" color="primary" marginBottom="s">
             {event.denomination_name}
@@ -369,14 +407,21 @@ export default function EventDetailScreen() {
         <TouchableOpacity
           style={[
             buttonStyles.button,
-            isInterested ? buttonStyles.buttonSecondary : buttonStyles.buttonPrimary,
+            isCancelled ? buttonStyles.buttonDisabled : (isInterested ? buttonStyles.buttonSecondary : buttonStyles.buttonPrimary),
             toggleInterest.isPending && buttonStyles.buttonDisabled
           ]}
           onPress={handleToggleInterest}
-          disabled={toggleInterest.isPending}
-          activeOpacity={0.8}
+          disabled={isCancelled || toggleInterest.isPending}
+          activeOpacity={isCancelled ? 1 : 0.8}
         >
-          {toggleInterest.isPending ? (
+          {isCancelled ? (
+            <Ionicons
+              name="close-circle"
+              size={20}
+              color="#9CA3AF"
+              style={buttonStyles.icon}
+            />
+          ) : toggleInterest.isPending ? (
             <ActivityIndicator size="small" color={isInterested ? "#4285F4" : "#FFFFFF"} style={buttonStyles.icon} />
           ) : (
             <Ionicons
@@ -386,8 +431,8 @@ export default function EventDetailScreen() {
               style={buttonStyles.icon}
             />
           )}
-          <Text style={[buttonStyles.buttonText, isInterested ? buttonStyles.buttonTextSecondary : buttonStyles.buttonTextPrimary]}>
-            {isInterested ? 'Ne plus participer' : 'Je participe'}
+          <Text style={[buttonStyles.buttonText, isCancelled ? buttonStyles.buttonTextDisabled : (isInterested ? buttonStyles.buttonTextSecondary : buttonStyles.buttonTextPrimary)]}>
+            {isCancelled ? 'Événement annulé' : (isInterested ? 'Ne plus participer' : 'Je participe')}
           </Text>
         </TouchableOpacity>
 
@@ -698,7 +743,8 @@ const buttonStyles = StyleSheet.create({
     borderColor: '#DADCE0',
   },
   buttonDisabled: {
-    opacity: 0.6,
+    backgroundColor: '#F1F3F4',
+    opacity: 0.8,
   },
   buttonHalf: {
     flex: 1,
@@ -719,5 +765,8 @@ const buttonStyles = StyleSheet.create({
   },
   buttonTextSecondary: {
     color: '#4285F4',
+  },
+  buttonTextDisabled: {
+    color: '#9CA3AF',
   },
 });

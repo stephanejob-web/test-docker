@@ -251,8 +251,7 @@ router.get('/events', [
         } = req.query;
 
         let whereConditions = [
-            'e.cancelled_at IS NULL',
-            // Afficher les événements à venir ET en cours
+            // Afficher les événements à venir ET en cours (y compris les annulés)
             // Si end_datetime existe, vérifier qu'il n'est pas passé
             // Sinon, vérifier que start_datetime n'est pas passé
             'COALESCE(e.end_datetime, e.start_datetime) >= NOW()',
@@ -323,6 +322,8 @@ router.get('/events', [
                 e.created_at,
                 e.updated_at,
                 COALESCE(e.interested_count, 0) as interested_count,
+                e.cancelled_at,
+                e.cancellation_reason,
                 ST_X(COALESCE(e.event_location, c.location)) as longitude,
                 ST_Y(COALESCE(e.event_location, c.location)) as latitude,
                 c.church_name,
@@ -685,6 +686,7 @@ router.get('/events/interested', [
             LEFT JOIN churches c ON e.church_id = c.id
             LEFT JOIN event_details ed ON e.id = ed.event_id
             WHERE ei.device_id = ?
+            AND COALESCE(e.end_datetime, e.start_datetime) >= NOW()
             ORDER BY e.start_datetime ASC
             LIMIT ?
         `, [device_id, parseInt(limit)]);
@@ -727,6 +729,9 @@ router.get('/events/:id', [
                 e.created_at,
                 e.updated_at,
                 COALESCE(e.interested_count, 0) as interested_count,
+                e.cancelled_at,
+                e.cancellation_reason,
+                e.cancelled_by,
                 ST_X(COALESCE(e.event_location, c.location)) as longitude,
                 ST_Y(COALESCE(e.event_location, c.location)) as latitude,
                 c.church_name,
@@ -745,7 +750,7 @@ router.get('/events/:id', [
             LEFT JOIN churches c ON c.id = e.church_id
             LEFT JOIN denominations d ON d.id = c.denomination_id
             LEFT JOIN languages l ON l.id = e.language_id
-            WHERE e.id = ? AND e.cancelled_at IS NULL AND a.status = 'VALIDATED'
+            WHERE e.id = ? AND a.status = 'VALIDATED'
         `, [id]);
 
         if (events.length === 0) {

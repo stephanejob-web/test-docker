@@ -62,11 +62,14 @@ export default React.memo(function EventCard({ event, onPress }: EventCardProps)
 
   // Calculer le statut de l'événement
   const eventStatus = useMemo(() => {
+    // Priorité à l'annulation
+    if (event.cancelled_at) return 'CANCELLED';
+
     const now = currentTime;
     if (endDate && now >= startDate && now <= endDate) return 'ONGOING';
     if (now < startDate) return 'UPCOMING';
     return 'COMPLETED';
-  }, [startDate, endDate, currentTime]);
+  }, [startDate, endDate, currentTime, event.cancelled_at]);
 
   // Calculer le temps restant si ONGOING
   const remaining = useMemo(() => {
@@ -79,38 +82,102 @@ export default React.memo(function EventCard({ event, onPress }: EventCardProps)
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={styles.container}>
       <Box
-        backgroundColor="surface"
+        backgroundColor={eventStatus === 'CANCELLED' ? 'disabled' : 'surface'}
         borderRadius="l"
         padding="m"
         flexDirection="row"
         alignItems="center"
-        style={styles.shadow}
+        style={[
+          styles.shadow,
+          eventStatus === 'CANCELLED' && styles.cancelledCard,
+        ]}
       >
+        {/* Badge ANNULÉ (Google Maps style) */}
+        {eventStatus === 'CANCELLED' && (
+          <Box
+            position="absolute"
+            top={8}
+            left={8}
+            backgroundColor="error"
+            paddingHorizontal="s"
+            paddingVertical="xs"
+            borderRadius="s"
+            style={{ zIndex: 10 }}
+          >
+            <Text variant="small" fontWeight="700" fontSize={11} style={{ color: '#FFFFFF' }}>
+              ANNULÉ
+            </Text>
+          </Box>
+        )}
+
         {/* Date Badge */}
         <Box
           width={54}
           height={54}
           borderRadius="l"
-          backgroundColor="card"
+          backgroundColor={eventStatus === 'CANCELLED' ? 'card' : 'card'}
           justifyContent="center"
           alignItems="center"
           marginRight="m"
           borderWidth={1}
           borderColor="border"
+          style={eventStatus === 'CANCELLED' && { opacity: 0.5 }}
         >
-          <Text variant="small" color="error" fontWeight="700" textTransform="uppercase" fontSize={10}>
+          <Text
+            variant="small"
+            color={eventStatus === 'CANCELLED' ? 'textSecondary' : 'error'}
+            fontWeight="700"
+            textTransform="uppercase"
+            fontSize={10}
+          >
             {formattedMonth}
           </Text>
-          <Text variant="title" color="text" fontWeight="700" fontSize={20} lineHeight={24}>
+          <Text
+            variant="title"
+            color={eventStatus === 'CANCELLED' ? 'textSecondary' : 'text'}
+            fontWeight="700"
+            fontSize={20}
+            lineHeight={24}
+          >
             {formattedDay}
           </Text>
         </Box>
 
         {/* Content */}
         <Box flex={1}>
-          <Text variant="subtitle" numberOfLines={1} marginBottom="xs">
+          <Text
+            variant="subtitle"
+            numberOfLines={1}
+            marginBottom="xs"
+            style={eventStatus === 'CANCELLED' && { opacity: 0.7 }}
+          >
             {event.title}
           </Text>
+
+          {/* Raison d'annulation (Google Maps style) */}
+          {eventStatus === 'CANCELLED' && event.cancellation_reason && (
+            <Box
+              marginBottom="xs"
+              paddingHorizontal="s"
+              paddingVertical="xs"
+              borderRadius="s"
+              backgroundColor="card"
+              flexDirection="row"
+              alignItems="center"
+              style={{ borderLeftWidth: 3, borderLeftColor: '#EA4335' }}
+            >
+              <Ionicons name="information-circle" size={14} color="#EA4335" />
+              <Text
+                variant="small"
+                color="textSecondary"
+                marginLeft="xs"
+                numberOfLines={1}
+                style={{ flex: 1 }}
+              >
+                {event.cancellation_reason}
+              </Text>
+            </Box>
+          )}
 
           {/* Décompte temps réel pour événements EN COURS */}
           {remaining && (
@@ -199,6 +266,12 @@ const styles = StyleSheet.create({
         elevation: 3,
       },
     }),
+  },
+  cancelledCard: {
+    opacity: 0.85,
+    borderWidth: 1,
+    borderColor: '#EA4335',
+    backgroundColor: '#F8F9FA',
   },
   countdownBadge: {
     alignSelf: 'flex-start',
