@@ -9,7 +9,7 @@ import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
 import { Box, Text } from '@/components/ui';
 import ChurchCard from '@/components/cards/ChurchCard';
 import EventCard from '@/components/cards/EventCard';
-import FilterChips from '@/components/map/FilterChips';
+import FilterAndSortChips, { SortType } from '@/components/map/FilterAndSortChips';
 import SearchInput from './SearchInput';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Church, Event } from '@/types';
@@ -32,6 +32,9 @@ const ChurchesBottomSheet = forwardRef<BottomSheet, ChurchesBottomSheetProps>(
     const [filterChurches, setFilterChurches] = useState(true);
     const [filterEvents, setFilterEvents] = useState(true);
 
+    // Sort state
+    const [sortBy, setSortBy] = useState<SortType>('distance');
+
     // Search query state
     const [searchQuery, setSearchQuery] = useState('');
     const debouncedSearchQuery = useDebounce(searchQuery, 300); // Google Maps style: 300ms debounce
@@ -42,13 +45,35 @@ const ChurchesBottomSheet = forwardRef<BottomSheet, ChurchesBottomSheetProps>(
     // Check if filtering is in progress (UI remains responsive)
     const isFiltering = deferredSearchQuery !== debouncedSearchQuery;
 
-    // Toggle filters
+    // Toggle filters with auto-adjustment
     const handleToggleChurches = useCallback(() => {
-      setFilterChurches(prev => !prev);
-    }, []);
+      setFilterChurches(prev => {
+        const newValue = !prev;
+
+        // If enabling churches while in date sort, switch to distance sort
+        // Because date sorting doesn't make sense for churches
+        if (newValue && sortBy === 'date') {
+          setSortBy('distance');
+        }
+
+        return newValue;
+      });
+    }, [sortBy]);
 
     const handleToggleEvents = useCallback(() => {
       setFilterEvents(prev => !prev);
+    }, []);
+
+    // Handle sort change with auto-adjustment
+    const handleSortChange = useCallback((newSortType: SortType) => {
+      setSortBy(newSortType);
+
+      // Auto-adjust filters when switching to date sort
+      // "Les plus récents" only makes sense for events, not churches
+      if (newSortType === 'date') {
+        setFilterChurches(false); // Disable churches
+        setFilterEvents(true);    // Enable events
+      }
     }, []);
 
     // Combine and filter data based on internal filters + search query
@@ -90,13 +115,21 @@ const ChurchesBottomSheet = forwardRef<BottomSheet, ChurchesBottomSheetProps>(
         });
       }
 
-      // Sort by distance if available
+      // Sort based on selected sort type
       return filteredItems.sort((a, b) => {
-        const distA = 'distance_km' in a.data ? a.data.distance_km : Infinity;
-        const distB = 'distance_km' in b.data ? b.data.distance_km : Infinity;
-        return (distA || Infinity) - (distB || Infinity);
+        if (sortBy === 'distance') {
+          // Sort by distance (closest first)
+          const distA = 'distance_km' in a.data ? a.data.distance_km : Infinity;
+          const distB = 'distance_km' in b.data ? b.data.distance_km : Infinity;
+          return (distA || Infinity) - (distB || Infinity);
+        } else {
+          // Sort by creation date (newest first)
+          const dateA = new Date(a.data.created_at || 0).getTime();
+          const dateB = new Date(b.data.created_at || 0).getTime();
+          return dateB - dateA; // Newest first
+        }
       });
-    }, [churches, events, initialShowChurches, initialShowEvents, filterChurches, filterEvents, deferredSearchQuery]);
+    }, [churches, events, initialShowChurches, initialShowEvents, filterChurches, filterEvents, deferredSearchQuery, sortBy]);
 
     const renderItem = useCallback(({ item }: { item: typeof data[0] }) => {
       if (item.type === 'church') {
@@ -171,14 +204,16 @@ const ChurchesBottomSheet = forwardRef<BottomSheet, ChurchesBottomSheetProps>(
           </Box>
         )}
 
-        {/* Filter Chips */}
-        <FilterChips
+        {/* Filter & Sort Chips - Google Maps iOS Style (Horizontal Scroll) */}
+        <FilterAndSortChips
           showChurches={filterChurches}
           showEvents={filterEvents}
           churchesCount={churches.length}
           eventsCount={events.length}
           onToggleChurches={handleToggleChurches}
           onToggleEvents={handleToggleEvents}
+          sortBy={sortBy}
+          onSortChange={handleSortChange}
         />
 
         {/* Results List */}
