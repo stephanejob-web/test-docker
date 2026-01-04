@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     Box,
     Paper,
@@ -12,23 +12,26 @@ import {
     useTheme,
     Button,
     Chip,
-    Tabs,
-    Tab,
-    Skeleton
+    Skeleton,
+    InputBase
 } from '@mui/material';
 import {
     Close as CloseIcon,
     Church as ChurchIcon,
     Event as EventIcon,
     Place as PlaceIcon,
-    Directions as DirectionsIcon,
     InfoOutlined as InfoIcon,
-    AccessTime as AccessTimeIcon
+    AccessTime as AccessTimeIcon,
+    Search as SearchIcon,
+    Clear as ClearIcon,
+    Check as CheckIcon
 } from '@mui/icons-material';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { Church, Event } from '../../types/publicMap';
 import { formatDistance } from '../../services/publicMapService';
+
+type SortType = 'distance' | 'date';
 
 interface ResultsPanelProps {
     churches: Church[];
@@ -103,30 +106,34 @@ const ChurchCard: React.FC<{
         sx={{
             py: 2,
             px: 2,
+            bgcolor: '#FFFFFF',
             '&:hover': {
-                backgroundColor: 'action.hover'
+                backgroundColor: '#F8F9FA'
             },
-            transition: 'background-color 0.2s'
+            transition: 'background-color 0.2s',
+            cursor: 'pointer'
         }}
+        onClick={onClick}
     >
         <Box sx={{ width: '100%' }}>
             {/* En-tête avec icône et nom */}
             <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ mb: 1.5 }}>
                 <ChurchIcon
-                    color="primary"
                     sx={{
                         mt: 0.5,
-                        fontSize: 28
+                        fontSize: 28,
+                        color: '#1A73E8'
                     }}
                 />
                 <Box sx={{ flex: 1 }}>
                     <Typography
                         variant="h6"
-                        fontWeight={600}
                         sx={{
-                            fontSize: '1.1rem',
-                            lineHeight: 1.3,
-                            mb: 0.5
+                            fontSize: '1rem',
+                            lineHeight: 1.4,
+                            mb: 0.5,
+                            color: '#202124',
+                            fontWeight: 500
                         }}
                     >
                         {church.church_name}
@@ -136,8 +143,7 @@ const ChurchCard: React.FC<{
                     {church.pastor_name && (
                         <Typography
                             variant="body2"
-                            color="text.secondary"
-                            sx={{ mb: 0.5 }}
+                            sx={{ mb: 0.5, color: '#5F6368', fontSize: '0.875rem' }}
                         >
                             Pasteur: {church.pastor_name}
                         </Typography>
@@ -146,8 +152,8 @@ const ChurchCard: React.FC<{
                     {/* Ville et Code Postal */}
                     {(church.city || church.postal_code) && (
                         <Stack direction="row" spacing={0.5} alignItems="center">
-                            <PlaceIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                            <Typography variant="body2" color="text.secondary">
+                            <PlaceIcon sx={{ fontSize: 16, color: '#5F6368' }} />
+                            <Typography variant="body2" sx={{ color: '#5F6368', fontSize: '0.875rem' }}>
                                 {church.city && church.postal_code
                                     ? `${church.city}, ${church.postal_code}`
                                     : church.city || church.postal_code
@@ -160,9 +166,12 @@ const ChurchCard: React.FC<{
                     {church.distance_km !== null && (
                         <Typography
                             variant="body2"
-                            color="primary.main"
-                            fontWeight={600}
-                            sx={{ mt: 0.5 }}
+                            sx={{
+                                mt: 0.5,
+                                color: '#1A73E8',
+                                fontWeight: 500,
+                                fontSize: '0.875rem'
+                            }}
                         >
                             📍 {formatDistance(church.distance_km)}
                         </Typography>
@@ -176,34 +185,24 @@ const ChurchCard: React.FC<{
                     variant="outlined"
                     size="small"
                     startIcon={<InfoIcon />}
-                    onClick={onClick}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onClick();
+                    }}
+                    fullWidth
                     sx={{
-                        flex: 1,
                         textTransform: 'none',
-                        fontWeight: 600
+                        fontWeight: 500,
+                        borderColor: '#DADCE0',
+                        color: '#5F6368',
+                        '&:hover': {
+                            borderColor: '#DADCE0',
+                            bgcolor: '#F8F9FA'
+                        }
                     }}
                 >
                     Voir plus
                 </Button>
-                <IconButton
-                    size="small"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        window.open(
-                            `https://www.google.com/maps/dir/?api=1&destination=${church.latitude},${church.longitude}`,
-                            '_blank'
-                        );
-                    }}
-                    sx={{
-                        backgroundColor: 'primary.main',
-                        color: 'white',
-                        '&:hover': {
-                            backgroundColor: 'primary.dark'
-                        }
-                    }}
-                >
-                    <DirectionsIcon />
-                </IconButton>
             </Stack>
         </Box>
     </Box>
@@ -241,30 +240,34 @@ const EventCard: React.FC<{
             sx={{
                 py: 2,
                 px: 2,
+                bgcolor: '#FFFFFF',
                 '&:hover': {
-                    backgroundColor: 'action.hover'
+                    backgroundColor: '#F8F9FA'
                 },
-                transition: 'background-color 0.2s'
+                transition: 'background-color 0.2s',
+                cursor: 'pointer'
             }}
+            onClick={onClick}
         >
             <Box sx={{ width: '100%' }}>
                 {/* En-tête avec icône et titre */}
                 <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ mb: 1.5 }}>
                     <EventIcon
-                        color="secondary"
                         sx={{
                             mt: 0.5,
-                            fontSize: 28
+                            fontSize: 28,
+                            color: '#EA4335'
                         }}
                     />
                     <Box sx={{ flex: 1 }}>
                         <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
                             <Typography
                                 variant="h6"
-                                fontWeight={600}
                                 sx={{
-                                    fontSize: '1.1rem',
-                                    lineHeight: 1.3
+                                    fontSize: '1rem',
+                                    lineHeight: 1.4,
+                                    color: '#202124',
+                                    fontWeight: 500
                                 }}
                             >
                                 {event.title}
@@ -275,20 +278,23 @@ const EventCard: React.FC<{
                                     label="En cours"
                                     size="small"
                                     sx={{
-                                        bgcolor: 'orange',
+                                        bgcolor: '#FF9800',
                                         color: 'white',
-                                        fontWeight: 600,
-                                        fontSize: '0.7rem'
+                                        fontWeight: 500,
+                                        fontSize: '0.7rem',
+                                        height: 20
                                     }}
                                 />
                             ) : isUpcoming ? (
                                 <Chip
                                     label="À venir"
-                                    color="info"
                                     size="small"
                                     sx={{
-                                        fontWeight: 600,
-                                        fontSize: '0.7rem'
+                                        bgcolor: '#E8F0FE',
+                                        color: '#1A73E8',
+                                        fontWeight: 500,
+                                        fontSize: '0.7rem',
+                                        height: 20
                                     }}
                                 />
                             ) : null}
@@ -310,26 +316,15 @@ const EventCard: React.FC<{
                                         px: 1.5,
                                         py: 0.8,
                                         mb: 0.8,
-                                        borderRadius: 2,
-                                        bgcolor: isUrgent ? 'error.main' : 'warning.main',
+                                        borderRadius: 1,
+                                        bgcolor: isUrgent ? '#EA4335' : '#FF9800',
                                         color: 'white',
-                                        fontWeight: 'bold',
-                                        boxShadow: isUrgent ? '0 0 15px rgba(244, 67, 54, 0.5)' : '0 0 15px rgba(255, 152, 0, 0.5)',
-                                        animation: 'pulse 2s ease-in-out infinite',
-                                        '@keyframes pulse': {
-                                            '0%, 100%': {
-                                                transform: 'scale(1)',
-                                                opacity: 1
-                                            },
-                                            '50%': {
-                                                transform: 'scale(1.05)',
-                                                opacity: 0.9
-                                            }
-                                        }
+                                        fontWeight: 500,
+                                        boxShadow: 'none'
                                     }}
                                 >
-                                    <AccessTimeIcon sx={{ fontSize: 20 }} />
-                                    <Typography variant="body2" sx={{ fontWeight: 'bold', fontSize: '0.95rem' }}>
+                                    <AccessTimeIcon sx={{ fontSize: 18 }} />
+                                    <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.875rem' }}>
                                         {remaining.text}
                                     </Typography>
                                 </Box>
@@ -342,9 +337,9 @@ const EventCard: React.FC<{
                             sx={{
                                 mb: 0.8,
                                 mt: 0.5,
-                                fontWeight: 700,
-                                color: isOngoing ? 'orange' : 'primary.main',
-                                fontSize: '0.9rem'
+                                fontWeight: 500,
+                                color: isOngoing ? '#FF9800' : '#1A73E8',
+                                fontSize: '0.875rem'
                             }}
                         >
                             {getRelativeTime(event.start_datetime)}
@@ -353,8 +348,7 @@ const EventCard: React.FC<{
                         {/* Date de début */}
                         <Typography
                             variant="body2"
-                            color="text.secondary"
-                            sx={{ mb: 0.3 }}
+                            sx={{ mb: 0.3, color: '#5F6368', fontSize: '0.875rem' }}
                         >
                             Début: {startDate.toLocaleDateString('fr-FR', {
                                 day: 'numeric',
@@ -369,8 +363,7 @@ const EventCard: React.FC<{
                         {endDate && (
                             <Typography
                                 variant="body2"
-                                color="text.secondary"
-                                sx={{ mb: 0.5 }}
+                                sx={{ mb: 0.5, color: '#5F6368', fontSize: '0.875rem' }}
                             >
                                 Fin: {endDate.toLocaleDateString('fr-FR', {
                                     day: 'numeric',
@@ -385,8 +378,8 @@ const EventCard: React.FC<{
                         {/* Ville et Code Postal */}
                         {(event.event_city || event.event_postal_code) && (
                             <Stack direction="row" spacing={0.5} alignItems="center">
-                                <PlaceIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                                <Typography variant="body2" color="text.secondary">
+                                <PlaceIcon sx={{ fontSize: 16, color: '#5F6368' }} />
+                                <Typography variant="body2" sx={{ color: '#5F6368', fontSize: '0.875rem' }}>
                                     {event.event_city && event.event_postal_code
                                         ? `${event.event_city}, ${event.event_postal_code}`
                                         : event.event_city || event.event_postal_code
@@ -400,8 +393,11 @@ const EventCard: React.FC<{
                             {event.distance_km !== null && (
                                 <Typography
                                     variant="body2"
-                                    color="secondary.main"
-                                    fontWeight={600}
+                                    sx={{
+                                        color: '#EA4335',
+                                        fontWeight: 500,
+                                        fontSize: '0.875rem'
+                                    }}
                                 >
                                     📍 {formatDistance(event.distance_km)}
                                 </Typography>
@@ -409,12 +405,13 @@ const EventCard: React.FC<{
                             {event.interested_count !== undefined && event.interested_count > 0 && (
                                 <Typography
                                     variant="body2"
-                                    color="primary.main"
-                                    fontWeight={600}
                                     sx={{
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: 0.5
+                                        gap: 0.5,
+                                        color: '#1A73E8',
+                                        fontWeight: 500,
+                                        fontSize: '0.875rem'
                                     }}
                                 >
                                     👥 {event.interested_count} {event.interested_count === 1 ? 'intéressé' : 'intéressés'}
@@ -429,36 +426,25 @@ const EventCard: React.FC<{
                     <Button
                         variant="outlined"
                         size="small"
-                        color="secondary"
                         startIcon={<InfoIcon />}
-                        onClick={onClick}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onClick();
+                        }}
+                        fullWidth
                         sx={{
-                            flex: 1,
                             textTransform: 'none',
-                            fontWeight: 600
+                            fontWeight: 500,
+                            borderColor: '#DADCE0',
+                            color: '#5F6368',
+                            '&:hover': {
+                                borderColor: '#DADCE0',
+                                bgcolor: '#F8F9FA'
+                            }
                         }}
                     >
                         Voir plus
                     </Button>
-                    <IconButton
-                        size="small"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            window.open(
-                                `https://www.google.com/maps/dir/?api=1&destination=${event.latitude},${event.longitude}`,
-                                '_blank'
-                            );
-                        }}
-                        sx={{
-                            backgroundColor: 'secondary.main',
-                            color: 'white',
-                            '&:hover': {
-                                backgroundColor: 'secondary.dark'
-                            }
-                        }}
-                    >
-                        <DirectionsIcon />
-                    </IconButton>
                 </Stack>
             </Box>
         </Box>
@@ -479,117 +465,107 @@ const ResultsPanel: React.FC<ResultsPanelProps> = React.memo(({
     onChurchClick,
     onEventClick,
     onClose,
-    open = true,
-    isGeolocated = false,
-    isMobileView = false
+    open = true
 }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-    const totalResults = churches.length + events.length;
+    // États pour la recherche et le tri
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filterChurches, setFilterChurches] = useState(true);
+    const [filterEvents, setFilterEvents] = useState(true);
+    const [sortBy, setSortBy] = useState<SortType>('distance');
 
-    // État pour gérer l'onglet actif
-    const [activeTab, setActiveTab] = useState<'churches' | 'events'>('churches');
+    // Taille fixe du panneau
+    const panelWidth = 400; // Largeur fixe
 
-    // États pour le redimensionnement
-    const [panelWidth, setPanelWidth] = useState(() => {
-        const saved = localStorage.getItem('resultsPanelWidth');
-        return saved ? parseInt(saved, 10) : 380;
-    });
-    const [drawerHeight, setDrawerHeight] = useState(() => {
-        const saved = localStorage.getItem('resultsDrawerHeight');
-        return saved ? parseInt(saved, 10) : 60;
-    });
-    const [isResizing, setIsResizing] = useState(false);
-
-    // Smart default : Sélectionner l'onglet pertinent au chargement
-    useEffect(() => {
-        if (loading) return;
-
-        // Vérifier s'il y a des événements en cours
-        const now = new Date();
-        const ongoingEvents = events.filter(event => {
-            const start = new Date(event.start_datetime);
-            const end = event.end_datetime ? new Date(event.end_datetime) : null;
-            return end && now >= start && now <= end;
+    // Handlers pour les filtres/tri avec auto-ajustement
+    const handleToggleChurches = useCallback(() => {
+        setFilterChurches(prev => {
+            const newValue = !prev;
+            if (newValue && sortBy === 'date') {
+                setSortBy('distance');
+            }
+            return newValue;
         });
+    }, [sortBy]);
 
-        // Si événements en cours, afficher l'onglet événements
-        if (ongoingEvents.length > 0) {
-            setActiveTab('events');
-        }
-        // Sinon, afficher l'onglet avec le plus de résultats
-        else if (events.length > churches.length) {
-            setActiveTab('events');
-        } else if (churches.length > 0) {
-            setActiveTab('churches');
-        }
-        // Si que des événements et pas d'églises
-        else if (events.length > 0 && churches.length === 0) {
-            setActiveTab('events');
-        }
-    }, [churches.length, events.length, loading]);
-
-    // Gestion du redimensionnement Desktop (largeur)
-    const handleMouseDownDesktop = useCallback((e: React.MouseEvent) => {
-        e.preventDefault();
-        setIsResizing(true);
+    const handleToggleEvents = useCallback(() => {
+        setFilterEvents(prev => !prev);
     }, []);
 
-    useEffect(() => {
-        if (!isResizing || isMobile) return;
-
-        const handleMouseMove = (e: MouseEvent) => {
-            const newWidth = e.clientX - 16; // 16px = left offset
-            const clampedWidth = Math.max(300, Math.min(700, newWidth));
-            setPanelWidth(clampedWidth);
-        };
-
-        const handleMouseUp = () => {
-            setIsResizing(false);
-            localStorage.setItem('resultsPanelWidth', panelWidth.toString());
-        };
-
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
-
-        return () => {
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
-        };
-    }, [isResizing, isMobile, panelWidth]);
-
-    // Gestion du redimensionnement Mobile (hauteur)
-    const handleTouchStartMobile = useCallback((e: React.TouchEvent) => {
-        e.preventDefault();
-        setIsResizing(true);
+    const handleSortChange = useCallback((newSortType: SortType) => {
+        setSortBy(newSortType);
+        if (newSortType === 'date') {
+            setFilterChurches(false);
+            setFilterEvents(true);
+        }
     }, []);
 
-    useEffect(() => {
-        if (!isResizing || !isMobile) return;
+    // Filtrer et trier les données
+    const filteredAndSortedData = useMemo(() => {
+        const items: Array<{ type: 'church' | 'event'; data: Church | Event }> = [];
 
-        const handleTouchMove = (e: TouchEvent) => {
-            const touch = e.touches[0];
-            const windowHeight = window.innerHeight;
-            const touchY = touch.clientY;
-            const newHeightPercent = ((windowHeight - touchY) / windowHeight) * 100;
-            const clampedHeight = Math.max(30, Math.min(90, newHeightPercent));
-            setDrawerHeight(clampedHeight);
-        };
+        if (filterChurches) {
+            churches.forEach(church => items.push({ type: 'church', data: church }));
+        }
 
-        const handleTouchEnd = () => {
-            setIsResizing(false);
-            localStorage.setItem('resultsDrawerHeight', drawerHeight.toString());
-        };
+        if (filterEvents) {
+            events.forEach(event => items.push({ type: 'event', data: event }));
+        }
 
-        document.addEventListener('touchmove', handleTouchMove);
-        document.addEventListener('touchend', handleTouchEnd);
+        // Filtrage par recherche
+        let filteredItems = items;
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase().trim();
+            filteredItems = items.filter(item => {
+                if (item.type === 'church') {
+                    const church = item.data as Church;
+                    return (
+                        church.church_name?.toLowerCase().includes(query) ||
+                        church.denomination_name?.toLowerCase().includes(query) ||
+                        church.city?.toLowerCase().includes(query) ||
+                        church.pastor_name?.toLowerCase().includes(query)
+                    );
+                } else {
+                    const event = item.data as Event;
+                    return (
+                        event.title?.toLowerCase().includes(query) ||
+                        event.church_name?.toLowerCase().includes(query) ||
+                        event.event_city?.toLowerCase().includes(query)
+                    );
+                }
+            });
+        }
 
-        return () => {
-            document.removeEventListener('touchmove', handleTouchMove);
-            document.removeEventListener('touchend', handleTouchEnd);
-        };
-    }, [isResizing, isMobile, drawerHeight]);
+        // Tri
+        return filteredItems.sort((a, b) => {
+            if (sortBy === 'distance') {
+                const distA = a.data.distance_km ?? Infinity;
+                const distB = b.data.distance_km ?? Infinity;
+                return distA - distB;
+            } else {
+                // Tri par date uniquement pour les événements
+                if (a.type === 'event' && b.type === 'event') {
+                    const dateA = new Date((a.data as Event).created_at || 0).getTime();
+                    const dateB = new Date((b.data as Event).created_at || 0).getTime();
+                    return dateB - dateA;
+                }
+                // Les églises vont après les événements en tri par date
+                return a.type === 'event' ? -1 : 1;
+            }
+        });
+    }, [churches, events, filterChurches, filterEvents, searchQuery, sortBy]);
+
+    // Calculer le total avant filtre de recherche
+    const totalBeforeSearch = useMemo(() => {
+        let count = 0;
+        if (filterChurches) count += churches.length;
+        if (filterEvents) count += events.length;
+        return count;
+    }, [churches.length, events.length, filterChurches, filterEvents]);
+
+    const showSearchBar = totalBeforeSearch > 15;
 
     const content = (
         <Box
@@ -597,190 +573,216 @@ const ResultsPanel: React.FC<ResultsPanelProps> = React.memo(({
                 height: '100%',
                 display: 'flex',
                 flexDirection: 'column',
-                backgroundColor: 'background.paper'
+                backgroundColor: '#FFFFFF'
             }}
         >
             {/* En-tête */}
-            <Box
-                sx={{
-                    p: 2,
-                    borderBottom: 1,
-                    borderColor: 'divider'
-                }}
-            >
-                <Box
-                    sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between'
-                    }}
-                >
-                    <Typography variant="h6" fontWeight={600}>
-                        Résultats ({totalResults})
-                    </Typography>
+            <Box sx={{ p: 2, borderBottom: '1px solid #E8EAED' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Box>
+                        <Typography variant="h6" sx={{ fontWeight: 500, color: '#202124', fontSize: '1.125rem' }}>
+                            {filteredAndSortedData.length} {filteredAndSortedData.length > 1 ? 'résultats' : 'résultat'}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: '#5F6368' }}>
+                            {filterChurches && filterEvents && 'Églises et événements'}
+                            {filterChurches && !filterEvents && 'Églises uniquement'}
+                            {!filterChurches && filterEvents && 'Événements uniquement'}
+                            {!filterChurches && !filterEvents && 'Aucun filtre sélectionné'}
+                        </Typography>
+                    </Box>
                     {isMobile && onClose && (
-                        <IconButton onClick={onClose} size="small">
+                        <IconButton onClick={onClose} size="small" sx={{ color: '#5F6368' }}>
                             <CloseIcon />
                         </IconButton>
                     )}
                 </Box>
             </Box>
 
-            {/* Onglets */}
-            <Tabs
-                value={activeTab}
-                onChange={(_, newValue) => setActiveTab(newValue)}
-                variant="fullWidth"
-                sx={{
-                    borderBottom: 1,
-                    borderColor: 'divider',
-                    minHeight: 48,
-                    '& .MuiTab-root': {
-                        fontWeight: 600,
-                        fontSize: '0.95rem',
-                        textTransform: 'none',
-                        minHeight: 48,
-                        py: 1
-                    }
-                }}
-            >
-                <Tab
-                    value="churches"
-                    label={
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <ChurchIcon sx={{ fontSize: 20 }} />
-                            <span>Églises</span>
-                            <Chip
-                                label={churches.length}
-                                size="small"
-                                color="primary"
-                                sx={{
-                                    height: 22,
-                                    fontSize: '0.75rem',
-                                    fontWeight: 700,
-                                    minWidth: 32
-                                }}
-                            />
-                        </Box>
-                    }
-                />
-                <Tab
-                    value="events"
-                    label={
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <EventIcon sx={{ fontSize: 20 }} />
-                            <span>Événements</span>
-                            <Chip
-                                label={events.length}
-                                size="small"
-                                color="secondary"
-                                sx={{
-                                    height: 22,
-                                    fontSize: '0.75rem',
-                                    fontWeight: 700,
-                                    minWidth: 32
-                                }}
-                            />
-                        </Box>
-                    }
-                />
-            </Tabs>
-
-            {/* Indicateur de tri par distance */}
-            {isGeolocated && totalResults > 0 && (
-                <Box
-                    sx={{
-                        px: 2,
-                        py: 1,
-                        backgroundColor: 'action.hover',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 0.5
-                    }}
-                >
-                    <PlaceIcon
+            {/* Barre de recherche (si > 15 résultats) */}
+            {showSearchBar && (
+                <Box sx={{ p: 2, borderBottom: '1px solid #E8EAED' }}>
+                    <Box
                         sx={{
-                            fontSize: 16,
-                            color: 'primary.main'
+                            display: 'flex',
+                            alignItems: 'center',
+                            bgcolor: '#F8F9FA',
+                            borderRadius: 1,
+                            px: 2,
+                            py: 1
                         }}
-                    />
-                    <Typography
-                        variant="caption"
-                        color="primary.main"
-                        fontWeight={600}
                     >
-                        {isMobileView
-                            ? 'Dans un rayon de 15km'
-                            : 'Triés par distance'}
-                    </Typography>
+                        <SearchIcon sx={{ color: '#5F6368', fontSize: 20, mr: 1 }} />
+                        <InputBase
+                            placeholder="Filtrer les résultats..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            sx={{ flex: 1, fontSize: '0.875rem', color: '#202124' }}
+                        />
+                        {searchQuery && (
+                            <IconButton size="small" onClick={() => setSearchQuery('')} sx={{ p: 0.5 }}>
+                                <ClearIcon sx={{ fontSize: 18, color: '#5F6368' }} />
+                            </IconButton>
+                        )}
+                    </Box>
+                    {searchQuery && (
+                        <Typography variant="caption" sx={{ color: '#5F6368', mt: 1, display: 'block' }}>
+                            {filteredAndSortedData.length} résultat{filteredAndSortedData.length > 1 ? 's' : ''} trouvé{filteredAndSortedData.length > 1 ? 's' : ''}
+                        </Typography>
+                    )}
                 </Box>
             )}
 
-            {/* Liste des résultats selon l'onglet actif */}
+            {/* Chips de filtres/tri - Google Maps style */}
+            <Box
+                sx={{
+                    position: 'sticky',
+                    top: 0,
+                    bgcolor: '#FFFFFF',
+                    zIndex: 10,
+                    borderBottom: '1px solid #E8EAED',
+                    overflowX: 'auto',
+                    '&::-webkit-scrollbar': { display: 'none' },
+                    scrollbarWidth: 'none'
+                }}
+            >
+                <Stack direction="row" spacing={1} sx={{ px: 2, py: 1.5, minWidth: 'max-content' }}>
+                    {/* Églises */}
+                    <Chip
+                        icon={filterChurches ? <CheckIcon sx={{ fontSize: 16 }} /> : undefined}
+                        label={`Églises (${churches.length})`}
+                        onClick={handleToggleChurches}
+                        sx={{
+                            bgcolor: filterChurches ? '#E8F0FE' : '#F1F3F4',
+                            color: filterChurches ? '#1A73E8' : '#5F6368',
+                            borderColor: filterChurches ? '#1A73E8' : '#DADCE0',
+                            borderWidth: 1,
+                            borderStyle: 'solid',
+                            fontWeight: 500,
+                            fontSize: '0.875rem',
+                            '&:hover': { bgcolor: filterChurches ? '#D2E3FC' : '#E8EAED' }
+                        }}
+                    />
+
+                    {/* Événements */}
+                    <Chip
+                        icon={filterEvents ? <CheckIcon sx={{ fontSize: 16 }} /> : undefined}
+                        label={`Événements (${events.length})`}
+                        onClick={handleToggleEvents}
+                        sx={{
+                            bgcolor: filterEvents ? '#FEE8E6' : '#F1F3F4',
+                            color: filterEvents ? '#EA4335' : '#5F6368',
+                            borderColor: filterEvents ? '#EA4335' : '#DADCE0',
+                            borderWidth: 1,
+                            borderStyle: 'solid',
+                            fontWeight: 500,
+                            fontSize: '0.875rem',
+                            '&:hover': { bgcolor: filterEvents ? '#FDD7D3' : '#E8EAED' }
+                        }}
+                    />
+
+                    {/* Divider */}
+                    <Box sx={{ width: 1, height: 24, bgcolor: '#DADCE0', alignSelf: 'center', mx: 0.5 }} />
+
+                    {/* Les plus proches */}
+                    <Chip
+                        icon={sortBy === 'distance' ? <CheckIcon sx={{ fontSize: 16 }} /> : undefined}
+                        label="Les plus proches"
+                        onClick={() => handleSortChange('distance')}
+                        sx={{
+                            bgcolor: sortBy === 'distance' ? '#E8F0FE' : '#F1F3F4',
+                            color: sortBy === 'distance' ? '#1A73E8' : '#5F6368',
+                            borderColor: sortBy === 'distance' ? '#1A73E8' : '#DADCE0',
+                            borderWidth: 1,
+                            borderStyle: 'solid',
+                            fontWeight: 500,
+                            fontSize: '0.875rem',
+                            '&:hover': { bgcolor: sortBy === 'distance' ? '#D2E3FC' : '#E8EAED' }
+                        }}
+                    />
+
+                    {/* Les plus récents */}
+                    <Chip
+                        icon={sortBy === 'date' ? <CheckIcon sx={{ fontSize: 16 }} /> : undefined}
+                        label="Les plus récents"
+                        onClick={() => handleSortChange('date')}
+                        sx={{
+                            bgcolor: sortBy === 'date' ? '#E8F0FE' : '#F1F3F4',
+                            color: sortBy === 'date' ? '#1A73E8' : '#5F6368',
+                            borderColor: sortBy === 'date' ? '#1A73E8' : '#DADCE0',
+                            borderWidth: 1,
+                            borderStyle: 'solid',
+                            fontWeight: 500,
+                            fontSize: '0.875rem',
+                            '&:hover': { bgcolor: sortBy === 'date' ? '#D2E3FC' : '#E8EAED' }
+                        }}
+                    />
+                </Stack>
+            </Box>
+
+            {/* Liste des résultats filtrés et triés */}
             <Box sx={{ flex: 1, overflow: 'auto' }}>
                 {loading ? (
                     // Skeleton loaders
                     <Box sx={{ p: 2 }}>
                         {[1, 2, 3].map(i => (
                             <Box key={i} sx={{ mb: 2 }}>
-                                <Skeleton
-                                    variant="rectangular"
-                                    height={120}
-                                    sx={{ borderRadius: 2 }}
-                                />
+                                <Skeleton variant="rectangular" height={120} sx={{ borderRadius: 2 }} />
                             </Box>
                         ))}
                     </Box>
-                ) : activeTab === 'churches' ? (
-                    // Onglet Églises
-                    churches.length === 0 ? (
-                        <Box sx={{ p: 4, textAlign: 'center' }}>
-                            <ChurchIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2, opacity: 0.3 }} />
-                            <Typography variant="h6" color="text.secondary" gutterBottom>
-                                Aucune église
-                            </Typography>
-                            <Typography variant="body2" color="text.disabled">
-                                Aucune église trouvée dans cette zone
-                            </Typography>
-                        </Box>
-                    ) : (
-                        <List disablePadding>
-                            {churches.map((church, index) => (
-                                <React.Fragment key={church.id}>
-                                    <ChurchCard
-                                        church={church}
-                                        onClick={() => onChurchClick(church)}
-                                    />
-                                    {index < churches.length - 1 && <Divider />}
-                                </React.Fragment>
-                            ))}
-                        </List>
-                    )
+                ) : filteredAndSortedData.length === 0 ? (
+                    // Aucun résultat
+                    <Box sx={{ p: 4, textAlign: 'center' }}>
+                        {searchQuery ? (
+                            <>
+                                <SearchIcon sx={{ fontSize: 64, color: '#DADCE0', mb: 2 }} />
+                                <Typography variant="h6" sx={{ color: '#5F6368', fontWeight: 500, fontSize: '1rem', mb: 1 }}>
+                                    Aucun résultat
+                                </Typography>
+                                <Typography variant="body2" sx={{ color: '#80868B', fontSize: '0.875rem' }}>
+                                    Aucun résultat ne correspond à "{searchQuery}"
+                                </Typography>
+                            </>
+                        ) : !filterChurches && !filterEvents ? (
+                            <>
+                                <Typography variant="h6" sx={{ color: '#5F6368', fontWeight: 500, fontSize: '1rem', mb: 1 }}>
+                                    Aucun filtre sélectionné
+                                </Typography>
+                                <Typography variant="body2" sx={{ color: '#80868B', fontSize: '0.875rem' }}>
+                                    Veuillez sélectionner au moins un filtre
+                                </Typography>
+                            </>
+                        ) : (
+                            <>
+                                <Typography variant="h6" sx={{ color: '#5F6368', fontWeight: 500, fontSize: '1rem', mb: 1 }}>
+                                    Aucun résultat
+                                </Typography>
+                                <Typography variant="body2" sx={{ color: '#80868B', fontSize: '0.875rem' }}>
+                                    Aucun résultat ne correspond à vos filtres
+                                </Typography>
+                            </>
+                        )}
+                    </Box>
                 ) : (
-                    // Onglet Événements
-                    events.length === 0 ? (
-                        <Box sx={{ p: 4, textAlign: 'center' }}>
-                            <EventIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2, opacity: 0.3 }} />
-                            <Typography variant="h6" color="text.secondary" gutterBottom>
-                                Aucun événement
-                            </Typography>
-                            <Typography variant="body2" color="text.disabled">
-                                Aucun événement trouvé dans cette zone
-                            </Typography>
-                        </Box>
-                    ) : (
-                        <List disablePadding>
-                            {events.map((event, index) => (
-                                <React.Fragment key={event.id}>
-                                    <EventCard
-                                        event={event}
-                                        onClick={() => onEventClick(event)}
+                    // Liste combinée
+                    <List disablePadding>
+                        {filteredAndSortedData.map((item, index) => (
+                            <React.Fragment key={`${item.type}-${item.data.id}`}>
+                                {item.type === 'church' ? (
+                                    <ChurchCard
+                                        church={item.data as Church}
+                                        onClick={() => onChurchClick(item.data as Church)}
                                     />
-                                    {index < events.length - 1 && <Divider />}
-                                </React.Fragment>
-                            ))}
-                        </List>
-                    )
+                                ) : (
+                                    <EventCard
+                                        event={item.data as Event}
+                                        onClick={() => onEventClick(item.data as Event)}
+                                    />
+                                )}
+                                {index < filteredAndSortedData.length - 1 && <Divider sx={{ borderColor: '#E8EAED' }} />}
+                            </React.Fragment>
+                        ))}
+                    </List>
                 )}
             </Box>
         </Box>
@@ -795,53 +797,45 @@ const ResultsPanel: React.FC<ResultsPanelProps> = React.memo(({
                 onClose={onClose}
                 sx={{
                     '& .MuiDrawer-paper': {
-                        height: `${drawerHeight}vh`,
+                        height: '90vh',
                         borderTopLeftRadius: 16,
                         borderTopRightRadius: 16,
-                        transition: isResizing ? 'none' : 'height 0.2s ease'
+                        bgcolor: '#FFFFFF',
+                        boxShadow: '0 -2px 8px rgba(0,0,0,0.1)'
                     }
                 }}
             >
-                {/* Handle de redimensionnement mobile */}
+                {/* Handle indicateur */}
                 <Box
-                    onTouchStart={handleTouchStartMobile}
                     sx={{
-                        position: 'absolute',
+                        position: 'sticky',
                         top: 0,
-                        left: 0,
-                        right: 0,
-                        height: 32,
+                        bgcolor: '#FFFFFF',
+                        zIndex: 100,
+                        pt: 2,
+                        pb: 1,
                         display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        cursor: 'ns-resize',
-                        zIndex: 1301,
-                        backgroundColor: 'transparent',
-                        '&:active': {
-                            backgroundColor: 'action.hover'
-                        }
+                        justifyContent: 'center'
                     }}
                 >
                     <Box
                         sx={{
                             width: 40,
                             height: 4,
-                            backgroundColor: 'divider',
+                            backgroundColor: '#DADCE0',
                             borderRadius: 2
                         }}
                     />
                 </Box>
-                <Box sx={{ mt: 4 }}>
-                    {content}
-                </Box>
+                {content}
             </Drawer>
         );
     }
 
-    // Sur desktop: Panel fixe à gauche (toujours visible avec légère transparence)
+    // Sur desktop: Panel fixe à gauche
     return (
         <Paper
-            elevation={3}
+            elevation={0}
             sx={{
                 position: 'absolute',
                 top: 16,
@@ -849,57 +843,16 @@ const ResultsPanel: React.FC<ResultsPanelProps> = React.memo(({
                 bottom: 16,
                 width: panelWidth,
                 zIndex: 1000,
-                borderRadius: 3,
+                borderRadius: 2,
                 overflow: 'hidden',
                 display: 'flex',
                 flexDirection: 'column',
-                backgroundColor: 'rgba(255, 255, 255, 0.97)',
-                backdropFilter: 'blur(8px)',
-                transition: isResizing ? 'none' : 'width 0.2s ease',
-                userSelect: isResizing ? 'none' : 'auto'
+                backgroundColor: '#FFFFFF',
+                border: '1px solid #E8EAED',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
             }}
         >
             {content}
-
-            {/* Handle de redimensionnement desktop */}
-            <Box
-                onMouseDown={handleMouseDownDesktop}
-                sx={{
-                    position: 'absolute',
-                    top: 0,
-                    right: 0,
-                    bottom: 0,
-                    width: 8,
-                    cursor: 'ew-resize',
-                    backgroundColor: 'transparent',
-                    transition: 'background-color 0.2s',
-                    '&:hover': {
-                        backgroundColor: 'primary.main',
-                        opacity: 0.3
-                    },
-                    '&:active': {
-                        backgroundColor: 'primary.main',
-                        opacity: 0.5
-                    },
-                    zIndex: 10
-                }}
-            >
-                {/* Indicateur visuel */}
-                <Box
-                    sx={{
-                        position: 'absolute',
-                        top: '50%',
-                        right: 2,
-                        transform: 'translateY(-50%)',
-                        width: 3,
-                        height: 40,
-                        backgroundColor: 'divider',
-                        borderRadius: 2,
-                        opacity: 0.5,
-                        pointerEvents: 'none'
-                    }}
-                />
-            </Box>
         </Paper>
     );
 });

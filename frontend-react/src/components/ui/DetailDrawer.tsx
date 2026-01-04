@@ -1,6 +1,6 @@
 import React from 'react';
-import { Drawer, Box, Typography, Button, IconButton, Rating, Skeleton, Divider, Chip, Link, Stack, Alert } from '@mui/material';
-import { Close, Directions, Share, PunchClock, Call, Language, LocationOn, Event as EventIcon, LocalParking, Accessible, Mic, Person, People, AttachMoney, YouTube, LinkIcon, CancelOutlined, Info, Email, Translate, Facebook, Instagram, Twitter, LinkedIn } from '@mui/icons-material';
+import { Drawer, Box, Typography, Button, IconButton, Skeleton, Divider, Chip, Link, Stack, Alert } from '@mui/material';
+import { Close, Directions, Share, PunchClock, Call, Language, LocationOn, LocalParking, Accessible, Mic, Person, People, AttachMoney, YouTube, InsertLink, CancelOutlined, Info, Email, Translate, Facebook, Instagram, Twitter, LinkedIn } from '@mui/icons-material';
 import type { ChurchDetails, EventDetails } from '../../types/publicMap';
 
 interface DetailDrawerProps {
@@ -29,32 +29,77 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
 
         return (
             <Box sx={{ p: 3 }}>
-                {/* Title & Type */}
-                <Typography variant="h5" fontWeight="700" gutterBottom>
+                {/* Title */}
+                <Typography variant="h5" fontWeight="500" color="#202124" gutterBottom>
                     {church.church_name}
                 </Typography>
                 <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-                    <Chip label="Église" size="small" color="primary" icon={<LocationOn />} />
-                    {church.denomination_name && <Chip label={church.denomination_name} size="small" variant="outlined" />}
+                    <Chip label="Église" size="small" sx={{ bgcolor: '#E8F0FE', color: '#1A73E8', fontWeight: 500 }} />
+                    {church.denomination_name && <Chip label={church.denomination_name} size="small" sx={{ bgcolor: '#F1F3F4', color: '#5F6368' }} />}
                 </Stack>
 
-                <Divider sx={{ my: 2 }} />
+                <Divider sx={{ my: 2, borderColor: '#E8EAED' }} />
 
-                {/* Actions */}
+                {/* Actions - Google Maps Style */}
                 <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-                    <Button variant="contained" startIcon={<Directions />} fullWidth sx={{ borderRadius: 8 }}>Itinéraire</Button>
-                    <Button variant="outlined" startIcon={<Share />} fullWidth sx={{ borderRadius: 8 }}>Partager</Button>
+                    <Button
+                        variant="contained"
+                        startIcon={<Directions />}
+                        fullWidth
+                        onClick={() => {
+                            window.open(
+                                `https://www.google.com/maps/dir/?api=1&destination=${church.latitude},${church.longitude}`,
+                                '_blank'
+                            );
+                        }}
+                        sx={{
+                            borderRadius: 1,
+                            bgcolor: '#1A73E8',
+                            textTransform: 'none',
+                            fontWeight: 500,
+                            boxShadow: 'none',
+                            '&:hover': { bgcolor: '#1765CC', boxShadow: 'none' }
+                        }}
+                    >
+                        Itinéraire
+                    </Button>
+                    <Button
+                        variant="outlined"
+                        startIcon={<Share />}
+                        onClick={() => {
+                            const url = window.location.href;
+                            if (navigator.share) {
+                                navigator.share({ title: church.church_name, url });
+                            } else {
+                                navigator.clipboard.writeText(url);
+                                alert('Lien copié dans le presse-papiers !');
+                            }
+                        }}
+                        sx={{
+                            borderRadius: 1,
+                            borderColor: '#DADCE0',
+                            color: '#5F6368',
+                            textTransform: 'none',
+                            fontWeight: 500,
+                            '&:hover': {
+                                borderColor: '#DADCE0',
+                                bgcolor: '#F8F9FA'
+                            }
+                        }}
+                    >
+                        Partager
+                    </Button>
                 </Box>
 
-                <Divider sx={{ my: 2 }} />
+                <Divider sx={{ my: 2, borderColor: '#E8EAED' }} />
 
                 {/* Info Section */}
-                <Stack spacing={2}>
+                <Stack spacing={3}>
                     {/* Address */}
                     {(church.details?.address || church.details?.city) && (
                         <Box sx={{ display: 'flex', gap: 2 }}>
-                            <LocationOn color="action" />
-                            <Typography variant="body2">
+                            <LocationOn sx={{ color: '#5F6368', fontSize: 20 }} />
+                            <Typography variant="body2" color="#3C4043">
                                 {[church.details?.address, church.details?.postal_code, church.details?.city].filter(Boolean).join(', ')}
                             </Typography>
                         </Box>
@@ -62,91 +107,106 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
 
                     {/* Pastor */}
                     <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                        <Person color="action" />
-                        <Typography variant="body2">Pasteur: {church.first_name} {church.last_name}</Typography>
+                        <Person sx={{ color: '#5F6368', fontSize: 20 }} />
+                        <Typography variant="body2" color="#3C4043">Pasteur: {church.first_name} {church.last_name}</Typography>
                     </Box>
 
                     {/* Pastor Email */}
                     {church.email && (
                         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                            <Email color="action" />
-                            <Link href={`mailto:${church.email}`}>{church.email}</Link>
+                            <Email sx={{ color: '#5F6368', fontSize: 20 }} />
+                            <Link href={`mailto:${church.email}`} sx={{ color: '#1A73E8', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>{church.email}</Link>
                         </Box>
                     )}
 
                     {/* Phone */}
                     {church.details?.phone && (
                         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                            <Call color="action" />
-                            <Link href={`tel:${church.details.phone}`}>{church.details.phone}</Link>
+                            <Call sx={{ color: '#5F6368', fontSize: 20 }} />
+                            <Link href={`tel:${church.details.phone}`} sx={{ color: '#1A73E8', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>{church.details.phone}</Link>
                         </Box>
                     )}
 
                     {/* Website */}
                     {church.details?.website && (
                         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                            <Language color="action" />
-                            <Link href={church.details.website} target="_blank" rel="noopener">Site Web</Link>
+                            <Language sx={{ color: '#5F6368', fontSize: 20 }} />
+                            <Link href={church.details.website} target="_blank" rel="noopener" sx={{ color: '#1A73E8', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>Site Web</Link>
                         </Box>
                     )}
+                </Stack>
 
-                    {/* Description */}
-                    {church.details?.description && (
-                        <Box sx={{ mt: 1 }}>
-                            <Typography variant="subtitle2" fontWeight="bold">À propos</Typography>
-                            <Typography variant="body2" color="text.secondary">{church.details.description}</Typography>
-                        </Box>
-                    )}
-
-                    {/* Parking */}
-                    {church.details?.has_parking && (
+                {/* Description */}
+                {church.details?.description && (
+                    <>
+                        <Divider sx={{ my: 3, borderColor: '#E8EAED' }} />
                         <Box>
-                            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 0.5 }}>
-                                <LocalParking color="action" />
-                                <Typography variant="body2" fontWeight="bold">Parking disponible</Typography>
+                            <Typography variant="subtitle2" fontWeight="500" color="#202124" sx={{ mb: 1 }}>À propos</Typography>
+                            <Typography variant="body2" color="#5F6368" sx={{ lineHeight: 1.6 }}>{church.details.description}</Typography>
+                        </Box>
+                    </>
+                )}
+
+                {/* Parking */}
+                {church.details?.has_parking && (
+                    <>
+                        <Divider sx={{ my: 3, borderColor: '#E8EAED' }} />
+                        <Box>
+                            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 1 }}>
+                                <LocalParking sx={{ color: '#5F6368', fontSize: 20 }} />
+                                <Typography variant="body2" fontWeight="500" color="#202124">Parking disponible</Typography>
                             </Box>
                             {church.details.parking_capacity && (
-                                <Typography variant="body2" color="text.secondary" sx={{ ml: 5 }}>
+                                <Typography variant="body2" color="#5F6368" sx={{ ml: 5 }}>
                                     Capacité: {church.details.parking_capacity} places
                                 </Typography>
                             )}
                             {church.details.parking_info && (
-                                <Typography variant="body2" color="text.secondary" sx={{ ml: 5 }}>
+                                <Typography variant="body2" color="#5F6368" sx={{ ml: 5 }}>
                                     {church.details.parking_info}
                                 </Typography>
                             )}
                         </Box>
-                    )}
+                    </>
+                )}
 
-                    {/* Features */}
-                    {(church.details?.seating_capacity || church.details?.accessibility_features) && (
+                {/* Features */}
+                {(church.details?.seating_capacity || church.details?.accessibility_features) && (
+                    <>
+                        <Divider sx={{ my: 3, borderColor: '#E8EAED' }} />
                         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                             {church.details?.seating_capacity && (
-                                <Chip label={`${church.details.seating_capacity} places`} size="small" variant="outlined" />
+                                <Chip label={`${church.details.seating_capacity} places`} size="small" sx={{ bgcolor: '#F1F3F4', color: '#5F6368' }} />
                             )}
-                            {church.details?.accessibility_features && <Chip icon={<Accessible />} label="Accès PMR" size="small" />}
+                            {church.details?.accessibility_features && <Chip icon={<Accessible />} label="Accès PMR" size="small" sx={{ bgcolor: '#F1F3F4', color: '#5F6368' }} />}
                         </Stack>
-                    )}
+                    </>
+                )}
 
-                    {/* Schedules */}
-                    {church.schedules && church.schedules.length > 0 && (
+                {/* Schedules */}
+                {church.schedules && church.schedules.length > 0 && (
+                    <>
+                        <Divider sx={{ my: 3, borderColor: '#E8EAED' }} />
                         <Box>
-                            <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <PunchClock fontSize="small" /> Horaires
+                            <Typography variant="subtitle2" fontWeight="500" color="#202124" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <PunchClock fontSize="small" sx={{ color: '#5F6368' }} /> Horaires
                             </Typography>
                             {church.schedules.map((sch) => (
-                                <Box key={sch.id} sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                                    <Typography variant="body2" color="text.secondary">{sch.day_of_week}</Typography>
-                                    <Typography variant="body2" fontWeight="500">{sch.start_time} - {sch.activity_type || 'Service'}</Typography>
+                                <Box key={sch.id} sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
+                                    <Typography variant="body2" color="#5F6368">{sch.day_of_week}</Typography>
+                                    <Typography variant="body2" fontWeight="500" color="#3C4043">{sch.start_time} - {sch.activity_type || 'Service'}</Typography>
                                 </Box>
                             ))}
                         </Box>
-                    )}
+                    </>
+                )}
 
-                    {/* Social Media */}
-                    {church.socials && church.socials.length > 0 && (
+                {/* Social Media */}
+                {church.socials && church.socials.length > 0 && (
+                    <>
+                        <Divider sx={{ my: 3, borderColor: '#E8EAED' }} />
                         <Box>
-                            <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1 }}>
+                            <Typography variant="subtitle2" fontWeight="500" color="#202124" sx={{ mb: 2 }}>
                                 Réseaux sociaux
                             </Typography>
                             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -159,10 +219,10 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
                                         rel="noopener"
                                         size="small"
                                         sx={{
-                                            border: '1px solid',
-                                            borderColor: 'divider',
+                                            border: '1px solid #DADCE0',
                                             borderRadius: 1,
-                                            '&:hover': { bgcolor: 'action.hover' }
+                                            color: '#5F6368',
+                                            '&:hover': { bgcolor: '#F8F9FA' }
                                         }}
                                     >
                                         {getSocialIcon(social.platform)}
@@ -170,8 +230,8 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
                                 ))}
                             </Stack>
                         </Box>
-                    )}
-                </Stack>
+                    </>
+                )}
             </Box>
         );
     };
@@ -183,53 +243,98 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
             <Box sx={{ p: 3 }}>
                 {/* Badge ANNULÉ */}
                 {isCancelled && (
-                    <Alert severity="error" icon={<CancelOutlined />} sx={{ mb: 2 }}>
-                        <Typography variant="subtitle2" fontWeight="bold">ÉVÉNEMENT ANNULÉ</Typography>
+                    <Alert severity="error" icon={<CancelOutlined />} sx={{ mb: 2, bgcolor: '#FFEBEE', color: '#C5221F' }}>
+                        <Typography variant="subtitle2" fontWeight="600">ÉVÉNEMENT ANNULÉ</Typography>
                     </Alert>
                 )}
 
-                {/* Title & Type */}
-                <Typography variant="h5" fontWeight="700" gutterBottom>
+                {/* Title */}
+                <Typography variant="h5" fontWeight="500" color="#202124" gutterBottom>
                     {event.title}
                 </Typography>
                 <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap' }}>
-                    <Chip label="Événement" size="small" color="secondary" icon={<EventIcon />} />
-                    <Chip label={new Date(event.start_datetime).toLocaleDateString('fr-FR')} size="small" variant="outlined" />
-                    {event.details?.is_free && <Chip label="Gratuit" size="small" color="success" icon={<AttachMoney />} />}
+                    <Chip label="Événement" size="small" sx={{ bgcolor: '#E8F0FE', color: '#1A73E8', fontWeight: 500 }} />
+                    <Chip label={new Date(event.start_datetime).toLocaleDateString('fr-FR')} size="small" sx={{ bgcolor: '#F1F3F4', color: '#5F6368' }} />
+                    {event.details?.is_free && <Chip label="Gratuit" size="small" sx={{ bgcolor: '#E6F4EA', color: '#137333', fontWeight: 500 }} icon={<AttachMoney />} />}
                 </Stack>
 
                 {/* Raison d'annulation */}
                 {isCancelled && event.cancellation_reason && (
-                    <Box sx={{ mb: 2, p: 2, bgcolor: 'error.lighter', borderLeft: '4px solid', borderColor: 'error.main', borderRadius: 1 }}>
+                    <Box sx={{ mb: 2, p: 2, bgcolor: '#FFF4E5', borderLeft: '4px solid #F9AB00', borderRadius: 1 }}>
                         <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-                            <Info fontSize="small" color="error" />
+                            <Info fontSize="small" sx={{ color: '#E37400' }} />
                             <Box>
-                                <Typography variant="caption" color="error.main" fontWeight="bold">Raison de l'annulation</Typography>
-                                <Typography variant="body2" color="text.secondary">{event.cancellation_reason}</Typography>
+                                <Typography variant="caption" sx={{ color: '#E37400', fontWeight: 600 }}>Raison de l'annulation</Typography>
+                                <Typography variant="body2" color="#5F6368">{event.cancellation_reason}</Typography>
                             </Box>
                         </Box>
                     </Box>
                 )}
 
-                <Divider sx={{ my: 2 }} />
+                <Divider sx={{ my: 2, borderColor: '#E8EAED' }} />
 
-                {/* Actions */}
+                {/* Actions - Google Maps Style */}
                 <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-                    <Button variant="contained" startIcon={<Directions />} fullWidth sx={{ borderRadius: 8 }}>Itinéraire</Button>
-                    <Button variant="outlined" startIcon={<Share />} fullWidth sx={{ borderRadius: 8 }}>Partager</Button>
+                    <Button
+                        variant="contained"
+                        startIcon={<Directions />}
+                        fullWidth
+                        onClick={() => {
+                            window.open(
+                                `https://www.google.com/maps/dir/?api=1&destination=${event.latitude},${event.longitude}`,
+                                '_blank'
+                            );
+                        }}
+                        sx={{
+                            borderRadius: 1,
+                            bgcolor: '#1A73E8',
+                            textTransform: 'none',
+                            fontWeight: 500,
+                            boxShadow: 'none',
+                            '&:hover': { bgcolor: '#1765CC', boxShadow: 'none' }
+                        }}
+                    >
+                        Itinéraire
+                    </Button>
+                    <Button
+                        variant="outlined"
+                        startIcon={<Share />}
+                        onClick={() => {
+                            const url = window.location.href;
+                            if (navigator.share) {
+                                navigator.share({ title: event.title, url });
+                            } else {
+                                navigator.clipboard.writeText(url);
+                                alert('Lien copié dans le presse-papiers !');
+                            }
+                        }}
+                        sx={{
+                            borderRadius: 1,
+                            borderColor: '#DADCE0',
+                            color: '#5F6368',
+                            textTransform: 'none',
+                            fontWeight: 500,
+                            '&:hover': {
+                                borderColor: '#DADCE0',
+                                bgcolor: '#F8F9FA'
+                            }
+                        }}
+                    >
+                        Partager
+                    </Button>
                 </Box>
 
-                <Divider sx={{ my: 2 }} />
+                <Divider sx={{ my: 2, borderColor: '#E8EAED' }} />
 
-                <Stack spacing={2}>
+                <Stack spacing={3}>
                     {/* Date/Time */}
                     <Box sx={{ display: 'flex', gap: 2 }}>
-                        <PunchClock color="action" />
+                        <PunchClock sx={{ color: '#5F6368', fontSize: 20 }} />
                         <Box>
-                            <Typography variant="body2" fontWeight="bold">
+                            <Typography variant="body2" fontWeight="500" color="#3C4043">
                                 {new Date(event.start_datetime).toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                             </Typography>
-                            <Typography variant="body2">
+                            <Typography variant="body2" color="#5F6368">
                                 {new Date(event.start_datetime).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                                 {event.end_datetime && ` - ${new Date(event.end_datetime).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`}
                             </Typography>
@@ -239,20 +344,20 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
                     {/* Participants */}
                     {event.interested_count !== undefined && event.interested_count > 0 && (
                         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                            <People color="action" />
-                            <Typography variant="body2">{event.interested_count} participant{event.interested_count > 1 ? 's' : ''} intéressé{event.interested_count > 1 ? 's' : ''}</Typography>
+                            <People sx={{ color: '#5F6368', fontSize: 20 }} />
+                            <Typography variant="body2" color="#3C4043">{event.interested_count} participant{event.interested_count > 1 ? 's' : ''} intéressé{event.interested_count > 1 ? 's' : ''}</Typography>
                         </Box>
                     )}
 
                     {/* Location */}
                     <Box sx={{ display: 'flex', gap: 2 }}>
-                        <LocationOn color="action" />
+                        <LocationOn sx={{ color: '#5F6368', fontSize: 20 }} />
                         <Box>
-                            <Typography variant="body2" fontWeight="bold">{event.church_name}</Typography>
-                            <Typography variant="body2" color="text.secondary">
+                            <Typography variant="body2" fontWeight="500" color="#3C4043">{event.church_name}</Typography>
+                            <Typography variant="body2" color="#5F6368">
                                 {[event.details?.street_number, event.details?.street_name].filter(Boolean).join(' ') || event.details?.address}
                             </Typography>
-                            <Typography variant="body2" color="text.secondary">
+                            <Typography variant="body2" color="#5F6368">
                                 {[event.details?.postal_code, event.details?.city].filter(Boolean).join(' ')}
                             </Typography>
                         </Box>
@@ -261,32 +366,37 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
                     {/* Speaker */}
                     {event.details?.speaker_name && (
                         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                            <Mic color="action" />
-                            <Typography variant="body2">Intervenant: {event.details.speaker_name}</Typography>
+                            <Mic sx={{ color: '#5F6368', fontSize: 20 }} />
+                            <Typography variant="body2" color="#3C4043">Intervenant: {event.details.speaker_name}</Typography>
                         </Box>
                     )}
+                </Stack>
 
-                    {/* Description */}
-                    {event.details?.description && (
-                        <Box sx={{ mt: 1 }}>
-                            <Typography variant="subtitle2" fontWeight="bold">Détails</Typography>
-                            <Typography variant="body2" color="text.secondary">{event.details.description}</Typography>
-                        </Box>
-                    )}
-
-                    {/* Languages */}
-                    {(event.primary_language || (event.translations && event.translations.length > 0)) && (
+                {/* Description */}
+                {event.details?.description && (
+                    <>
+                        <Divider sx={{ my: 3, borderColor: '#E8EAED' }} />
                         <Box>
-                            <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Translate fontSize="small" /> Langues
+                            <Typography variant="subtitle2" fontWeight="500" color="#202124" sx={{ mb: 1 }}>Détails</Typography>
+                            <Typography variant="body2" color="#5F6368" sx={{ lineHeight: 1.6 }}>{event.details.description}</Typography>
+                        </Box>
+                    </>
+                )}
+
+                {/* Languages */}
+                {(event.primary_language || (event.translations && event.translations.length > 0)) && (
+                    <>
+                        <Divider sx={{ my: 3, borderColor: '#E8EAED' }} />
+                        <Box>
+                            <Typography variant="subtitle2" fontWeight="500" color="#202124" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Translate fontSize="small" sx={{ color: '#5F6368' }} /> Langues
                             </Typography>
                             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                                 {event.primary_language && (
                                     <Chip
                                         label={`${event.primary_language.flag || ''} ${event.primary_language.name}`}
                                         size="small"
-                                        color="primary"
-                                        variant="outlined"
+                                        sx={{ bgcolor: '#E8F0FE', color: '#1A73E8' }}
                                     />
                                 )}
                                 {event.translations && event.translations.map((lang, idx) => (
@@ -294,88 +404,105 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
                                         key={idx}
                                         label={`${lang.flag || ''} ${lang.name}`}
                                         size="small"
-                                        variant="outlined"
+                                        sx={{ bgcolor: '#F1F3F4', color: '#5F6368' }}
                                     />
                                 ))}
                             </Stack>
                         </Box>
-                    )}
+                    </>
+                )}
 
-                    {/* Parking */}
-                    {event.details?.has_parking && (
+                {/* Parking */}
+                {event.details?.has_parking && (
+                    <>
+                        <Divider sx={{ my: 3, borderColor: '#E8EAED' }} />
                         <Box>
-                            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 0.5 }}>
-                                <LocalParking color="action" />
-                                <Typography variant="body2" fontWeight="bold">Parking disponible</Typography>
+                            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 1 }}>
+                                <LocalParking sx={{ color: '#5F6368', fontSize: 20 }} />
+                                <Typography variant="body2" fontWeight="500" color="#202124">Parking disponible</Typography>
                             </Box>
                             {event.details.parking_capacity && (
-                                <Typography variant="body2" color="text.secondary" sx={{ ml: 5 }}>
+                                <Typography variant="body2" color="#5F6368" sx={{ ml: 5 }}>
                                     Capacité: {event.details.parking_capacity} places
                                 </Typography>
                             )}
                             {event.details.is_parking_free !== undefined && (
-                                <Typography variant="body2" color="text.secondary" sx={{ ml: 5 }}>
+                                <Typography variant="body2" color="#5F6368" sx={{ ml: 5 }}>
                                     {event.details.is_parking_free ? 'Gratuit' : 'Payant'}
                                 </Typography>
                             )}
                             {event.details.parking_details && (
-                                <Typography variant="body2" color="text.secondary" sx={{ ml: 5 }}>
+                                <Typography variant="body2" color="#5F6368" sx={{ ml: 5 }}>
                                     {event.details.parking_details}
                                 </Typography>
                             )}
                         </Box>
-                    )}
+                    </>
+                )}
 
-                    {/* Registration Link */}
-                    {event.details?.registration_link && (
+                {/* Registration Link */}
+                {event.details?.registration_link && (
+                    <>
+                        <Divider sx={{ my: 3, borderColor: '#E8EAED' }} />
                         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                            <LinkIcon color="action" />
-                            <Link href={event.details.registration_link} target="_blank" rel="noopener">
+                            <InsertLink sx={{ color: '#5F6368', fontSize: 20 }} />
+                            <Link href={event.details.registration_link} target="_blank" rel="noopener" sx={{ color: '#1A73E8', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
                                 S'inscrire à l'événement
                             </Link>
                         </Box>
-                    )}
+                    </>
+                )}
 
-                    {/* YouTube Live */}
-                    {event.details?.youtube_live && (
+                {/* YouTube Live */}
+                {event.details?.youtube_live && (
+                    <>
+                        <Divider sx={{ my: 3, borderColor: '#E8EAED' }} />
                         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                            <YouTube color="error" />
-                            <Link href={event.details.youtube_live} target="_blank" rel="noopener">
+                            <YouTube sx={{ color: '#FF0000', fontSize: 20 }} />
+                            <Link href={event.details.youtube_live} target="_blank" rel="noopener" sx={{ color: '#1A73E8', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
                                 Voir le live YouTube
                             </Link>
                         </Box>
-                    )}
+                    </>
+                )}
 
-                    {/* Contact */}
-                    {(event.details?.contact_email || event.details?.contact_phone) && (
-                        <Box sx={{ mt: 1 }}>
-                            <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1 }}>Contact</Typography>
-                            {event.details.contact_email && (
-                                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 0.5 }}>
-                                    <Email fontSize="small" color="action" />
-                                    <Link href={`mailto:${event.details.contact_email}`}>{event.details.contact_email}</Link>
-                                </Box>
-                            )}
-                            {event.details.contact_phone && (
-                                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                                    <Call fontSize="small" color="action" />
-                                    <Link href={`tel:${event.details.contact_phone}`}>{event.details.contact_phone}</Link>
-                                </Box>
-                            )}
+                {/* Contact */}
+                {(event.details?.contact_email || event.details?.contact_phone) && (
+                    <>
+                        <Divider sx={{ my: 3, borderColor: '#E8EAED' }} />
+                        <Box>
+                            <Typography variant="subtitle2" fontWeight="500" color="#202124" sx={{ mb: 2 }}>Contact</Typography>
+                            <Stack spacing={2}>
+                                {event.details.contact_email && (
+                                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                                        <Email fontSize="small" sx={{ color: '#5F6368' }} />
+                                        <Link href={`mailto:${event.details.contact_email}`} sx={{ color: '#1A73E8', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>{event.details.contact_email}</Link>
+                                    </Box>
+                                )}
+                                {event.details.contact_phone && (
+                                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                                        <Call fontSize="small" sx={{ color: '#5F6368' }} />
+                                        <Link href={`tel:${event.details.contact_phone}`} sx={{ color: '#1A73E8', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>{event.details.contact_phone}</Link>
+                                    </Box>
+                                )}
+                            </Stack>
                         </Box>
-                    )}
+                    </>
+                )}
 
-                    {/* Organizer/Church Link */}
-                    {event.church && (
-                        <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
-                            <Typography variant="caption" color="text.secondary">Organisé par</Typography>
-                            <Typography variant="body2" fontWeight="bold">{event.church.church_name}</Typography>
+                {/* Organizer/Church */}
+                {event.church && (
+                    <>
+                        <Divider sx={{ my: 3, borderColor: '#E8EAED' }} />
+                        <Box sx={{ p: 2, bgcolor: '#F8F9FA', borderRadius: 1 }}>
+                            <Typography variant="caption" color="#5F6368">Organisé par</Typography>
+                            <Typography variant="body2" fontWeight="500" color="#202124">{event.church.church_name}</Typography>
                             {event.church.denomination_name && (
-                                <Typography variant="caption" color="text.secondary">{event.church.denomination_name}</Typography>
+                                <Typography variant="caption" color="#5F6368">{event.church.denomination_name}</Typography>
                             )}
                         </Box>
-                    )}
-                </Stack>
+                    </>
+                )}
             </Box>
         );
     };
@@ -391,9 +518,10 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
                     width: { xs: '100%', sm: 400 },
                     top: 0,
                     height: '100%',
-                    boxShadow: '4px 0 12px rgba(0,0,0,0.2)',
+                    boxShadow: '0 1px 2px 0 rgba(60,64,67,0.3), 0 2px 6px 2px rgba(60,64,67,0.15)',
                     borderRight: 'none',
                     zIndex: 1200,
+                    bgcolor: '#FFFFFF'
                 }
             }}
         >
@@ -410,7 +538,7 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
                     <Box
                         sx={{
                             height: 200,
-                            backgroundColor: 'grey.300',
+                            backgroundColor: '#E8EAED',
                             backgroundImage: `url(${(type === 'church' ? (data as ChurchDetails).details?.logo_url : (data as EventDetails).details?.image_url) || 'https://images.unsplash.com/photo-1438232992991-995b7058bbb3?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'})`,
                             backgroundSize: 'cover',
                             backgroundPosition: 'center',
@@ -423,9 +551,10 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
                                 position: 'absolute',
                                 top: 8,
                                 right: 8,
-                                backgroundColor: 'rgba(0,0,0,0.4)',
-                                color: 'white',
-                                '&:hover': { backgroundColor: 'rgba(0,0,0,0.6)' }
+                                backgroundColor: '#FFFFFF',
+                                color: '#5F6368',
+                                boxShadow: '0 1px 2px 0 rgba(60,64,67,0.3)',
+                                '&:hover': { backgroundColor: '#F8F9FA' }
                             }}
                         >
                             <Close />

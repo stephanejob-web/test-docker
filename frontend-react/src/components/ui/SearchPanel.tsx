@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Paper, InputBase, IconButton, Divider, Box, Chip, Stack, List, ListItemButton, ListItemText, CircularProgress } from '@mui/material';
-import { Search, Menu, CalendarMonth, Church, List as ListIcon, LocationOn, Clear } from '@mui/icons-material';
+import { Search, CalendarMonth, Church, List as ListIcon, LocationOn, Clear } from '@mui/icons-material';
 import { searchCities } from '../../services/geoService';
 
 interface SearchPanelProps {
@@ -103,9 +103,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ onSearch, onFilterChange, onT
                 }}
                 onSubmit={(e) => { e.preventDefault(); onSearch(query); setIsAutocompleteOpen(false); }}
             >
-                <IconButton sx={{ p: '10px' }} aria-label="menu">
-                    <Menu />
-                </IconButton>
+                <Search sx={{ ml: 1, color: '#5F6368' }} />
                 <InputBase
                     sx={{ ml: 1, flex: 1 }}
                     placeholder="Rechercher une ville..."
@@ -119,12 +117,6 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ onSearch, onFilterChange, onT
                 {query && (
                     <IconButton size="small" onClick={() => { setQuery(''); setSuggestions([]); }} sx={{ p: '10px' }}>
                         <Clear />
-                    </IconButton>
-                )}
-
-                {!query && (
-                    <IconButton type="button" sx={{ p: '10px' }} aria-label="search" onClick={() => onSearch(query)}>
-                        <Search />
                     </IconButton>
                 )}
 
