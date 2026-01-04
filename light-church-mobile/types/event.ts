@@ -20,6 +20,10 @@ export interface Event {
   event_postal_code?: string;
   distance_km?: number;
   interested_count?: number;
+  // Champs d'annulation
+  cancelled_at?: string | null;
+  cancellation_reason?: string | null;
+  cancelled_by?: number | null;
 }
 
 export interface EventDetail extends Event {

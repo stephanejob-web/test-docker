@@ -17,7 +17,7 @@ interface ChurchMapProps {
   onChurchPress?: (church: Church) => void;
   onEventPress?: (event: Event) => void;
   initialRegion?: Region;
-  mapType?: 'standard' | 'satellite' | 'hybrid';
+  mapType?: 'standard' | 'satellite';
 }
 
 const ChurchMap = forwardRef<MapView, ChurchMapProps>(({

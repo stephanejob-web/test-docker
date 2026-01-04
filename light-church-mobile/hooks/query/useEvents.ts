@@ -12,10 +12,7 @@ import type { EventsQueryParams } from '@/types';
 export function useEvents(params: EventsQueryParams, enabled = true) {
   return useQuery({
     queryKey: ['events', params],
-    queryFn: () => {
-      console.log('📡 API: Fetching events...');
-      return fetchEvents(params);
-    },
+    queryFn: () => fetchEvents(params),
     enabled: enabled && (
       // Ensure we have either bounding box or lat/lng
       !!(params.north && params.south && params.east && params.west) ||

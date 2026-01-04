@@ -3,17 +3,24 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { ScrollView, StyleSheet, ActivityIndicator, Linking, Image, Alert, RefreshControl } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
-import { Box, Text, Button, Card } from '@/components/ui';
+import { ScrollView, StyleSheet, ActivityIndicator, Linking, Image, Alert, RefreshControl, TouchableOpacity, View, Platform } from 'react-native';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { Box, Text, Card } from '@/components/ui';
 import { useEventDetail, useIsInterested, useToggleEventInterest } from '@/hooks/query';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { addEventToCalendar } from '@/utils/calendar';
 import { registerForPushNotifications, hasNotificationPermission } from '@/services/pushNotificationService';
+import { useToast } from '@/contexts/ToastContext';
 
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const toast = useToast();
   const eventId = Number(id);
   const { data, isLoading, error, refetch } = useEventDetail(eventId);
   const { data: interestData, refetch: refetchInterest } = useIsInterested(eventId);
@@ -23,6 +30,7 @@ export default function EventDetailScreen() {
 
   const isInterested = interestData?.is_interested || false;
   const interestedCount = data?.event?.interested_count || 0;
+  const isCancelled = Boolean(data?.event?.cancelled_at);
 
   const handleOpenMaps = () => {
     if (!data?.event) return;
@@ -59,7 +67,9 @@ export default function EventDetailScreen() {
       let location = '';
       if (event.details?.address) {
         location = event.details.address;
-        if (event.details.postal_code && event.details.city) {
+        // Only add postal code and city if not already in address
+        if (event.details.postal_code && event.details.city &&
+            !event.details.address.includes(event.details.postal_code)) {
           location += `, ${event.details.postal_code} ${event.details.city}`;
         }
       }
@@ -99,8 +109,6 @@ export default function EventDetailScreen() {
         refetch(),
         refetchInterest()
       ]);
-    } catch (error) {
-      console.error('Erreur refresh:', error);
     } finally {
       setIsRefreshing(false);
     }
@@ -115,7 +123,7 @@ export default function EventDetailScreen() {
         // Demander l'autorisation si pas encore intéressé
         Alert.alert(
           'Notifications requises',
-          'Pour montrer votre intérêt et recevoir des notifications sur cet événement, vous devez activer les notifications push.',
+          'Pour participer et recevoir des notifications sur cet événement, vous devez activer les notifications push.',
           [
             { text: 'Annuler', style: 'cancel' },
             {
@@ -123,10 +131,10 @@ export default function EventDetailScreen() {
               onPress: async () => {
                 const deviceId = await registerForPushNotifications();
                 if (deviceId) {
-                  toggleInterest.mutate(isInterested);
+                  // Confirmation de participation après activation notifications
+                  confirmParticipation(deviceId);
                 } else {
-                  Alert.alert(
-                    'Erreur',
+                  toast.showError(
                     'Impossible d\'activer les notifications. Veuillez vérifier les paramètres de votre appareil.'
                   );
                 }
@@ -137,29 +145,74 @@ export default function EventDetailScreen() {
         return;
       }
 
-      // Toggle interest
-      toggleInterest.mutate(isInterested, {
-        onSuccess: (data) => {
-          const message = isInterested
-            ? 'Vous ne recevrez plus de notifications pour cet événement'
-            : `Vous serez notifié des modifications de cet événement (${data.interested_count} personnes intéressées)`;
-          Alert.alert('Succès', message);
-        },
-        onError: (error: any) => {
-          console.error('Error toggling interest:', error);
-          console.error('Error response:', error.response?.data);
-
-          const errorMessage = error.response?.data?.message
-            || error.message
-            || 'Une erreur est survenue lors de l\'enregistrement';
-
-          Alert.alert('Erreur', errorMessage);
-        },
-      });
-    } catch (error: any) {
-      console.error('Error toggling interest (catch):', error);
-      Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+      // Si l'utilisateur veut retirer sa participation
+      if (isInterested) {
+        Alert.alert(
+          'Ne plus participer',
+          `L'église compte sur votre présence. Êtes-vous certain de ne plus participer ?`,
+          [
+            { text: 'Annuler', style: 'cancel' },
+            {
+              text: 'Ne plus participer',
+              style: 'destructive',
+              onPress: () => {
+                toggleInterest.mutate(isInterested, {
+                  onSuccess: () => {
+                    toast.showInfo('Vous ne recevrez plus de notifications pour cet événement');
+                  },
+                  onError: handleToggleError,
+                });
+              },
+            },
+          ]
+        );
+      } else {
+        // Confirmation de participation
+        confirmParticipation();
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Une erreur est survenue';
+      toast.showError(message);
     }
+  };
+
+  const confirmParticipation = (deviceId?: string) => {
+    Alert.alert(
+      'Confirmer votre participation',
+      'En participant, vous indiquez votre intention d\'assister à cet événement. L\'église compte sur vous !',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Je participe',
+          onPress: () => {
+            toggleInterest.mutate(isInterested, {
+              onSuccess: (data) => {
+                toast.showSuccess(
+                  `Participation confirmée ! ${data.interested_count} ${data.interested_count === 1 ? 'participant' : 'participants'}.`
+                );
+              },
+              onError: handleToggleError,
+            });
+          },
+        },
+      ]
+    );
+  };
+
+  const handleToggleError = (error: unknown) => {
+    let errorMessage = 'Une erreur est survenue lors de l\'enregistrement';
+
+    if (error && typeof error === 'object' && 'response' in error) {
+      const response = (error as { response?: { data?: { message?: string } } }).response;
+      errorMessage = response?.data?.message || errorMessage;
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
+    toast.showError(errorMessage, {
+      label: 'Réessayer',
+      onPress: () => handleToggleInterest(),
+    });
   };
 
   if (isLoading) {
@@ -187,7 +240,7 @@ export default function EventDetailScreen() {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 40 }]}
       refreshControl={
         <RefreshControl
           refreshing={isRefreshing}
@@ -212,19 +265,84 @@ export default function EventDetailScreen() {
           {event.title}
         </Text>
 
+        {/* Badge ANNULÉ (Google Maps style) */}
+        {isCancelled && (
+          <Box
+            backgroundColor="error"
+            paddingHorizontal="m"
+            paddingVertical="s"
+            borderRadius="s"
+            alignSelf="flex-start"
+            marginBottom="m"
+          >
+            <Text variant="body" fontWeight="700" style={{ color: '#FFFFFF' }}>
+              ❌ ÉVÉNEMENT ANNULÉ
+            </Text>
+          </Box>
+        )}
+
+        {/* Raison d'annulation */}
+        {isCancelled && event.cancellation_reason && (
+          <Box
+            backgroundColor="card"
+            padding="m"
+            borderRadius="m"
+            marginBottom="m"
+            style={{ borderLeftWidth: 4, borderLeftColor: '#EA4335' }}
+          >
+            <Box flexDirection="row" alignItems="center" marginBottom="xs">
+              <Ionicons name="information-circle" size={18} color="#EA4335" />
+              <Text variant="subtitle" fontWeight="700" marginLeft="xs" style={{ color: '#EA4335' }}>
+                Raison de l'annulation
+              </Text>
+            </Box>
+            <Text variant="body" color="textSecondary">
+              {event.cancellation_reason}
+            </Text>
+          </Box>
+        )}
+
         {event.denomination_name && (
           <Text variant="body" color="primary" marginBottom="s">
             {event.denomination_name}
           </Text>
         )}
 
-        <Box flexDirection="row" alignItems="center" gap="s" flexWrap="wrap">
-          <Text variant="body" color="textSecondary">
-            📅 {format(startDate, 'EEEE d MMMM yyyy', { locale: fr })}
-          </Text>
-          <Text variant="body" color="textSecondary">
-            🕐 {format(startDate, 'HH:mm', { locale: fr })} - {format(endDate, 'HH:mm', { locale: fr })}
-          </Text>
+        <Box flexDirection="row" alignItems="center" marginTop="s" marginBottom="s">
+          {/* Date Badge */}
+          <Box
+            width={56}
+            height={56}
+            borderRadius="l"
+            backgroundColor="card"
+            justifyContent="center"
+            alignItems="center"
+            marginRight="m"
+            borderWidth={1}
+            borderColor="border"
+          >
+            <Text variant="small" color="error" fontWeight="700" textTransform="uppercase" fontSize={10}>
+              {format(startDate, 'MMM', { locale: fr }).toUpperCase()}
+            </Text>
+            <Text variant="title" color="text" fontWeight="700" fontSize={22} lineHeight={26}>
+              {format(startDate, 'dd', { locale: fr })}
+            </Text>
+          </Box>
+
+          <Box flex={1}>
+            <Box flexDirection="row" alignItems="center" gap="xs" marginBottom="xs">
+              <Ionicons name="time-outline" size={16} color="#5F6368" />
+              <Text variant="body" color="textSecondary">
+                {format(startDate, 'EEEE', { locale: fr })} • {format(startDate, 'HH:mm', { locale: fr })} - {format(endDate, 'HH:mm', { locale: fr })}
+              </Text>
+            </Box>
+            <Box flexDirection="row" alignItems="center" gap="xs">
+              <Ionicons name="location-outline" size={16} color="#5F6368" />
+              <Text variant="body" color="textSecondary" numberOfLines={1}>
+                {event.details?.city || event.church?.city || 'Lieu à confirmer'}
+              </Text>
+            </Box>
+          </Box>
         </Box>
 
         <Box flexDirection="row" alignItems="center" gap="s" flexWrap="wrap" marginTop="s">
@@ -236,12 +354,33 @@ export default function EventDetailScreen() {
           {event.primary_language_flag && event.primary_language_name && (
             <Text variant="body" color="textSecondary">
               {event.primary_language_flag} {event.primary_language_name}
+              {event.translations && event.translations.length > 0 && (
+                <Text color="textTertiary">
+                  {' (Traduit en : '}
+                  {event.translations.map((t: any, index) => {
+                    // Handle various potential data structures safely
+                    const name = t.language_name || t.language?.name || t.language?.name_native || t.name;
+                    // Ensure flag is a string, fallback to empty string if missing
+                    const flag = t.language_flag || t.language?.flag || t.language?.flag_emoji || t.flag || '';
+
+                    if (!name) return null;
+
+                    return (
+                      <Text key={t.language_id || t.id || index}>
+                        {index > 0 ? ', ' : ''}
+                        {flag ? `${flag} ` : ''}{name}
+                      </Text>
+                    );
+                  })}
+                  {')'}
+                </Text>
+              )}
             </Text>
           )}
         </Box>
       </Box>
 
-      {/* Interested Count Badge */}
+      {/* Participants Count Badge */}
       {interestedCount > 0 && (
         <Box paddingHorizontal="m" marginBottom="s">
           <Box
@@ -250,48 +389,91 @@ export default function EventDetailScreen() {
             paddingVertical="s"
             borderRadius="m"
             alignSelf="flex-start"
+            flexDirection="row"
+            alignItems="center"
+            gap="xs"
           >
+            <Ionicons name="people" size={16} color="#FFFFFF" />
             <Text variant="caption" color="textInverse" fontWeight="600">
-              👥 {interestedCount} {interestedCount === 1 ? 'personne intéressée' : 'personnes intéressées'}
+              {interestedCount} {interestedCount === 1 ? 'participant' : 'participants'}
             </Text>
           </Box>
         </Box>
       )}
 
-      {/* Actions */}
-      <Box paddingHorizontal="m" gap="s" marginBottom="m">
-        {/* Interest Button - Full Width */}
-        <Button
+      {/* Actions - Google Maps iOS Style */}
+      <View style={buttonStyles.container}>
+        {/* Participation Button - Full Width Primary */}
+        <TouchableOpacity
+          style={[
+            buttonStyles.button,
+            isCancelled ? buttonStyles.buttonDisabled : (isInterested ? buttonStyles.buttonSecondary : buttonStyles.buttonPrimary),
+            toggleInterest.isPending && buttonStyles.buttonDisabled
+          ]}
           onPress={handleToggleInterest}
-          variant={isInterested ? "outline" : "primary"}
-          size="medium"
-          disabled={toggleInterest.isPending}
+          disabled={isCancelled || toggleInterest.isPending}
+          activeOpacity={isCancelled ? 1 : 0.8}
         >
-          {toggleInterest.isPending ? '⏳ ' : isInterested ? '✓ ' : '⭐ '}
-          {isInterested ? 'Ne plus suivre' : 'Ça m\'intéresse'}
-        </Button>
+          {isCancelled ? (
+            <Ionicons
+              name="close-circle"
+              size={20}
+              color="#9CA3AF"
+              style={buttonStyles.icon}
+            />
+          ) : toggleInterest.isPending ? (
+            <ActivityIndicator size="small" color={isInterested ? "#4285F4" : "#FFFFFF"} style={buttonStyles.icon} />
+          ) : (
+            <Ionicons
+              name={isInterested ? "checkmark-circle" : "person-add"}
+              size={20}
+              color={isInterested ? "#4285F4" : "#FFFFFF"}
+              style={buttonStyles.icon}
+            />
+          )}
+          <Text style={[buttonStyles.buttonText, isCancelled ? buttonStyles.buttonTextDisabled : (isInterested ? buttonStyles.buttonTextSecondary : buttonStyles.buttonTextPrimary)]}>
+            {isCancelled ? 'Événement annulé' : (isInterested ? 'Ne plus participer' : 'Je participe')}
+          </Text>
+        </TouchableOpacity>
 
         {/* Primary Actions Row */}
-        <Box flexDirection="row" gap="s">
-          <Box flex={1}>
-            <Button onPress={handleAddToCalendar} variant="primary" size="medium" disabled={isAddingToCalendar}>
-              {isAddingToCalendar ? '⏳' : '📅'} Ajouter au calendrier
-            </Button>
-          </Box>
-          <Box flex={1}>
-            <Button onPress={handleOpenMaps} variant="outline" size="medium">
-              🚗 Itinéraire
-            </Button>
-          </Box>
-        </Box>
+        <View style={buttonStyles.row}>
+          <TouchableOpacity
+            style={[buttonStyles.button, buttonStyles.buttonPrimary, buttonStyles.buttonHalf]}
+            onPress={handleAddToCalendar}
+            disabled={isAddingToCalendar}
+            activeOpacity={0.8}
+          >
+            {isAddingToCalendar ? (
+              <ActivityIndicator size="small" color="#FFFFFF" style={buttonStyles.icon} />
+            ) : (
+              <Ionicons name="calendar" size={20} color="#FFFFFF" style={buttonStyles.icon} />
+            )}
+            <Text style={buttonStyles.buttonTextPrimary}>Calendrier</Text>
+          </TouchableOpacity>
 
-        {/* Secondary Actions Row */}
+          <TouchableOpacity
+            style={[buttonStyles.button, buttonStyles.buttonSecondary, buttonStyles.buttonHalf]}
+            onPress={handleOpenMaps}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="navigate" size={20} color="#4285F4" style={buttonStyles.icon} />
+            <Text style={buttonStyles.buttonTextSecondary}>Itinéraire</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Registration Button */}
         {event.details?.registration_link && (
-          <Button onPress={handleRegister} variant="outline" size="medium">
-            📝 S'inscrire à l'événement
-          </Button>
+          <TouchableOpacity
+            style={[buttonStyles.button, buttonStyles.buttonSecondary]}
+            onPress={handleRegister}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="create-outline" size={20} color="#4285F4" style={buttonStyles.icon} />
+            <Text style={buttonStyles.buttonTextSecondary}>S'inscrire à l'événement</Text>
+          </TouchableOpacity>
         )}
-      </Box>
+      </View>
 
       {/* Description */}
       {event.details?.description && (
@@ -306,134 +488,168 @@ export default function EventDetailScreen() {
       )}
 
       {/* Organizer Contact */}
-      {(event.organizer_name || event.pastor_email) && (
+      {(event.organizer_name || event.pastor_email || event.pastor_first_name || event.pastor_last_name) && (
         <Card marginHorizontal="m" marginBottom="m">
           <Text variant="subtitle" marginBottom="m">
             Contact Organisateur
           </Text>
 
-          {event.organizer_name && (
-            <Box marginBottom="s">
-              <Text variant="caption" color="textSecondary">
-                Organisateur
-              </Text>
-              <Text variant="body">{event.organizer_name}</Text>
-            </Box>
-          )}
+          <Box gap="m">
+            {/* Organizer Name */}
+            {event.organizer_name && (
+              <Box flexDirection="row" gap="m">
+                <Ionicons name="business-outline" size={20} color="#5F6368" style={{ marginTop: 2 }} />
+                <Box flex={1}>
+                  <Text variant="body">{event.organizer_name}</Text>
+                  <Text variant="caption" color="textSecondary">
+                    Organisateur
+                  </Text>
+                </Box>
+              </Box>
+            )}
 
-          {(event.pastor_first_name || event.pastor_last_name) && (
-            <Box marginBottom="s">
-              <Text variant="caption" color="textSecondary">
-                Pasteur responsable
-              </Text>
-              <Text variant="body">
-                {event.pastor_first_name} {event.pastor_last_name}
-              </Text>
-            </Box>
-          )}
+            {/* Pastor */}
+            {(event.pastor_first_name || event.pastor_last_name) && (
+              <Box flexDirection="row" gap="m">
+                <Ionicons name="person-outline" size={20} color="#5F6368" style={{ marginTop: 2 }} />
+                <Box flex={1}>
+                  <Text variant="body">
+                    {event.pastor_first_name} {event.pastor_last_name}
+                  </Text>
+                  <Text variant="caption" color="textSecondary">
+                    Pasteur responsable
+                  </Text>
+                </Box>
+              </Box>
+            )}
 
-          {event.pastor_email && (
-            <Box>
-              <Text variant="caption" color="textSecondary">
-                Email
-              </Text>
-              <Text variant="body" color="primary" onPress={handleEmail}>
-                {event.pastor_email}
-              </Text>
-            </Box>
-          )}
+            {/* Email */}
+            {event.pastor_email && (
+              <Box flexDirection="row" gap="m">
+                <Ionicons name="mail-outline" size={20} color="#5F6368" style={{ marginTop: 2 }} />
+                <Box flex={1}>
+                  <Text variant="body" color="primary" onPress={handleEmail}>
+                    {event.pastor_email}
+                  </Text>
+                </Box>
+              </Box>
+            )}
+          </Box>
         </Card>
       )}
 
-      {/* Details */}
+      {/* Details - Google Maps Style */}
       <Card marginHorizontal="m" marginBottom="m">
         <Text variant="subtitle" marginBottom="m">
           Détails de l'événement
         </Text>
 
-        {event.details?.speaker_name && (
-          <Box marginBottom="s">
-            <Text variant="caption" color="textSecondary">
-              Intervenant
-            </Text>
-            <Text variant="body">{event.details.speaker_name}</Text>
-          </Box>
-        )}
+        <Box gap="m">
+          {/* Speaker */}
+          {event.details?.speaker_name && (
+            <Box flexDirection="row" gap="m">
+              <Ionicons name="mic-outline" size={20} color="#5F6368" style={{ marginTop: 2 }} />
+              <Box flex={1}>
+                <Text variant="body">{event.details.speaker_name}</Text>
+                <Text variant="caption" color="textSecondary">
+                  Intervenant
+                </Text>
+              </Box>
+            </Box>
+          )}
 
-        {event.details?.max_seats && (
-          <Box marginBottom="s">
-            <Text variant="caption" color="textSecondary">
-              Places disponibles
-            </Text>
-            <Text variant="body">{event.details.max_seats} personnes</Text>
-          </Box>
-        )}
+          {/* Seats */}
+          {event.details?.max_seats && (
+            <Box flexDirection="row" gap="m">
+              <Ionicons name="ticket-outline" size={20} color="#5F6368" style={{ marginTop: 2 }} />
+              <Box flex={1}>
+                <Text variant="body">{event.details.max_seats} places</Text>
+                <Text variant="caption" color="textSecondary">
+                  Places disponibles
+                </Text>
+              </Box>
+            </Box>
+          )}
 
-        {event.details?.address && (
-          <Box>
-            <Text variant="caption" color="textSecondary">
-              Lieu
-            </Text>
-            <Text variant="body">
-              {event.details.address}
-              {'\n'}
-              {event.details.postal_code} {event.details.city}
-            </Text>
-          </Box>
-        )}
+          {/* Location & Map */}
+          {event.details?.address && (
+            <Box flexDirection="row" gap="m">
+              <Ionicons name="location-outline" size={20} color="#5F6368" style={{ marginTop: 2 }} />
+              <Box flex={1}>
+                <Text variant="body">
+                  {event.details.address}
+                  {/* Only show postal code and city if not already in address */}
+                  {event.details.postal_code && event.details.city &&
+                   !event.details.address?.includes(event.details.postal_code) && (
+                    <>
+                      {'\n'}
+                      {event.details.postal_code} {event.details.city}
+                    </>
+                  )}
+                </Text>
+
+                {/* Mini Map */}
+                <Box
+                  height={150}
+                  borderRadius="m"
+                  overflow="hidden"
+                  marginTop="m"
+                  borderWidth={1}
+                  borderColor="border"
+                >
+                  <MapView
+                    provider={PROVIDER_GOOGLE}
+                    style={{ flex: 1 }}
+                    initialRegion={{
+                      latitude: event.latitude,
+                      longitude: event.longitude,
+                      latitudeDelta: 0.005,
+                      longitudeDelta: 0.005,
+                    }}
+                    liteMode={Platform.OS === 'android'}
+                    scrollEnabled={false}
+                    zoomEnabled={false}
+                    pitchEnabled={false}
+                    rotateEnabled={false}
+                    onPress={handleOpenMaps}
+                  >
+                    <Marker
+                      coordinate={{ latitude: event.latitude, longitude: event.longitude }}
+                      pinColor="#EA4335"
+                    />
+                  </MapView>
+                </Box>
+              </Box>
+            </Box>
+          )}
+        </Box>
       </Card>
 
-      {/* Church Info */}
+      {/* Church Info - Link Only */}
       {event.church && (
         <Card marginHorizontal="m" marginBottom="m">
-          <Text variant="subtitle" marginBottom="m">
-            Organisé par
-          </Text>
-
-          <Text variant="body" fontWeight="600" marginBottom="xs">
-            {event.church.church_name}
-          </Text>
-
-          {event.church.denomination_name && (
-            <Text variant="caption" color="primary" marginBottom="s">
-              {event.church.denomination_name}
-            </Text>
-          )}
-
-          {(event.church.details?.pastor_first_name || event.church.details?.pastor_last_name) && (
-            <Box marginBottom="s">
-              <Text variant="caption" color="textSecondary">
-                Pasteur
-              </Text>
-              <Text variant="body">
-                {event.church.details.pastor_first_name} {event.church.details.pastor_last_name}
-              </Text>
+          <TouchableOpacity
+            onPress={() => router.push(`/church/${event.church!.id}`)}
+            activeOpacity={0.7}
+          >
+            <Box flexDirection="row" justifyContent="space-between" alignItems="center">
+              <Box flex={1}>
+                <Text variant="subtitle" marginBottom="xs">Organisé par</Text>
+                <Text variant="body" fontWeight="600" color="primary">
+                  {event.church.church_name}
+                </Text>
+                {event.church.denomination_name && (
+                  <Text variant="caption" color="textSecondary">
+                    {event.church.denomination_name}
+                  </Text>
+                )}
+                <Text variant="caption" color="textTertiary" marginTop="s">
+                  Voir le profil complet de l'église, ses horaires et son adresse.
+                </Text>
+              </Box>
+              <Ionicons name="chevron-forward" size={24} color="#4285F4" />
             </Box>
-          )}
-
-          {event.church.details?.phone && (
-            <Box marginBottom="s">
-              <Text variant="caption" color="textSecondary">
-                Téléphone de l'église
-              </Text>
-              <Text variant="body" color="primary" onPress={handleChurchPhone}>
-                {event.church.details.phone}
-              </Text>
-            </Box>
-          )}
-
-          {event.church.details?.address && (
-            <Box>
-              <Text variant="caption" color="textSecondary">
-                Adresse de l'église
-              </Text>
-              <Text variant="body">
-                {event.church.details.address}
-                {'\n'}
-                {event.church.details.postal_code} {event.church.details.city}
-              </Text>
-            </Box>
-          )}
+          </TouchableOpacity>
         </Card>
       )}
 
@@ -455,40 +671,7 @@ export default function EventDetailScreen() {
         </Card>
       )}
 
-      {/* Church Schedules */}
-      {event.church?.schedules && event.church.schedules.length > 0 && (
-        <Card marginHorizontal="m" marginBottom="m">
-          <Text variant="subtitle" marginBottom="m">
-            Horaires de l'église
-          </Text>
-          {event.church.schedules.slice(0, 3).map((schedule, index) => (
-            <Box
-              key={index}
-              flexDirection="row"
-              justifyContent="space-between"
-              marginBottom="s"
-              paddingBottom="s"
-              borderBottomWidth={index < Math.min(event.church!.schedules.length, 3) - 1 ? 1 : 0}
-              borderBottomColor="border"
-            >
-              <Box>
-                <Text variant="body">{schedule.day_of_week}</Text>
-                <Text variant="caption" color="textSecondary">
-                  {schedule.activity_type}
-                </Text>
-              </Box>
-              <Text variant="body" fontWeight="600">
-                {schedule.start_time.slice(0, 5)}
-              </Text>
-            </Box>
-          ))}
-          {event.church.schedules.length > 3 && (
-            <Text variant="caption" color="textSecondary" marginTop="s">
-              + {event.church.schedules.length - 3} autres horaires
-            </Text>
-          )}
-        </Card>
-      )}
+
 
       {/* YouTube Live */}
       {event.details?.youtube_live && (
@@ -496,13 +679,16 @@ export default function EventDetailScreen() {
           <Text variant="subtitle" marginBottom="m">
             Diffusion en direct
           </Text>
-          <Text
-            variant="body"
-            color="primary"
+          <TouchableOpacity
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
             onPress={() => Linking.openURL(event.details!.youtube_live!)}
+            activeOpacity={0.7}
           >
-            📺 Regarder sur YouTube
-          </Text>
+            <Ionicons name="logo-youtube" size={20} color="#4285F4" />
+            <Text variant="body" color="primary">
+              Regarder sur YouTube
+            </Text>
+          </TouchableOpacity>
         </Card>
       )}
     </ScrollView>
@@ -520,5 +706,67 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: 250,
+  },
+});
+
+const buttonStyles = StyleSheet.create({
+  container: {
+    paddingHorizontal: 16,
+    gap: 10,
+    marginBottom: 16,
+  },
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 48,
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  buttonPrimary: {
+    backgroundColor: '#4285F4',
+  },
+  buttonSecondary: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#DADCE0',
+  },
+  buttonDisabled: {
+    backgroundColor: '#F1F3F4',
+    opacity: 0.8,
+  },
+  buttonHalf: {
+    flex: 1,
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  icon: {
+    marginRight: 8,
+  },
+  buttonText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  buttonTextPrimary: {
+    color: '#FFFFFF',
+  },
+  buttonTextSecondary: {
+    color: '#4285F4',
+  },
+  buttonTextDisabled: {
+    color: '#9CA3AF',
   },
 });

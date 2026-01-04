@@ -3,8 +3,8 @@
  * Google Maps style with bottom sheet
  */
 
-import React, { useRef, useState, useCallback, useMemo } from 'react';
-import { StyleSheet, View, ActivityIndicator, Alert } from 'react-native';
+import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
+import { StyleSheet, View, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import BottomSheet from '@gorhom/bottom-sheet';
@@ -17,16 +17,19 @@ import SearchBar from '@/components/map/SearchBar';
 import MyLocationButton from '@/components/map/MyLocationButton';
 import RefreshButton from '@/components/map/RefreshButton';
 import MapTypeToggle from '@/components/map/MapTypeToggle';
+import MapTypeModal from '@/components/map/MapTypeModal';
 import { Box, Text } from '@/components/ui';
 import { useLocation } from '@/hooks/useLocation';
 import { useChurches, useEvents } from '@/hooks/query';
 import { getBoundingBox } from '@/utils/geo';
 import { MAP_CONFIG } from '@/constants/config';
+import { useToast } from '@/contexts/ToastContext';
 import type { Church, Event } from '@/types';
 
 export default function MapScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const toast = useToast();
   const bottomSheetRef = useRef<BottomSheet>(null);
   const mapRef = useRef<MapView>(null);
 
@@ -45,11 +48,16 @@ export default function MapScreen() {
   const [showChurches, setShowChurches] = useState(true);
   const [showEvents, setShowEvents] = useState(true);
 
-  // Map type (standard, satellite, hybrid)
-  const [mapType, setMapType] = useState<'standard' | 'satellite' | 'hybrid'>('standard');
+  // Map type (standard, satellite)
+  const [mapType, setMapType] = useState<'standard' | 'satellite'>('standard');
+
+  // Map type modal visibility
+  const [showMapTypeModal, setShowMapTypeModal] = useState(false);
 
   // Refresh state
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
+  const [showRefreshBadge, setShowRefreshBadge] = useState(false);
 
   // Calculate query params
   const queryParams = useMemo(() => {
@@ -69,13 +77,21 @@ export default function MapScreen() {
   const churches = churchesData?.churches || [];
   const events = eventsData?.events || [];
 
-  // Debug: Log when data changes
-  React.useEffect(() => {
-    console.log('📊 DATA UPDATE: Events count:', events.length);
-    if (events.length > 0) {
-      console.log('📊 DATA UPDATE: First event:', events[0]?.title, 'Updated:', events[0]?.updated_at);
-    }
-  }, [events]);
+  // Check if refresh is needed (every minute)
+  useEffect(() => {
+    const checkRefreshNeeded = () => {
+      const minutesSinceRefresh = (Date.now() - lastRefreshTime.getTime()) / (1000 * 60);
+      setShowRefreshBadge(minutesSinceRefresh > 5);
+    };
+
+    // Check immediately
+    checkRefreshNeeded();
+
+    // Check every minute
+    const interval = setInterval(checkRefreshNeeded, 60000);
+
+    return () => clearInterval(interval);
+  }, [lastRefreshTime]);
 
   // Handle map region change (debounced in hook)
   const handleRegionChange = useCallback((region: Region) => {
@@ -108,11 +124,7 @@ export default function MapScreen() {
   // Handle "My Location" button press
   const handleMyLocation = useCallback(() => {
     if (!userLocation) {
-      Alert.alert(
-        'Position non disponible',
-        'Impossible de récupérer votre position actuelle.',
-        [{ text: 'OK' }]
-      );
+      toast.showWarning('Impossible de récupérer votre position actuelle');
       return;
     }
 
@@ -126,24 +138,26 @@ export default function MapScreen() {
     // Animate map to user location
     mapRef.current?.animateToRegion(newRegion, 500);
     setMapRegion(newRegion);
-  }, [userLocation]);
+  }, [userLocation, toast]);
 
-  // Handle map type toggle
+  // Handle map type toggle - open modal
   const handleToggleMapType = useCallback(() => {
-    setMapType(prev => {
-      if (prev === 'standard') return 'satellite';
-      if (prev === 'satellite') return 'hybrid';
-      return 'standard';
-    });
+    setShowMapTypeModal(true);
+  }, []);
+
+  // Handle map type selection from modal
+  const handleSelectMapType = useCallback((type: 'standard' | 'satellite') => {
+    setMapType(type);
   }, []);
 
   // Handle refresh button
   const handleRefresh = useCallback(async () => {
-    console.log('🔄 REFRESH: Début du refresh...');
     setIsRefreshing(true);
+    setLastRefreshTime(new Date());
+    setShowRefreshBadge(false);
+
     try {
       // Invalider toutes les queries (listes ET détails)
-      console.log('🔄 REFRESH: Invalidation de toutes les queries...');
       await Promise.all([
         // Listes
         queryClient.invalidateQueries({ queryKey: ['churches'], exact: false }),
@@ -154,19 +168,20 @@ export default function MapScreen() {
       ]);
 
       // Forcer le refetch des queries actives sur cette page
-      console.log('🔄 REFRESH: Refetch direct des données...');
       await Promise.all([
         refetchChurches(),
         refetchEvents()
       ]);
-
-      console.log('✅ REFRESH: Terminé!');
+      toast.showSuccess('Données actualisées');
     } catch (error) {
-      console.error('❌ REFRESH: Erreur:', error);
+      toast.showError('Impossible d\'actualiser les données', {
+        label: 'Réessayer',
+        onPress: handleRefresh,
+      });
     } finally {
       setIsRefreshing(false);
     }
-  }, [queryClient, refetchChurches, refetchEvents]);
+  }, [queryClient, refetchChurches, refetchEvents, toast]);
 
   // Show loading state while getting location
   if (locationLoading) {
@@ -201,10 +216,18 @@ export default function MapScreen() {
       <MyLocationButton onPress={handleMyLocation} />
 
       {/* Refresh Button */}
-      <RefreshButton onPress={handleRefresh} loading={isRefreshing} />
+      <RefreshButton onPress={handleRefresh} loading={isRefreshing} showBadge={showRefreshBadge} />
 
       {/* Map Type Toggle */}
-      <MapTypeToggle mapType={mapType} onToggle={handleToggleMapType} />
+      <MapTypeToggle onPress={handleToggleMapType} />
+
+      {/* Map Type Modal */}
+      <MapTypeModal
+        visible={showMapTypeModal}
+        currentMapType={mapType}
+        onClose={() => setShowMapTypeModal(false)}
+        onSelectMapType={handleSelectMapType}
+      />
 
       {/* Loading indicator */}
       {(churchesLoading || eventsLoading) && (

@@ -1,30 +1,53 @@
 /**
  * Push Notification Service
  * Gère les notifications push via Expo Notifications
+ * Compatible avec Expo Go (mode dégradé) et Development Build
  */
 
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '@/lib/axios';
+import Constants from 'expo-constants';
+
+// Import conditionnel pour éviter l'erreur dans Expo Go
+let Notifications: any = null;
+let Device: any = null;
+
+// Détecter si on est dans Expo Go
+const isExpoGo = Constants.appOwnership === 'expo';
+
+// Charger les modules seulement si pas dans Expo Go
+if (!isExpoGo) {
+  try {
+    Notifications = require('expo-notifications');
+    Device = require('expo-device');
+
+    // Configuration des notifications (seulement en dev build)
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+      }),
+    });
+  } catch (error) {
+    console.warn('Push notifications not available in Expo Go');
+  }
+}
 
 const DEVICE_ID_KEY = '@light_church:device_id';
 const PUSH_TOKEN_KEY = '@light_church:push_token';
-
-// Configuration des notifications
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
 
 /**
  * Demande la permission pour les notifications push
  */
 export async function requestPushPermissions(): Promise<boolean> {
+  // Dans Expo Go, retourner false (notifications non disponibles)
+  if (isExpoGo || !Notifications || !Device) {
+    console.warn('Push notifications not available in Expo Go');
+    return false;
+  }
+
   if (!Device.isDevice) {
     return false;
   }
@@ -46,13 +69,21 @@ export async function requestPushPermissions(): Promise<boolean> {
 
 /**
  * Obtient le token push Expo et l'enregistre sur le serveur
+ * Dans Expo Go, crée seulement un device_id sans notifications
  */
 export async function registerForPushNotifications(): Promise<string | null> {
   try {
+    // Dans Expo Go, juste créer un device_id
+    if (isExpoGo || !Notifications) {
+      console.warn('Expo Go detected: creating device_id without push notifications');
+      return await getDeviceId();
+    }
+
     // Vérifier les permissions
     const hasPermission = await requestPushPermissions();
     if (!hasPermission) {
-      return null;
+      // Créer quand même un device_id pour tracker l'intérêt
+      return await getDeviceId();
     }
 
     // Obtenir le token Expo
@@ -81,7 +112,8 @@ export async function registerForPushNotifications(): Promise<string | null> {
     return deviceId;
   } catch (error) {
     console.error('Error registering for push notifications:', error);
-    return null;
+    // En cas d'erreur, au moins créer un device_id
+    return await getDeviceId();
   }
 }
 
@@ -110,8 +142,17 @@ export async function getDeviceId(): Promise<string | null> {
  * Vérifie si l'utilisateur a accepté les notifications
  */
 export async function hasNotificationPermission(): Promise<boolean> {
-  const { status } = await Notifications.getPermissionsAsync();
-  return status === 'granted';
+  if (isExpoGo || !Notifications) {
+    return false;
+  }
+
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    return status === 'granted';
+  } catch (error) {
+    console.warn('Could not check notification permission:', error);
+    return false;
+  }
 }
 
 /**
@@ -119,13 +160,21 @@ export async function hasNotificationPermission(): Promise<boolean> {
  * Requis pour Android 8.0+
  */
 export async function setupAndroidNotificationChannel() {
+  if (isExpoGo || !Notifications) {
+    return;
+  }
+
   if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('default', {
-      name: 'default',
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#4285F4',
-      sound: 'default',
-    });
+    try {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#4285F4',
+        sound: 'default',
+      });
+    } catch (error) {
+      console.warn('Could not setup Android notification channel:', error);
+    }
   }
 }

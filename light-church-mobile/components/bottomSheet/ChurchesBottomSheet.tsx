@@ -3,13 +3,15 @@
  * Google Maps style with 3 snap points
  */
 
-import React, { useMemo, useCallback, forwardRef, useState, useEffect } from 'react';
-import { StyleSheet } from 'react-native';
+import React, { useMemo, useCallback, forwardRef, useState, useDeferredValue } from 'react';
+import { StyleSheet, ActivityIndicator } from 'react-native';
 import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
 import { Box, Text } from '@/components/ui';
 import ChurchCard from '@/components/cards/ChurchCard';
 import EventCard from '@/components/cards/EventCard';
-import FilterChips from '@/components/map/FilterChips';
+import FilterAndSortChips, { SortType } from '@/components/map/FilterAndSortChips';
+import SearchInput from './SearchInput';
+import { useDebounce } from '@/hooks/useDebounce';
 import type { Church, Event } from '@/types';
 
 interface ChurchesBottomSheetProps {
@@ -30,28 +32,52 @@ const ChurchesBottomSheet = forwardRef<BottomSheet, ChurchesBottomSheetProps>(
     const [filterChurches, setFilterChurches] = useState(true);
     const [filterEvents, setFilterEvents] = useState(true);
 
-    // Timer global pour le décompte (optimisation performance mobile)
-    const [currentTime, setCurrentTime] = useState(new Date());
+    // Sort state
+    const [sortBy, setSortBy] = useState<SortType>('distance');
 
-    // Mise à jour du temps toutes les 60 secondes
-    useEffect(() => {
-      const timer = setInterval(() => {
-        setCurrentTime(new Date());
-      }, 60000); // Update every 60 seconds
+    // Search query state
+    const [searchQuery, setSearchQuery] = useState('');
+    const debouncedSearchQuery = useDebounce(searchQuery, 300); // Google Maps style: 300ms debounce
 
-      return () => clearInterval(timer);
-    }, []);
+    // Deferred value for non-blocking filtering (React 18+)
+    const deferredSearchQuery = useDeferredValue(debouncedSearchQuery);
 
-    // Toggle filters
+    // Check if filtering is in progress (UI remains responsive)
+    const isFiltering = deferredSearchQuery !== debouncedSearchQuery;
+
+    // Toggle filters with auto-adjustment
     const handleToggleChurches = useCallback(() => {
-      setFilterChurches(prev => !prev);
-    }, []);
+      setFilterChurches(prev => {
+        const newValue = !prev;
+
+        // If enabling churches while in date sort, switch to distance sort
+        // Because date sorting doesn't make sense for churches
+        if (newValue && sortBy === 'date') {
+          setSortBy('distance');
+        }
+
+        return newValue;
+      });
+    }, [sortBy]);
 
     const handleToggleEvents = useCallback(() => {
       setFilterEvents(prev => !prev);
     }, []);
 
-    // Combine and filter data based on internal filters
+    // Handle sort change with auto-adjustment
+    const handleSortChange = useCallback((newSortType: SortType) => {
+      setSortBy(newSortType);
+
+      // Auto-adjust filters when switching to date sort
+      // "Les plus récents" only makes sense for events, not churches
+      if (newSortType === 'date') {
+        setFilterChurches(false); // Disable churches
+        setFilterEvents(true);    // Enable events
+      }
+    }, []);
+
+    // Combine and filter data based on internal filters + search query
+    // Using deferredSearchQuery for non-blocking filtering
     const data = useMemo(() => {
       const items: Array<{ type: 'church' | 'event'; data: Church | Event }> = [];
 
@@ -64,25 +90,69 @@ const ChurchesBottomSheet = forwardRef<BottomSheet, ChurchesBottomSheetProps>(
         events.forEach(event => items.push({ type: 'event', data: event }));
       }
 
-      // Sort by distance if available
-      return items.sort((a, b) => {
-        const distA = 'distance_km' in a.data ? a.data.distance_km : Infinity;
-        const distB = 'distance_km' in b.data ? b.data.distance_km : Infinity;
-        return (distA || Infinity) - (distB || Infinity);
+      // Apply search filter (Google Maps style: simple string matching)
+      // Using deferredSearchQuery keeps UI responsive during filtering
+      let filteredItems = items;
+      if (deferredSearchQuery.trim()) {
+        const query = deferredSearchQuery.toLowerCase().trim();
+
+        filteredItems = items.filter(item => {
+          if (item.type === 'church') {
+            const church = item.data as Church;
+            return (
+              church.church_name?.toLowerCase().includes(query) ||
+              church.denomination_name?.toLowerCase().includes(query) ||
+              church.city?.toLowerCase().includes(query)
+            );
+          } else {
+            const event = item.data as Event;
+            return (
+              event.title?.toLowerCase().includes(query) ||
+              event.church_name?.toLowerCase().includes(query) ||
+              event.city?.toLowerCase().includes(query)
+            );
+          }
+        });
+      }
+
+      // Sort based on selected sort type
+      return filteredItems.sort((a, b) => {
+        if (sortBy === 'distance') {
+          // Sort by distance (closest first)
+          const distA = 'distance_km' in a.data ? a.data.distance_km : Infinity;
+          const distB = 'distance_km' in b.data ? b.data.distance_km : Infinity;
+          return (distA || Infinity) - (distB || Infinity);
+        } else {
+          // Sort by creation date (newest first)
+          const dateA = new Date(a.data.created_at || 0).getTime();
+          const dateB = new Date(b.data.created_at || 0).getTime();
+          return dateB - dateA; // Newest first
+        }
       });
-    }, [churches, events, initialShowChurches, initialShowEvents, filterChurches, filterEvents]);
+    }, [churches, events, initialShowChurches, initialShowEvents, filterChurches, filterEvents, deferredSearchQuery, sortBy]);
 
     const renderItem = useCallback(({ item }: { item: typeof data[0] }) => {
       if (item.type === 'church') {
         return <ChurchCard church={item.data as Church} onPress={() => onChurchPress(item.data as Church)} />;
       } else {
-        return <EventCard event={item.data as Event} onPress={() => onEventPress(item.data as Event)} currentTime={currentTime} />;
+        return <EventCard event={item.data as Event} onPress={() => onEventPress(item.data as Event)} />;
       }
-    }, [onChurchPress, onEventPress, currentTime]);
+    }, [onChurchPress, onEventPress]);
 
     const keyExtractor = useCallback((item: typeof data[0]) => {
       return `${item.type}-${item.data.id}`;
     }, []);
+
+    // Calculate total items before search filter (for conditional search bar display)
+    const totalItems = useMemo(() => {
+      let count = 0;
+      if (initialShowChurches && filterChurches) count += churches.length;
+      if (initialShowEvents && filterEvents) count += events.length;
+      return count;
+    }, [churches.length, events.length, initialShowChurches, initialShowEvents, filterChurches, filterEvents]);
+
+    // Show search bar only if there are more than 15 results (Google Maps style)
+    const showSearchBar = totalItems > 15;
 
     return (
       <BottomSheet
@@ -106,14 +176,44 @@ const ChurchesBottomSheet = forwardRef<BottomSheet, ChurchesBottomSheetProps>(
           </Text>
         </Box>
 
-        {/* Filter Chips */}
-        <FilterChips
+        {/* Search Input (Google Maps style - only if >15 results) */}
+        {showSearchBar && (
+          <Box>
+            <SearchInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Filtrer les résultats..."
+              resultCount={deferredSearchQuery.trim() ? data.length : undefined}
+            />
+            {/* Loading indicator during non-blocking filter */}
+            {isFiltering && (
+              <Box
+                position="absolute"
+                right={16}
+                top={20}
+                flexDirection="row"
+                alignItems="center"
+                gap="xs"
+              >
+                <ActivityIndicator size="small" color="#4285F4" />
+                <Text variant="caption" color="textSecondary">
+                  Filtrage...
+                </Text>
+              </Box>
+            )}
+          </Box>
+        )}
+
+        {/* Filter & Sort Chips - Google Maps iOS Style (Horizontal Scroll) */}
+        <FilterAndSortChips
           showChurches={filterChurches}
           showEvents={filterEvents}
           churchesCount={churches.length}
           eventsCount={events.length}
           onToggleChurches={handleToggleChurches}
           onToggleEvents={handleToggleEvents}
+          sortBy={sortBy}
+          onSortChange={handleSortChange}
         />
 
         {/* Results List */}

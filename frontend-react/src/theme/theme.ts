@@ -5,31 +5,31 @@ const theme = createTheme({
   palette: {
     mode: 'dark',
     primary: {
-      main: '#2563EB', // Vibrant Blue
-      light: '#60A5FA',
-      dark: '#1E40AF',
-      contrastText: '#FFFFFF',
+      main: '#4285F4', // Google Blue
+      light: '#E8F0FE',
+      dark: '#3367D6',
+      contrastText: '#ffffff',
     },
     secondary: {
-      main: '#8B5CF6', // Purple for spiritual touch
-      light: '#A78BFA',
-      dark: '#6D28D9',
-      contrastText: '#FFFFFF',
+      main: '#EA4335', // Google Red
+      light: '#FCE8E6',
+      dark: '#C5221F',
+      contrastText: '#ffffff',
     },
     error: {
-      main: '#EF4444',
-      light: '#F87171',
-      dark: '#DC2626',
+      main: '#EA4335', // Google Red (same as secondary for consistency)
+      light: '#FCE8E6',
+      dark: '#C5221F',
     },
     warning: {
-      main: '#F59E0B',
-      light: '#FCD34D',
-      dark: '#D97706',
+      main: '#FBBC04', // Google Yellow
+      light: '#FEF7E0',
+      dark: '#F9AB00',
     },
     success: {
-      main: '#10B981',
-      light: '#34D399',
-      dark: '#059669',
+      main: '#34A853', // Google Green
+      light: '#E6F4EA',
+      dark: '#188038',
     },
     background: {
       default: '#0F172A', // Deep dark blue/slate

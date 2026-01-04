@@ -68,10 +68,10 @@ export function useToggleEventInterest(eventId: number) {
 
       let response;
       if (isCurrentlyInterested) {
-        // DELETE requires data in config object
+        // DELETE requires device_id in query params (not body)
         response = await api.delete<EventInterestResponse>(
           `/public/events/${eventId}/interest`,
-          { data: { device_id: deviceId } }
+          { params: { device_id: deviceId } }
         );
       } else {
         // POST sends data directly
@@ -89,6 +89,8 @@ export function useToggleEventInterest(eventId: number) {
       queryClient.invalidateQueries({ queryKey: ['event-interest-count', eventId] });
       queryClient.invalidateQueries({ queryKey: ['event-detail', eventId] });
       queryClient.invalidateQueries({ queryKey: ['events'] });
+      // IMPORTANT: Invalider aussi interestedEvents pour mettre à jour l'onglet "Enregistrés"
+      queryClient.invalidateQueries({ queryKey: ['interestedEvents'] });
     },
   });
 }

@@ -10,26 +10,36 @@ import { Ionicons } from '@expo/vector-icons';
 interface RefreshButtonProps {
   onPress: () => void;
   loading?: boolean;
+  showBadge?: boolean;
 }
 
-export default function RefreshButton({ onPress, loading = false }: RefreshButtonProps) {
+export default function RefreshButton({ onPress, loading = false, showBadge = false }: RefreshButtonProps) {
   const spinValue = useRef(new Animated.Value(0)).current;
+  const animationRef = useRef<Animated.CompositeAnimation | null>(null);
 
   // Start rotation animation when loading
   React.useEffect(() => {
     if (loading) {
       spinValue.setValue(0);
-      Animated.loop(
+      animationRef.current = Animated.loop(
         Animated.timing(spinValue, {
           toValue: 1,
           duration: 1000,
           easing: Easing.linear,
           useNativeDriver: true,
         })
-      ).start();
+      );
+      animationRef.current.start();
     } else {
       spinValue.stopAnimation();
+      animationRef.current?.stop();
     }
+
+    // Cleanup: stop animation on unmount to prevent memory leak
+    return () => {
+      animationRef.current?.stop();
+      spinValue.stopAnimation();
+    };
   }, [loading, spinValue]);
 
   const spin = spinValue.interpolate({
@@ -51,6 +61,11 @@ export default function RefreshButton({ onPress, loading = false }: RefreshButto
           color="#4285F4"
         />
       </Animated.View>
+
+      {/* Badge rouge - Google Maps style */}
+      {showBadge && !loading && (
+        <Animated.View style={styles.badge} />
+      )}
     </TouchableOpacity>
   );
 }
@@ -72,5 +87,16 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
     zIndex: 1000,
+  },
+  badge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#EA4335',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
 });

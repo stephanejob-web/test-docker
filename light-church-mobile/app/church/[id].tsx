@@ -3,15 +3,19 @@
  */
 
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, ActivityIndicator, Linking, RefreshControl } from 'react-native';
+import { ScrollView, StyleSheet, ActivityIndicator, Linking, RefreshControl, TouchableOpacity, View, Platform } from 'react-native';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useLocalSearchParams } from 'expo-router';
-import { Box, Text, Button, Card } from '@/components/ui';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { Box, Text, Card } from '@/components/ui';
 import { useChurchDetail } from '@/hooks/query';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 export default function ChurchDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const insets = useSafeAreaInsets();
   const { data, isLoading, error, refetch } = useChurchDetail(Number(id));
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -41,8 +45,6 @@ export default function ChurchDetailScreen() {
     setIsRefreshing(true);
     try {
       await refetch();
-    } catch (error) {
-      console.error('Erreur refresh:', error);
     } finally {
       setIsRefreshing(false);
     }
@@ -71,7 +73,7 @@ export default function ChurchDetailScreen() {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 40 }]}
       refreshControl={
         <RefreshControl
           refreshing={isRefreshing}
@@ -82,104 +84,176 @@ export default function ChurchDetailScreen() {
       }
     >
       {/* Header */}
-      <Box padding="m">
-        <Text variant="header" marginBottom="s">
-          {church.church_name}
-        </Text>
-        <Text variant="body" color="primary">
-          {church.denomination_name}
-        </Text>
-      </Box>
-
-      {/* Actions */}
-      <Box flexDirection="row" paddingHorizontal="m" gap="s" marginBottom="m">
-        <Box flex={1}>
-          <Button onPress={handleOpenMaps} variant="primary" size="medium">
-            🚗 Itinéraire
-          </Button>
+      <Box padding="m" flexDirection="row" alignItems="center">
+        <Box
+          width={64}
+          height={64}
+          borderRadius="l"
+          backgroundColor="card"
+          justifyContent="center"
+          alignItems="center"
+          marginRight="m"
+          borderWidth={1}
+          borderColor="border"
+        >
+          <Ionicons name="business" size={32} color="#4285F4" />
         </Box>
-        {church.details?.phone && (
-          <Box flex={1}>
-            <Button onPress={handleCall} variant="outline" size="medium">
-              📞 Appeler
-            </Button>
-          </Box>
-        )}
+        <Box flex={1}>
+          <Text variant="header" marginBottom="xs">
+            {church.church_name}
+          </Text>
+          <Text variant="body" color="primary" fontWeight="500">
+            {church.denomination_name}
+          </Text>
+        </Box>
       </Box>
 
-      {/* Info Card */}
+      {/* Actions - Google Maps iOS Style */}
+      <View style={buttonStyles.container}>
+        <View style={buttonStyles.row}>
+          <TouchableOpacity
+            style={[buttonStyles.button, buttonStyles.buttonPrimary, buttonStyles.buttonHalf]}
+            onPress={handleOpenMaps}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="navigate" size={20} color="#FFFFFF" style={buttonStyles.icon} />
+            <Text style={buttonStyles.buttonTextPrimary}>Itinéraire</Text>
+          </TouchableOpacity>
+
+          {church.details?.phone && (
+            <TouchableOpacity
+              style={[buttonStyles.button, buttonStyles.buttonSecondary, buttonStyles.buttonHalf]}
+              onPress={handleCall}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="call-outline" size={20} color="#4285F4" style={buttonStyles.icon} />
+              <Text style={buttonStyles.buttonTextSecondary}>Appeler</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {/* Info Card - Google Maps Style */}
       <Card marginHorizontal="m" marginBottom="m">
         <Text variant="subtitle" marginBottom="m">
           Informations
         </Text>
 
-        {(church.details?.pastor_first_name || church.details?.pastor_last_name) && (
-          <Box marginBottom="s">
-            <Text variant="caption" color="textSecondary">
-              Pasteur
-            </Text>
-            <Text variant="body">
-              {church.details.pastor_first_name} {church.details.pastor_last_name}
-            </Text>
-          </Box>
-        )}
+        <Box gap="m">
+          {/* Pastor */}
+          {(church.details?.pastor_first_name || church.details?.pastor_last_name) && (
+            <Box flexDirection="row" gap="m">
+              <Ionicons name="person-outline" size={20} color="#5F6368" style={{ marginTop: 2 }} />
+              <Box flex={1}>
+                <Text variant="body">
+                  {church.details.pastor_first_name} {church.details.pastor_last_name}
+                </Text>
+                <Text variant="caption" color="textSecondary">
+                  Pasteur
+                </Text>
+              </Box>
+            </Box>
+          )}
 
-        {church.email && (
-          <Box marginBottom="s">
-            <Text variant="caption" color="textSecondary">
-              Email
-            </Text>
-            <Text variant="body" color="primary" onPress={handleEmail}>
-              {church.email}
-            </Text>
-          </Box>
-        )}
+          {/* Address */}
+          {church.details?.address && (
+            <Box flexDirection="row" gap="m">
+              <Ionicons name="location-outline" size={20} color="#5F6368" style={{ marginTop: 2 }} />
+              <Box flex={1}>
+                <Text variant="body">
+                  {church.details.address}
+                  {'\n'}
+                  {church.details.postal_code} {church.details.city}
+                </Text>
 
-        {church.details?.address && (
-          <Box marginBottom="s">
-            <Text variant="caption" color="textSecondary">
-              Adresse
-            </Text>
-            <Text variant="body">
-              {church.details.address}
-              {'\n'}
-              {church.details.postal_code} {church.details.city}
-            </Text>
-          </Box>
-        )}
+                {/* Mini Map */}
+                <Box
+                  height={150}
+                  borderRadius="m"
+                  overflow="hidden"
+                  marginTop="m"
+                  borderWidth={1}
+                  borderColor="border"
+                >
+                  <MapView
+                    provider={PROVIDER_GOOGLE}
+                    style={{ flex: 1 }}
+                    initialRegion={{
+                      latitude: church.latitude,
+                      longitude: church.longitude,
+                      latitudeDelta: 0.005,
+                      longitudeDelta: 0.005,
+                    }}
+                    liteMode={Platform.OS === 'android'}
+                    scrollEnabled={false}
+                    zoomEnabled={false}
+                    pitchEnabled={false}
+                    rotateEnabled={false}
+                    onPress={handleOpenMaps}
+                  >
+                    <Marker
+                      coordinate={{ latitude: church.latitude, longitude: church.longitude }}
+                      pinColor="#EA4335"
+                    />
+                  </MapView>
+                </Box>
+              </Box>
+            </Box>
+          )}
 
-        {church.details?.phone && (
-          <Box marginBottom="s">
-            <Text variant="caption" color="textSecondary">
-              Téléphone
-            </Text>
-            <Text variant="body" color="primary" onPress={handleCall}>
-              {church.details.phone}
-            </Text>
-          </Box>
-        )}
+          {/* Phone */}
+          {church.details?.phone && (
+            <Box flexDirection="row" gap="m">
+              <Ionicons name="call-outline" size={20} color="#5F6368" style={{ marginTop: 2 }} />
+              <Box flex={1}>
+                <Text variant="body" color="primary" onPress={handleCall}>
+                  {church.details.phone}
+                </Text>
+              </Box>
+            </Box>
+          )}
 
-        {church.details?.website && (
-          <Box marginBottom="s">
-            <Text variant="caption" color="textSecondary">
-              Site web
-            </Text>
-            <Text variant="body" color="primary" onPress={handleWebsite}>
-              {church.details.website}
-            </Text>
-          </Box>
-        )}
+          {/* Email */}
+          {church.email && (
+            <Box flexDirection="row" gap="m">
+              <Ionicons name="mail-outline" size={20} color="#5F6368" style={{ marginTop: 2 }} />
+              <Box flex={1}>
+                <Text variant="body" color="primary" onPress={handleEmail}>
+                  {church.email}
+                </Text>
+              </Box>
+            </Box>
+          )}
 
-        {church.details?.status && (
-          <Box>
-            <Text variant="caption" color="textSecondary">
-              Statut
-            </Text>
-            <Text variant="body" color={church.details.status === 'ACTIVE' ? 'success' : 'textSecondary'}>
-              {church.details.status === 'ACTIVE' ? '✓ Active' : church.details.status}
-            </Text>
-          </Box>
-        )}
+          {/* Website */}
+          {church.details?.website && (
+            <Box flexDirection="row" gap="m">
+              <Ionicons name="globe-outline" size={20} color="#5F6368" style={{ marginTop: 2 }} />
+              <Box flex={1}>
+                <Text variant="body" color="primary" onPress={handleWebsite}>
+                  {church.details.website}
+                </Text>
+              </Box>
+            </Box>
+          )}
+
+          {/* Status */}
+          {church.details?.status && (
+            <Box flexDirection="row" gap="m">
+              <Ionicons name="information-circle-outline" size={20} color="#5F6368" style={{ marginTop: 2 }} />
+              <Box flex={1}>
+                <Box flexDirection="row" alignItems="center" gap="xs">
+                  <Text variant="body" color={church.details.status === 'ACTIVE' ? 'success' : 'textSecondary'}>
+                    {church.details.status === 'ACTIVE' ? 'Active' : church.details.status}
+                  </Text>
+                  {church.details.status === 'ACTIVE' && (
+                    <Ionicons name="checkmark-circle" size={16} color="#34A853" />
+                  )}
+                </Box>
+              </Box>
+            </Box>
+          )}
+        </Box>
       </Card>
 
       {/* Schedules */}
@@ -267,5 +341,60 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingBottom: 40,
+  },
+});
+
+const buttonStyles = StyleSheet.create({
+  container: {
+    paddingHorizontal: 16,
+    gap: 10,
+    marginBottom: 16,
+  },
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 48,
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  buttonPrimary: {
+    backgroundColor: '#4285F4',
+  },
+  buttonSecondary: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#DADCE0',
+  },
+  buttonHalf: {
+    flex: 1,
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  icon: {
+    marginRight: 8,
+  },
+  buttonTextPrimary: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  buttonTextSecondary: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#4285F4',
   },
 });
