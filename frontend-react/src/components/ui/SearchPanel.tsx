@@ -8,9 +8,10 @@ interface SearchPanelProps {
     onFilterChange: (filters: { churches: boolean; events: boolean }) => void;
     onToggleList: () => void;
     onLocationSelect?: (lat: number, lng: number, label: string) => void;
+    hideFilters?: boolean;
 }
 
-const SearchPanel: React.FC<SearchPanelProps> = ({ onSearch, onFilterChange, onToggleList, onLocationSelect }) => {
+const SearchPanel: React.FC<SearchPanelProps & { embedded?: boolean }> = ({ onSearch, onFilterChange, onToggleList, onLocationSelect, embedded = false, hideFilters = false }) => {
     const [query, setQuery] = useState('');
     const [showChurches, setShowChurches] = useState(true);
     const [showEvents, setShowEvents] = useState(true);
@@ -79,7 +80,18 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ onSearch, onFilterChange, onT
     return (
         <Box
             ref={wrapperRef}
-            sx={{
+            sx={embedded ? {
+                p: 2,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1,
+                width: '100%',
+                bgcolor: '#fff',
+                zIndex: 2000,
+                flexShrink: 0,
+                borderBottom: '1px solid #f0f0f0',
+                position: 'relative'
+            } : {
                 position: 'absolute',
                 top: 16,
                 left: 16,
@@ -93,19 +105,39 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ onSearch, onFilterChange, onT
             {/* Search Bar */}
             <Paper
                 component="form"
+                elevation={embedded ? 0 : 1}
                 sx={{
                     p: '2px 4px',
                     display: 'flex',
                     alignItems: 'center',
-                    borderRadius: 2,
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                    position: 'relative'
+                    borderRadius: embedded ? 8 : 2, // Rounder for embedded? No, 2 is fine. Stick to 8px (2 * 4) ? MUI 2 = 8px radius usually? No, MUI shape.borderRadius is 4. So 2 = 8px.
+                    // Google Maps search bar is more rounded. Let's try 8px (2) or 24px (pill) if we want "Google" style. 
+                    // But in sidebar it's usually a rectangle with rounded corners.
+
+                    boxShadow: embedded ? 'none' : '0 2px 4px rgba(0,0,0,0.2)',
+                    border: embedded ? '1px solid #dadce0' : 'none',
+                    position: 'relative',
+                    bgcolor: '#fff',
+                    transition: 'box-shadow 0.2s',
+                    '&:hover': embedded ? {
+                        boxShadow: '0 1px 2px rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15)',
+                    } : {}
                 }}
                 onSubmit={(e) => { e.preventDefault(); onSearch(query); setIsAutocompleteOpen(false); }}
             >
-                <Search sx={{ ml: 1, color: '#5F6368' }} />
+                <IconButton sx={{ p: '10px' }} aria-label="menu">
+                    {embedded ? <Search sx={{ color: '#5F6368' }} /> : <Search sx={{ color: '#5F6368' }} />}
+                </IconButton>
                 <InputBase
-                    sx={{ ml: 1, flex: 1 }}
+                    sx={{
+                        ml: 1,
+                        flex: 1,
+                        color: '#202124',
+                        '& .MuiInputBase-input::placeholder': {
+                            color: '#5F6368',
+                            opacity: 1
+                        }
+                    }}
                     placeholder="Rechercher une ville..."
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
@@ -120,16 +152,20 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ onSearch, onFilterChange, onT
                     </IconButton>
                 )}
 
-                <Divider sx={{ height: 28, m: 0.5 }} orientation="vertical" />
-                {/* List Toggle Button */}
-                <IconButton
-                    color="primary"
-                    sx={{ p: '10px' }}
-                    aria-label="toggle list"
-                    onClick={onToggleList}
-                >
-                    <ListIcon />
-                </IconButton>
+                {!embedded && (
+                    <>
+                        <Divider sx={{ height: 28, m: 0.5 }} orientation="vertical" />
+                        {/* List Toggle Button */}
+                        <IconButton
+                            color="primary"
+                            sx={{ p: '10px' }}
+                            aria-label="toggle list"
+                            onClick={onToggleList}
+                        >
+                            <ListIcon />
+                        </IconButton>
+                    </>
+                )}
             </Paper>
 
             {/* Autocomplete Dropdown */}
@@ -140,7 +176,11 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ onSearch, onFilterChange, onT
                         maxHeight: 300,
                         overflow: 'auto',
                         borderRadius: 2,
-                        boxShadow: 3
+                        boxShadow: 3,
+                        position: embedded ? 'absolute' : 'static', // Floating on embedded too if needed, or static pushing content? Better absolute in Sidebar
+                        top: embedded ? '100%' : 'auto',
+                        width: '100%',
+                        zIndex: 2100
                     }}
                 >
                     <List disablePadding>
@@ -161,42 +201,47 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ onSearch, onFilterChange, onT
                 </Paper>
             )}
 
-            {/* Filter Chips */}
-            <Stack direction="row" spacing={1}>
-                <Chip
-                    icon={<Church />}
-                    label="Églises"
-                    clickable
-                    color={showChurches ? 'primary' : 'default'}
-                    variant={showChurches ? 'filled' : 'filled'}
-                    onClick={handleToggleChurches}
-                    sx={{
-                        backgroundColor: showChurches ? '#4285F4' : '#FFFFFF',
-                        color: showChurches ? '#FFFFFF' : '#3C4043',
-                        fontWeight: 500,
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
-                        '&:hover': {
-                            backgroundColor: showChurches ? '#3367D6' : '#F8F9FA',
-                        }
-                    }}
-                />
-                <Chip
-                    icon={<CalendarMonth />}
-                    label="Événements"
-                    clickable
-                    color={showEvents ? 'secondary' : 'default'}
-                    onClick={handleToggleEvents}
-                    sx={{
-                        backgroundColor: showEvents ? '#EA4335' : '#FFFFFF',
-                        color: showEvents ? '#FFFFFF' : '#3C4043',
-                        fontWeight: 500,
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
-                        '&:hover': {
-                            backgroundColor: showEvents ? '#C5221F' : '#F8F9FA',
-                        }
-                    }}
-                />
-            </Stack>
+            {/* Filter Chips - Only show in SearchPanel if NOT embedded and NOT hidden
+               Actually, in Google Maps, filters are often under the search box.
+               Let's keep them here but style them fittingly.
+            */}
+            {!embedded && !hideFilters && (
+                <Stack direction="row" spacing={1}>
+                    <Chip
+                        icon={<Church />}
+                        label="Églises"
+                        clickable
+                        color={showChurches ? 'primary' : 'default'}
+                        variant={showChurches ? 'filled' : 'filled'}
+                        onClick={handleToggleChurches}
+                        sx={{
+                            backgroundColor: showChurches ? '#4285F4' : '#FFFFFF',
+                            color: showChurches ? '#FFFFFF' : '#3C4043',
+                            fontWeight: 500,
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                            '&:hover': {
+                                backgroundColor: showChurches ? '#3367D6' : '#F8F9FA',
+                            }
+                        }}
+                    />
+                    <Chip
+                        icon={<CalendarMonth />}
+                        label="Événements"
+                        clickable
+                        color={showEvents ? 'secondary' : 'default'}
+                        onClick={handleToggleEvents}
+                        sx={{
+                            backgroundColor: showEvents ? '#EA4335' : '#FFFFFF',
+                            color: showEvents ? '#FFFFFF' : '#3C4043',
+                            fontWeight: 500,
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                            '&:hover': {
+                                backgroundColor: showEvents ? '#C5221F' : '#F8F9FA',
+                            }
+                        }}
+                    />
+                </Stack>
+            )}
         </Box>
     );
 };

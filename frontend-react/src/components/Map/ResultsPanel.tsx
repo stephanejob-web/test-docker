@@ -18,7 +18,6 @@ import {
 import {
     Close as CloseIcon,
     Church as ChurchIcon,
-    Event as EventIcon,
     Place as PlaceIcon,
     InfoOutlined as InfoIcon,
     AccessTime as AccessTimeIcon,
@@ -116,15 +115,30 @@ const ChurchCard: React.FC<{
         onClick={onClick}
     >
         <Box sx={{ width: '100%' }}>
-            {/* En-tête avec icône et nom */}
-            <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ mb: 1.5 }}>
-                <ChurchIcon
+            {/* En-tête avec Icone Church Badge */}
+            <Stack direction="row" spacing={2} alignItems="flex-start" sx={{ mb: 1.5 }}>
+                <Paper
+                    elevation={0}
                     sx={{
-                        mt: 0.5,
-                        fontSize: 28,
-                        color: '#1A73E8'
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 48,
+                        height: 52,
+                        borderRadius: 2,
+                        border: '1px solid #DADCE0', // Consistent border
+                        bgcolor: '#FFFFFF',
+                        flexShrink: 0,
+                        mt: 0.5
                     }}
-                />
+                >
+                    <ChurchIcon
+                        sx={{
+                            fontSize: 30, // Slightly larger for the badge
+                            color: '#1A73E8'
+                        }}
+                    />
+                </Paper>
                 <Box sx={{ flex: 1 }}>
                     <Typography
                         variant="h6"
@@ -235,6 +249,9 @@ const EventCard: React.FC<{
     const isOngoing = endDate && currentTime >= startDate && currentTime <= endDate;
     const isUpcoming = currentTime < startDate;
 
+    const day = startDate.getDate();
+    const month = startDate.toLocaleDateString('fr-FR', { month: 'short' }).toUpperCase().replace('.', '');
+
     return (
         <Box
             sx={{
@@ -250,15 +267,48 @@ const EventCard: React.FC<{
             onClick={onClick}
         >
             <Box sx={{ width: '100%' }}>
-                {/* En-tête avec icône et titre */}
-                <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ mb: 1.5 }}>
-                    <EventIcon
+                {/* En-tête avec Date Badge et Titre */}
+                <Stack direction="row" spacing={2} alignItems="flex-start" sx={{ mb: 1.5 }}>
+                    {/* Calendar Badge: Day on top, Month in Red below */}
+                    <Paper
+                        elevation={0}
                         sx={{
-                            mt: 0.5,
-                            fontSize: 28,
-                            color: '#EA4335'
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: 48,
+                            height: 52,
+                            borderRadius: 2,
+                            border: '1px solid #DADCE0',
+                            bgcolor: '#FFFFFF',
+                            flexShrink: 0,
+                            mt: 0.5
                         }}
-                    />
+                    >
+                        <Typography
+                            sx={{
+                                fontSize: '1.25rem',
+                                fontWeight: 700,
+                                lineHeight: 1,
+                                color: '#202124',
+                                mb: 0.2
+                            }}
+                        >
+                            {day}
+                        </Typography>
+                        <Typography
+                            sx={{
+                                fontSize: '0.65rem',
+                                fontWeight: 800,
+                                textTransform: 'uppercase',
+                                color: '#EA4335',
+                                lineHeight: 1
+                            }}
+                        >
+                            {month}
+                        </Typography>
+                    </Paper>
                     <Box sx={{ flex: 1 }}>
                         <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
                             <Typography
@@ -640,12 +690,22 @@ const ResultsPanel: React.FC<ResultsPanelProps> = React.memo(({
                     bgcolor: '#FFFFFF',
                     zIndex: 10,
                     borderBottom: '1px solid #E8EAED',
-                    overflowX: 'auto',
+                    overflowX: isMobile ? 'auto' : 'visible',
                     '&::-webkit-scrollbar': { display: 'none' },
                     scrollbarWidth: 'none'
                 }}
             >
-                <Stack direction="row" spacing={1} sx={{ px: 2, py: 1.5, minWidth: 'max-content' }}>
+                <Stack
+                    direction="row"
+                    spacing={1}
+                    useFlexGap
+                    sx={{
+                        px: 2,
+                        py: 1.5,
+                        minWidth: isMobile ? 'max-content' : 'auto',
+                        flexWrap: isMobile ? 'nowrap' : 'wrap'
+                    }}
+                >
                     {/* Églises */}
                     <Chip
                         icon={filterChurches ? <CheckIcon sx={{ fontSize: 16 }} /> : undefined}

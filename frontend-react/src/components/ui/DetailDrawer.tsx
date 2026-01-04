@@ -9,15 +9,16 @@ interface DetailDrawerProps {
     loading: boolean;
     data: ChurchDetails | EventDetails | null;
     type: 'church' | 'event' | null;
+    embedded?: boolean;
 }
 
-const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, data, type }) => {
+const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, data, type, embedded = false }) => {
 
     const renderChurchDetails = (church: ChurchDetails) => {
         // Helper to get social icon
         const getSocialIcon = (platform: string) => {
             const p = platform.toUpperCase();
-            switch(p) {
+            switch (p) {
                 case 'FACEBOOK': return <Facebook fontSize="small" />;
                 case 'INSTAGRAM': return <Instagram fontSize="small" />;
                 case 'YOUTUBE': return <YouTube fontSize="small" />;
@@ -507,6 +508,57 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
         );
     };
 
+    const innerContent = loading ? (
+        <Box sx={{ p: 2 }}>
+            <Skeleton variant="rectangular" height={200} sx={{ borderRadius: 2, mb: 2 }} />
+            <Skeleton variant="text" width="60%" height={40} />
+            <Skeleton variant="text" width="40%" />
+            <Skeleton variant="rectangular" height={100} sx={{ mt: 2 }} />
+        </Box>
+    ) : data ? (
+        <Box>
+            {/* Cover Image */}
+            <Box
+                sx={{
+                    height: 200,
+                    backgroundColor: '#E8EAED',
+                    backgroundImage: `url(${(type === 'church' ? (data as ChurchDetails).details?.logo_url : (data as EventDetails).details?.image_url) || 'https://images.unsplash.com/photo-1438232992991-995b7058bbb3?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    position: 'relative'
+                }}
+            >
+                <IconButton
+                    onClick={onClose}
+                    sx={{
+                        position: 'absolute',
+                        top: 8,
+                        right: 8,
+                        backgroundColor: '#FFFFFF',
+                        color: '#5F6368',
+                        boxShadow: '0 1px 2px 0 rgba(60,64,67,0.3)',
+                        '&:hover': { backgroundColor: '#F8F9FA' }
+                    }}
+                >
+                    <Close />
+                </IconButton>
+            </Box>
+
+            {type === 'church'
+                ? renderChurchDetails(data as ChurchDetails)
+                : renderEventDetails(data as EventDetails)
+            }
+        </Box>
+    ) : null;
+
+    if (embedded) {
+        return (
+            <Box sx={{ height: '100%', overflowY: 'auto', bgcolor: '#fff' }}>
+                {innerContent}
+            </Box>
+        );
+    }
+
     return (
         <Drawer
             anchor="left"
@@ -520,53 +572,12 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
                     height: '100%',
                     boxShadow: '0 1px 2px 0 rgba(60,64,67,0.3), 0 2px 6px 2px rgba(60,64,67,0.15)',
                     borderRight: 'none',
-                    zIndex: 1200,
+                    zIndex: 2200, // Higher than SearchPanel (2000) and Autocomplete (2100)
                     bgcolor: '#FFFFFF'
                 }
             }}
         >
-            {loading ? (
-                <Box sx={{ p: 2 }}>
-                    <Skeleton variant="rectangular" height={200} sx={{ borderRadius: 2, mb: 2 }} />
-                    <Skeleton variant="text" width="60%" height={40} />
-                    <Skeleton variant="text" width="40%" />
-                    <Skeleton variant="rectangular" height={100} sx={{ mt: 2 }} />
-                </Box>
-            ) : data ? (
-                <Box>
-                    {/* Cover Image */}
-                    <Box
-                        sx={{
-                            height: 200,
-                            backgroundColor: '#E8EAED',
-                            backgroundImage: `url(${(type === 'church' ? (data as ChurchDetails).details?.logo_url : (data as EventDetails).details?.image_url) || 'https://images.unsplash.com/photo-1438232992991-995b7058bbb3?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'})`,
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center',
-                            position: 'relative'
-                        }}
-                    >
-                        <IconButton
-                            onClick={onClose}
-                            sx={{
-                                position: 'absolute',
-                                top: 8,
-                                right: 8,
-                                backgroundColor: '#FFFFFF',
-                                color: '#5F6368',
-                                boxShadow: '0 1px 2px 0 rgba(60,64,67,0.3)',
-                                '&:hover': { backgroundColor: '#F8F9FA' }
-                            }}
-                        >
-                            <Close />
-                        </IconButton>
-                    </Box>
-
-                    {type === 'church'
-                        ? renderChurchDetails(data as ChurchDetails)
-                        : renderEventDetails(data as EventDetails)
-                    }
-                </Box>
-            ) : null}
+            {innerContent}
         </Drawer>
     );
 };

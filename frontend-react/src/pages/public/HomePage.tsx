@@ -5,11 +5,11 @@ import {
     useMediaQuery,
     useTheme,
     Typography,
+    LinearProgress,
 } from '@mui/material';
 import {
     MyLocation as MyLocationIcon,
-    Satellite as SatelliteIcon,
-    Map as MapIcon,
+    Layers,
 } from '@mui/icons-material';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
@@ -26,6 +26,7 @@ import {
 import SearchPanel from '../../components/ui/SearchPanel';
 import DetailDrawer from '../../components/ui/DetailDrawer';
 import ResultsPanel from '../../components/Map/ResultsPanel';
+import Sidebar from '../../components/Map/Sidebar';
 
 // Fix Leaflet default icon (Same as before)
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -103,8 +104,8 @@ const HomePage: React.FC = () => {
     const [mapCenter, setMapCenter] = useState<[number, number]>([48.8566, 2.3522]);
     const [mapZoom, setMapZoom] = useState<number>(6);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [isMapReady, setIsMapReady] = useState(false);
+    const [_error, setError] = useState<string | null>(null);
+    const [_isMapReady, setIsMapReady] = useState(false);
     const [geoBlocked, setGeoBlocked] = useState(false);
 
     // UI States
@@ -150,9 +151,7 @@ const HomePage: React.FC = () => {
     }, []);
 
     // Debug logging
-    useEffect(() => {
-        console.log('Map State:', { loading, error, isMapReady });
-    }, [loading, error, isMapReady]);
+
 
     // Cleanup
     useEffect(() => {
@@ -230,9 +229,9 @@ const HomePage: React.FC = () => {
         }
     }, [userLocation]);
 
-    const handleSearch = (query: string) => {
+    const handleSearch = (_query: string) => {
         // Implement search logic here, potentially calling separate search API
-        console.log('Searching for:', query);
+        // console.log('Searching for:', query);
     };
 
     const handleFilterChange = (filters: { churches: boolean; events: boolean }) => {
@@ -291,53 +290,107 @@ const HomePage: React.FC = () => {
         setResultsPanelOpen(!resultsPanelOpen);
     };
 
-    const handleLocationSelect = useCallback((lat: number, lng: number, label: string) => {
-        console.log('Selected location:', label);
+    const handleLocationSelect = useCallback((lat: number, lng: number, _label: string) => {
+        // console.log('Selected location:', label);
         setMapCenter([lat, lng]);
         setMapZoom(13);
     }, []);
 
     return (
         <React.Fragment>
-            {/* 1. Floating Search Panel */}
-            <SearchPanel
-                onSearch={handleSearch}
-                onFilterChange={handleFilterChange}
-                onToggleList={handleToggleList}
-                onLocationSelect={handleLocationSelect}
-            />
-
-            {/* 1.5 Results Panel */}
-            <Box sx={{
-                position: 'absolute',
-                top: 70, // Below search panel
-                left: 16,
-                bottom: 24,
-                width: { xs: 'calc(100% - 32px)', sm: 360 },
-                zIndex: 900, // Below DetailDrawer but above map
-                display: resultsPanelOpen ? 'block' : 'none',
-                pointerEvents: 'none' // Let clicks pass through container
-            }}>
-                <Box sx={{
-                    height: '100%',
-                    pointerEvents: 'auto', // Re-enable clicks for panel
-                    borderRadius: 2,
-                    overflow: 'hidden',
-                    boxShadow: 3
-                }}>
-                    <ResultsPanel
-                        churches={churches}
-                        events={events}
-                        loading={loading}
-                        onChurchClick={(church) => handleMarkerClick(church, 'church')}
-                        onEventClick={(event) => handleMarkerClick(event, 'event')}
-                        onClose={() => setResultsPanelOpen(false)}
-                        open={resultsPanelOpen}
-                        isGeolocated={!!userLocation}
-                        isMobileView={isMobile}
-                    />
+            {loading && (
+                <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', zIndex: 3000 }}>
+                    <LinearProgress sx={{ height: 4 }} />
                 </Box>
-            </Box>
+            )}
+            {isMobile ? (
+                // Mobile Layout (Floating Panels)
+                <>
+                    {/* 1. Floating Search Panel */}
+                    <SearchPanel
+                        onSearch={handleSearch}
+                        onFilterChange={handleFilterChange}
+                        onToggleList={handleToggleList}
+                        onLocationSelect={handleLocationSelect}
+                        hideFilters={true}
+                    />
+
+                    {/* 1.5 Results Panel */}
+                    <Box sx={{
+                        position: 'absolute',
+                        top: 70, // Below search panel
+                        left: 16,
+                        bottom: 24,
+                        width: { xs: 'calc(100% - 32px)', sm: 360 },
+                        zIndex: 900, // Below DetailDrawer but above map
+                        display: resultsPanelOpen && !detailDrawerOpen ? 'block' : 'none',
+                        pointerEvents: 'none' // Let clicks pass through container
+                    }}>
+                        <Box sx={{
+                            height: '100%',
+                            pointerEvents: 'auto', // Re-enable clicks for panel
+                            borderRadius: 2,
+                            overflow: 'hidden',
+                            boxShadow: 3
+                        }}>
+                            <ResultsPanel
+                                churches={churches}
+                                events={events}
+                                loading={loading}
+                                onChurchClick={(church) => handleMarkerClick(church, 'church')}
+                                onEventClick={(event) => handleMarkerClick(event, 'event')}
+                                onClose={() => setResultsPanelOpen(false)}
+                                open={resultsPanelOpen}
+                                isGeolocated={!!userLocation}
+                                isMobileView={isMobile}
+                            />
+                        </Box>
+                    </Box>
+
+                    {/* 3. Detail Drawer */}
+                    <DetailDrawer
+                        open={detailDrawerOpen}
+                        onClose={handleCloseDrawer}
+                        loading={false}
+                        data={selectedItem}
+                        type={selectedType}
+                    />
+                </>
+            ) : (
+                // Desktop Layout (Sidebar)
+                <Sidebar>
+                    <SearchPanel
+                        embedded
+                        onSearch={handleSearch}
+                        onFilterChange={handleFilterChange}
+                        onToggleList={handleToggleList}
+                        onLocationSelect={handleLocationSelect}
+                    />
+
+                    <Box sx={{ flex: 1, overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column' }}>
+                        {detailDrawerOpen && selectedItem ? (
+                            <DetailDrawer
+                                embedded
+                                open={true}
+                                onClose={handleCloseDrawer}
+                                loading={false}
+                                data={selectedItem}
+                                type={selectedType}
+                            />
+                        ) : (
+                            <ResultsPanel
+                                churches={churches}
+                                events={events}
+                                loading={loading}
+                                onChurchClick={(church) => handleMarkerClick(church, 'church')}
+                                onEventClick={(event) => handleMarkerClick(event, 'event')}
+                                isGeolocated={!!userLocation}
+                                isMobileView={false}
+                            />
+                        )}
+                    </Box>
+                </Sidebar>
+            )}
 
             {/* 2. Map Container */}
             <MapContainer
@@ -382,21 +435,19 @@ const HomePage: React.FC = () => {
                 </MarkerClusterGroup>
             </MapContainer>
 
-            {/* 3. Detail Drawer */}
-            <DetailDrawer
-                open={detailDrawerOpen}
-                onClose={handleCloseDrawer}
-                loading={false}
-                data={selectedItem}
-                type={selectedType}
-            />
-
             {/* 4. Floating Action Buttons (Bottom Right) */}
             <Box sx={{ position: 'absolute', bottom: 24, right: 24, display: 'flex', flexDirection: 'column', gap: 2, zIndex: 1000 }}>
-                <Fab color="default" size="small" onClick={() => setMapType(t => t === 'standard' ? 'satellite' : 'standard')} sx={{ bgcolor: 'white' }}>
-                    {mapType === 'standard' ? <SatelliteIcon color="action" /> : <MapIcon color="action" />}
+                {/* Map Layer Toggle - Matches Geolocate button size */}
+                <Fab
+                    color="inherit" // or 'default' with white bg
+                    onClick={() => setMapType(t => t === 'standard' ? 'satellite' : 'standard')}
+                    sx={{ bgcolor: 'white', '&:hover': { bgcolor: '#F1F3F4' } }}
+                    aria-label="Changer de vue"
+                >
+                    <Layers sx={{ color: '#5F6368' }} />
                 </Fab>
-                <Fab color="primary" onClick={handleRecenterMap}>
+
+                <Fab color="primary" onClick={handleRecenterMap} aria-label="Ma position">
                     <MyLocationIcon />
                 </Fab>
             </Box>
