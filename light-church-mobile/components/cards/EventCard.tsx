@@ -231,6 +231,14 @@ export default React.memo(function EventCard({ event, onPress }: EventCardProps)
                 </Text>
               </Box>
             )}
+            {event.event_city && (
+              <Box flexDirection="row" alignItems="center">
+                <Ionicons name="location-outline" size={12} color="#80868B" style={{ marginRight: 2 }} />
+                <Text variant="small" color="textSecondary">
+                  {event.event_city}
+                </Text>
+              </Box>
+            )}
             {event.interested_count !== undefined && event.interested_count > 0 && (
               <Box flexDirection="row" alignItems="center">
                 <Ionicons name="people" size={12} color="#80868B" style={{ marginRight: 2 }} />

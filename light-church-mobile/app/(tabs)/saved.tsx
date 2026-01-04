@@ -5,7 +5,7 @@
  * DESIGN: Google Maps inspired UI/UX
  */
 
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { View, StyleSheet, RefreshControl, Alert, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +16,8 @@ import EventCard from '@/components/cards/EventCard';
 import { useInterestedEvents, useRemoveInterest } from '@/hooks/query/useInterestedEvents';
 import { useToast } from '@/contexts/ToastContext';
 import type { Event } from '@/types';
+import { formatDistanceToNow } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 export default function SavedScreen() {
   const router = useRouter();
@@ -27,6 +29,30 @@ export default function SavedScreen() {
 
   // Remove interest mutation with optimistic updates
   const removeInterestMutation = useRemoveInterest();
+
+  // State for refresh UX
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
+  const [timeSinceRefresh, setTimeSinceRefresh] = useState('à l\'instant');
+
+  // Update time since last refresh every minute
+  useEffect(() => {
+    const updateTimer = setInterval(() => {
+      const timeString = formatDistanceToNow(lastRefreshTime, {
+        addSuffix: true,
+        locale: fr
+      });
+      setTimeSinceRefresh(timeString);
+    }, 60000); // Update every minute
+
+    return () => clearInterval(updateTimer);
+  }, [lastRefreshTime]);
+
+  // Handle refresh (manual or pull-to-refresh)
+  const handleRefresh = async () => {
+    setLastRefreshTime(new Date());
+    setTimeSinceRefresh('à l\'instant');
+    await refetch();
+  };
 
   // Handler: Navigate to event detail
   const handleEventPress = useCallback(
@@ -78,22 +104,21 @@ export default function SavedScreen() {
           <EventCard event={item} onPress={() => handleEventPress(item)} />
         </View>
 
-        {/* Action Buttons - Google Maps Style */}
+        {/* Action Buttons - Google Maps Saved Places Style */}
         <View style={styles.actionsRow}>
-          {/* Participant Badge */}
-          <View style={styles.followingBadge}>
-            <Ionicons name="checkmark-circle" size={18} color="#34A853" />
-            <Text style={styles.followingText}>Participant</Text>
+          {/* Saved Badge */}
+          <View style={styles.savedBadge}>
+            <Ionicons name="bookmark" size={16} color="#4285F4" />
+            <Text style={styles.savedText}>Enregistré</Text>
           </View>
 
-          {/* Remove Participation Button */}
+          {/* Remove Button */}
           <TouchableOpacity
-            style={styles.unfollowButton}
+            style={styles.removeButton}
             onPress={() => handleRemoveInterest(item)}
-            activeOpacity={0.7}
+            activeOpacity={0.6}
           >
-            <Ionicons name="close-outline" size={20} color="#5F6368" />
-            <Text style={styles.unfollowText}>Ne plus participer</Text>
+            <Text style={styles.removeText}>Retirer</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -148,16 +173,56 @@ export default function SavedScreen() {
     );
   }, [isLoading, isError]);
 
+  // Check if refresh needed (more than 5 minutes)
+  const needsRefresh = useMemo(() => {
+    const minutesSinceRefresh = (Date.now() - lastRefreshTime.getTime()) / (1000 * 60);
+    return minutesSinceRefresh > 5;
+  }, [lastRefreshTime]);
+
   return (
     <View style={styles.container}>
       {/* Header - Google Maps Style with Safe Area */}
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-        <Text style={styles.headerText}>Enregistrés</Text>
-        <Text style={styles.headerSubtext}>
-          {events.length > 0
-            ? `${events.length} événement${events.length > 1 ? 's' : ''} suivi${events.length > 1 ? 's' : ''}`
-            : 'Vos événements favoris'}
-        </Text>
+        <View style={styles.headerRow}>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerText}>Enregistrés</Text>
+            <Text style={styles.headerSubtext}>
+              {events.length > 0
+                ? `${events.length} événement${events.length > 1 ? 's' : ''} suivi${events.length > 1 ? 's' : ''}`
+                : 'Vos événements favoris'}
+            </Text>
+          </View>
+
+          {/* Refresh Button - Google Maps iOS Style */}
+          <TouchableOpacity
+            style={styles.refreshButton}
+            onPress={handleRefresh}
+            disabled={isRefetching}
+            activeOpacity={0.7}
+          >
+            {isRefetching ? (
+              <ActivityIndicator size="small" color="#4285F4" />
+            ) : (
+              <View>
+                <Ionicons
+                  name="reload-circle"
+                  size={32}
+                  color="#4285F4"
+                />
+                {needsRefresh && (
+                  <View style={styles.refreshBadge} />
+                )}
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Timestamp - Subtil */}
+        {events.length > 0 && (
+          <Text style={styles.timestampText}>
+            Actualisé {timeSinceRefresh}
+          </Text>
+        )}
       </View>
 
       {/* Event List with FlashList (10x faster than FlatList) */}
@@ -172,7 +237,7 @@ export default function SavedScreen() {
           refreshControl={
             <RefreshControl
               refreshing={isRefetching}
-              onRefresh={refetch}
+              onRefresh={handleRefresh}
               tintColor="#4285F4"
               colors={['#4285F4']}
             />
@@ -200,6 +265,16 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E8EAED',
   },
 
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+
+  headerTextContainer: {
+    flex: 1,
+  },
+
   headerText: {
     fontSize: 28,
     fontWeight: '700',
@@ -211,6 +286,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#5F6368',
     fontWeight: '400',
+  },
+
+  timestampText: {
+    fontSize: 12,
+    color: '#9AA0A6',
+    marginTop: 8,
+    fontWeight: '400',
+  },
+
+  // Refresh Button - Google Maps iOS Style
+  refreshButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 12,
+  },
+
+  refreshBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#EA4335',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
 
   listContent: {
@@ -254,37 +357,29 @@ const styles = StyleSheet.create({
     borderTopColor: '#E8EAED',
   },
 
-  // Following Badge (left side)
-  followingBadge: {
+  // Saved Badge (left side) - Google Maps Style
+  savedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     paddingVertical: 4,
   },
 
-  followingText: {
+  savedText: {
     fontSize: 14,
-    color: '#34A853',
-    fontWeight: '600',
-    letterSpacing: 0.2,
+    color: '#4285F4',
+    fontWeight: '500',
   },
 
-  // Unfollow Button (right side)
-  unfollowButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#DADCE0',
+  // Remove Button (right side) - Google Maps Style
+  removeButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
 
-  unfollowText: {
+  removeText: {
     fontSize: 14,
-    color: '#5F6368',
+    color: '#EA4335',
     fontWeight: '500',
   },
 
