@@ -375,6 +375,27 @@ const HomePage: React.FC = () => {
                         loading={false}
                         data={selectedItem}
                         type={selectedType}
+                        onOrganizerClick={async (churchId) => {
+                            const basicChurch = churches.find(c => String(c.id) === String(churchId));
+                            if (basicChurch) {
+                                handleMarkerClick(basicChurch, 'church');
+                            } else {
+                                try {
+                                    setDetailDrawerOpen(true);
+                                    setSelectedType('church');
+                                    // Dynamically import service to fetch missing details
+                                    const { fetchChurchDetails } = await import('../../services/publicMapService');
+                                    const details = await fetchChurchDetails(Number(churchId));
+                                    setSelectedItem(details);
+                                    if (details && details.latitude && details.longitude) {
+                                        setMapCenter([details.latitude, details.longitude]);
+                                        setMapZoom(16);
+                                    }
+                                } catch (e) {
+                                    console.error("Failed to fetch organizer church details", e);
+                                }
+                            }
+                        }}
                     />
                 </>
             ) : (
@@ -397,6 +418,27 @@ const HomePage: React.FC = () => {
                                 loading={false}
                                 data={selectedItem}
                                 type={selectedType}
+                                onOrganizerClick={async (churchId) => {
+                                    // Fix: String conversion for safety
+                                    const basicChurch = churches.find(c => String(c.id) === String(churchId));
+                                    if (basicChurch) {
+                                        handleMarkerClick(basicChurch, 'church');
+                                    } else {
+                                        try {
+                                            // Dynamically import service to fetch missing details
+                                            const { fetchChurchDetails } = await import('../../services/publicMapService');
+                                            const details = await fetchChurchDetails(Number(churchId));
+                                            setSelectedItem(details);
+                                            setSelectedType('church');
+                                            if (details && details.latitude && details.longitude) {
+                                                setMapCenter([details.latitude, details.longitude]);
+                                                setMapZoom(16);
+                                            }
+                                        } catch (e) {
+                                            console.warn("Church logic: details fetch failed", e);
+                                        }
+                                    }
+                                }}
                             />
                         ) : (
                             <ResultsPanel
