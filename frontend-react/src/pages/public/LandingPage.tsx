@@ -14,6 +14,7 @@ import {
     Divider,
 } from '@mui/material';
 import { motion } from 'framer-motion';
+import kairosLogo from '../../assets/kairos_white.png';
 import {
     Church,
     Calendar,
@@ -24,6 +25,22 @@ import {
     PlayCircle,
     Menu as MenuIcon,
 } from 'lucide-react';
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix for default Leaflet icons in Vite
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+    iconUrl: icon,
+    shadowUrl: iconShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41]
+});
+
+L.Marker.prototype.options.icon = DefaultIcon;
 
 const MotionBox = motion(Box);
 const MotionCard = motion(Card);
@@ -35,35 +52,37 @@ const LandingPage: React.FC = () => {
 
     const features = [
         {
-            icon: <Church size={40} />,
+            icon: <Church size={32} />,
             title: 'Trouvez des églises',
             description: 'Découvrez les églises près de chez vous grâce à notre carte interactive avec géolocalisation.',
+            color: '#1A73E8',
+            bgcolor: '#E8F0FE'
         },
         {
-            icon: <Calendar size={40} />,
+            icon: <Calendar size={32} />,
             title: 'Événements à proximité',
             description: 'Ne manquez aucun événement : cultes, conférences, concerts et activités communautaires.',
+            color: '#EA4335',
+            bgcolor: '#FCE8E6'
         },
         {
-            icon: <MapPin size={40} />,
+            icon: <MapPin size={32} />,
             title: 'Géolocalisation précise',
             description: 'Localisez instantanément les églises et événements autour de vous avec calcul de distance.',
+            color: '#34A853',
+            bgcolor: '#E6F4EA'
         },
         {
-            icon: <Smartphone size={40} />,
+            icon: <Smartphone size={32} />,
             title: 'Application mobile',
             description: 'Téléchargez notre app iOS et Android pour recevoir des notifications et rester connecté.',
+            color: '#FBBC04',
+            bgcolor: '#FEF7E0'
         },
     ];
 
-    const fadeInUp = {
-        initial: { opacity: 0, y: 30 },
-        animate: { opacity: 1, y: 0 },
-        transition: { duration: 0.6 },
-    };
-
     return (
-        <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', overflow: 'hidden' }}>
+        <Box sx={{ bgcolor: '#FFFFFF', minHeight: '100vh', overflowX: 'hidden' }}>
             {/* Header / Navbar */}
             <Box
                 component="nav"
@@ -73,9 +92,10 @@ const LandingPage: React.FC = () => {
                     left: 0,
                     right: 0,
                     zIndex: 1100,
-                    backdropFilter: 'blur(10px)',
-                    bgcolor: 'rgba(15, 23, 42, 0.8)',
-                    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                    backdropFilter: 'blur(12px)',
+                    bgcolor: 'rgba(255, 255, 255, 0.8)',
+                    borderBottom: '1px solid rgba(0, 0, 0, 0.05)',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
                 }}
             >
                 <Container maxWidth="lg">
@@ -84,42 +104,53 @@ const LandingPage: React.FC = () => {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
-                            py: 2,
+                            py: 1.5,
                         }}
                     >
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Church size={28} color={theme.palette.primary.main} />
-                            <Typography variant="h6" fontWeight="bold" color="white">
-                                Light Church
-                            </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, cursor: 'pointer' }} onClick={() => navigate('/')}>
+                            <Box sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}>
+                                <img src={kairosLogo} alt="Kairos" style={{ height: 40, width: 'auto', objectFit: 'contain', filter: 'invert(1)' }} />
+                            </Box>
                         </Box>
                         {!isMobile ? (
-                            <Stack direction="row" spacing={3}>
+                            <Stack direction="row" spacing={1}>
                                 <Button
                                     color="inherit"
                                     onClick={() => navigate('/map')}
-                                    sx={{ color: 'rgba(255, 255, 255, 0.9)' }}
+                                    sx={{ color: '#5F6368', fontWeight: 500, textTransform: 'none', '&:hover': { color: '#1A73E8', bgcolor: 'transparent' } }}
                                 >
                                     Explorer la carte
                                 </Button>
                                 <Button
                                     color="inherit"
                                     onClick={() => navigate('/login')}
-                                    sx={{ color: 'rgba(255, 255, 255, 0.9)' }}
+                                    sx={{ color: '#5F6368', fontWeight: 500, textTransform: 'none', '&:hover': { color: '#1A73E8', bgcolor: 'transparent' } }}
                                 >
-                                    Connexion
+                                    Espace Responsable
                                 </Button>
                                 <Button
                                     variant="contained"
                                     color="primary"
                                     onClick={() => navigate('/register')}
+                                    sx={{
+                                        borderRadius: 2,
+                                        textTransform: 'none',
+                                        fontWeight: 600,
+                                        boxShadow: 'none',
+                                        bgcolor: '#1A73E8',
+                                        '&:hover': { bgcolor: '#1557B0', boxShadow: 'none' }
+                                    }}
                                 >
-                                    Inscription
+                                    Ajouter mon église
                                 </Button>
                             </Stack>
                         ) : (
-                            <IconButton color="inherit">
-                                <MenuIcon size={24} />
+                            <IconButton color="default">
+                                <MenuIcon size={24} color="#5F6368" />
                             </IconButton>
                         )}
                     </Box>
@@ -130,77 +161,67 @@ const LandingPage: React.FC = () => {
             <Box
                 sx={{
                     position: 'relative',
-                    minHeight: '100vh',
+                    minHeight: '90vh',
                     display: 'flex',
                     alignItems: 'center',
-                    background: `linear-gradient(135deg,
-                        ${theme.palette.primary.main}15 0%,
-                        ${theme.palette.background.default} 50%,
-                        ${theme.palette.secondary.main}15 100%)`,
-                    pt: 10,
+                    background: 'linear-gradient(180deg, #F8F9FA 0%, #FFFFFF 100%)',
+                    pt: { xs: 16, md: 20 },
                     overflow: 'hidden',
                 }}
             >
-                {/* Decorative elements */}
+                {/* Soft Decoration */}
                 <Box
                     sx={{
                         position: 'absolute',
-                        top: '10%',
-                        right: '-5%',
-                        width: 400,
-                        height: 400,
-                        borderRadius: '50%',
-                        background: `radial-gradient(circle, ${theme.palette.primary.main}20, transparent)`,
-                        filter: 'blur(80px)',
-                        animation: 'pulse 4s ease-in-out infinite',
-                        '@keyframes pulse': {
-                            '0%, 100%': { opacity: 0.5, transform: 'scale(1)' },
-                            '50%': { opacity: 0.8, transform: 'scale(1.1)' },
-                        },
+                        top: -100,
+                        right: -100,
+                        width: '50%',
+                        height: '80%',
+                        background: 'radial-gradient(circle, rgba(26,115,232,0.08) 0%, rgba(255,255,255,0) 70%)',
+                        zIndex: 0,
                     }}
                 />
 
-                <Container maxWidth="lg">
+                <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
                         <Box sx={{ width: { xs: '100%', md: '50%' }, flexGrow: { md: 1 } }}>
-                            <MotionBox {...fadeInUp}>
+                            <MotionBox
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.6 }}
+                            >
                                 <Typography
                                     variant="h1"
                                     sx={{
-                                        fontSize: { xs: '2.5rem', md: '3.5rem', lg: '4rem' },
+                                        fontSize: { xs: '2.5rem', md: '3.75rem', lg: '4.5rem' },
                                         fontWeight: 800,
-                                        lineHeight: 1.2,
+                                        lineHeight: 1.1,
                                         mb: 3,
-                                        background: `linear-gradient(135deg,
-                                            ${theme.palette.primary.main},
-                                            ${theme.palette.secondary.main})`,
-                                        WebkitBackgroundClip: 'text',
-                                        WebkitTextFillColor: 'transparent',
-                                        backgroundClip: 'text',
+                                        color: '#202124',
+                                        letterSpacing: '-1.5px'
                                     }}
                                 >
-                                    Trouvez votre église,
-                                    <br />
-                                    Vivez votre foi
+                                    Églises et Événements <br />
+                                    <Box component="span" sx={{ color: '#1A73E8' }}>Évangéliques Près de Vous</Box>
                                 </Typography>
 
                                 <Typography
                                     variant="h5"
                                     sx={{
-                                        mb: 4,
-                                        color: 'rgba(255, 255, 255, 0.8)',
+                                        mb: 5,
+                                        color: '#5F6368',
                                         lineHeight: 1.6,
                                         fontWeight: 400,
+                                        fontSize: { xs: '1.1rem', md: '1.25rem' }
                                     }}
                                 >
-                                    Découvrez des églises et événements chrétiens près de chez vous.
-                                    Une communauté connectée, une foi partagée.
+                                    La plateforme de référence pour trouver des églises évangéliques locales et découvrir les événements près de vous.
                                 </Typography>
 
                                 <Stack
                                     direction={{ xs: 'column', sm: 'row' }}
                                     spacing={2}
-                                    sx={{ mb: 4 }}
+                                    sx={{ mb: 6 }}
                                 >
                                     <Button
                                         variant="contained"
@@ -210,15 +231,15 @@ const LandingPage: React.FC = () => {
                                         sx={{
                                             py: 1.5,
                                             px: 4,
-                                            fontSize: '1.1rem',
+                                            fontSize: '1rem',
                                             fontWeight: 600,
-                                            background: `linear-gradient(135deg,
-                                                ${theme.palette.primary.main},
-                                                ${theme.palette.primary.dark})`,
+                                            textTransform: 'none',
+                                            bgcolor: '#1A73E8',
+                                            borderRadius: 2,
+                                            boxShadow: '0 4px 12px rgba(26,115,232,0.2)',
                                             '&:hover': {
-                                                background: `linear-gradient(135deg,
-                                                    ${theme.palette.primary.dark},
-                                                    ${theme.palette.primary.main})`,
+                                                bgcolor: '#1557B0',
+                                                boxShadow: '0 6px 16px rgba(26,115,232,0.3)',
                                             },
                                         }}
                                     >
@@ -237,61 +258,93 @@ const LandingPage: React.FC = () => {
                                         sx={{
                                             py: 1.5,
                                             px: 4,
-                                            fontSize: '1.1rem',
+                                            fontSize: '1rem',
                                             fontWeight: 600,
-                                            borderColor: theme.palette.primary.main,
-                                            color: theme.palette.primary.main,
+                                            textTransform: 'none',
+                                            borderColor: '#DADCE0',
+                                            color: '#5F6368',
+                                            borderRadius: 2,
                                             '&:hover': {
-                                                borderColor: theme.palette.primary.light,
-                                                bgcolor: 'rgba(66, 133, 244, 0.1)',
+                                                borderColor: '#202124',
+                                                bgcolor: 'transparent',
+                                                color: '#202124'
                                             },
                                         }}
                                     >
-                                        Télécharger l'app
+                                        L'application mobile
                                     </Button>
                                 </Stack>
-
-                                <Typography
-                                    variant="body2"
-                                    sx={{ color: 'rgba(255, 255, 255, 0.5)' }}
-                                >
-                                    Disponible sur iOS et Android • Gratuit et sans publicité
-                                </Typography>
                             </MotionBox>
                         </Box>
 
                         <Box sx={{ width: { xs: '100%', md: '50%' }, flexGrow: { md: 1 } }}>
                             <MotionBox
-                                initial={{ opacity: 0, scale: 0.9 }}
+                                initial={{ opacity: 0, scale: 0.95 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 transition={{ duration: 0.8, delay: 0.2 }}
                             >
                                 <Box
                                     sx={{
                                         position: 'relative',
-                                        height: { xs: 300, md: 500 },
+                                        height: { xs: 350, md: 550 },
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                     }}
                                 >
-                                    {/* Placeholder for hero illustration/mockup */}
+                                    {/* Mockup Placeholder - Replacing abstract with something cleaner */}
                                     <Box
                                         sx={{
-                                            width: '100%',
-                                            height: '100%',
+                                            width: '90%',
+                                            height: '90%',
                                             borderRadius: 4,
-                                            background: `linear-gradient(135deg,
-                                                rgba(66, 133, 244, 0.2),
-                                                rgba(234, 67, 53, 0.2))`,
+                                            background: 'linear-gradient(135deg, #FFFFFF 0%, #F1F3F4 100%)',
+                                            boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
                                             display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            border: '2px solid rgba(255, 255, 255, 0.1)',
-                                            backdropFilter: 'blur(10px)',
+                                            flexDirection: 'column',
+                                            overflow: 'hidden',
+                                            border: '1px solid #FFFFFF'
                                         }}
                                     >
-                                        <Church size={120} color={theme.palette.primary.main} />
+                                        {/* Mockup Top Bar */}
+                                        <Box sx={{ height: 40, borderBottom: '1px solid #F1F3F4', display: 'flex', alignItems: 'center', px: 2, gap: 1 }}>
+                                            <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: '#FF5F57' }} />
+                                            <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: '#FFBD2E' }} />
+                                            <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: '#28C840' }} />
+                                        </Box>
+                                        {/* Mockup Content - Map-like UI */}
+                                        <Box sx={{ flex: 1, position: 'relative', bgcolor: '#E8EAED' }}>
+                                            <MapContainer
+                                                center={[48.8566, 2.3522]}
+                                                zoom={13}
+                                                style={{ height: '100%', width: '100%' }}
+                                                zoomControl={false}
+                                                dragging={false}
+                                                scrollWheelZoom={false}
+                                                doubleClickZoom={false}
+                                                touchZoom={false}
+                                                attributionControl={false}
+                                            >
+                                                <TileLayer
+                                                    url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                                                />
+                                                <Marker position={[48.8566, 2.3522]} />
+                                                <Marker position={[48.8606, 2.3376]} />
+                                                <Marker position={[48.8530, 2.3499]} />
+                                            </MapContainer>
+
+                                            {/* Overlay to prevent interaction and add subtle gradient */}
+                                            <Box sx={{
+                                                position: 'absolute',
+                                                top: 0,
+                                                left: 0,
+                                                right: 0,
+                                                bottom: 0,
+                                                pointerEvents: 'none',
+                                                background: 'linear-gradient(to bottom, rgba(255,255,255,0) 80%, rgba(255,255,255,0.8) 100%)',
+                                                zIndex: 1000
+                                            }} />
+                                        </Box>
                                     </Box>
                                 </Box>
                             </MotionBox>
@@ -301,83 +354,92 @@ const LandingPage: React.FC = () => {
             </Box>
 
             {/* Features Section */}
-            <Box sx={{ py: 12, bgcolor: 'background.paper' }}>
+            <Box sx={{ py: 12, bgcolor: '#F8F9FA' }}>
                 <Container maxWidth="lg">
                     <MotionBox
-                        initial={{ opacity: 0, y: 30 }}
+                        initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        transition={{ duration: 0.6 }}
+                        transition={{ duration: 0.5 }}
                     >
-                        <Typography
-                            variant="h2"
-                            textAlign="center"
-                            sx={{
-                                fontSize: { xs: '2rem', md: '3rem' },
-                                fontWeight: 700,
-                                mb: 2,
-                            }}
-                        >
-                            Pourquoi choisir Light Church ?
-                        </Typography>
-                        <Typography
-                            variant="h6"
-                            textAlign="center"
-                            sx={{
-                                color: 'rgba(255, 255, 255, 0.7)',
-                                mb: 8,
-                                maxWidth: 700,
-                                mx: 'auto',
-                            }}
-                        >
-                            Une plateforme complète pour découvrir, connecter et participer à la vie
-                            de votre communauté chrétienne locale.
-                        </Typography>
+                        <Box sx={{ textAlign: 'center', mb: 8 }}>
+                            <Typography
+                                variant="overline"
+                                sx={{ color: '#1A73E8', fontWeight: 700, letterSpacing: 1.2 }}
+                            >
+                                FONCTIONNALITÉS
+                            </Typography>
+                            <Typography
+                                variant="h2"
+                                sx={{
+                                    fontSize: { xs: '2rem', md: '2.5rem' },
+                                    fontWeight: 700,
+                                    color: '#202124',
+                                    mt: 1,
+                                    mb: 2,
+                                }}
+                            >
+                                Tout pour votre vie d'église
+                            </Typography>
+                            <Typography
+                                variant="h6"
+                                sx={{
+                                    color: '#5F6368',
+                                    maxWidth: 600,
+                                    mx: 'auto',
+                                    fontSize: '1.1rem',
+                                    fontWeight: 400
+                                }}
+                            >
+                                Une suite d'outils complète conçue pour connecter les croyants et dynamiser les communautés évangéliques.
+                            </Typography>
+                        </Box>
                     </MotionBox>
 
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
                         {features.map((feature, index) => (
-                            <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 16px)', md: 'calc(25% - 12px)' } }} key={index}>
+                            <Box sx={{ width: { xs: '100%', sm: 'calc(50% - 12px)', md: 'calc(25% - 18px)' } }} key={index}>
                                 <MotionCard
-                                    initial={{ opacity: 0, y: 30 }}
+                                    initial={{ opacity: 0, y: 20 }}
                                     whileInView={{ opacity: 1, y: 0 }}
                                     viewport={{ once: true }}
-                                    transition={{ duration: 0.6, delay: index * 0.1 }}
-                                    whileHover={{ y: -8, transition: { duration: 0.2 } }}
+                                    transition={{ duration: 0.5, delay: index * 0.1 }}
+                                    whileHover={{ y: -5, transition: { duration: 0.2 } }}
                                     sx={{
                                         height: '100%',
-                                        background: `linear-gradient(135deg,
-                                            ${theme.palette.background.default},
-                                            rgba(66, 133, 244, 0.05))`,
-                                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                                        backdropFilter: 'blur(10px)',
+                                        bgcolor: '#FFFFFF',
+                                        borderRadius: 3,
+                                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                                        border: '1px solid rgba(0,0,0,0.03)',
                                         transition: 'all 0.3s ease',
+                                        '&:hover': {
+                                            boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
+                                            borderColor: 'transparent'
+                                        }
                                     }}
                                 >
-                                    <CardContent sx={{ p: 4 }}>
+                                    <CardContent sx={{ p: 4, display: 'flex', flexDirection: 'column', height: '100%' }}>
                                         <Box
                                             sx={{
-                                                width: 70,
-                                                height: 70,
+                                                width: 56,
+                                                height: 56,
                                                 borderRadius: 2,
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
-                                                background: `linear-gradient(135deg,
-                                                    ${theme.palette.primary.main}20,
-                                                    ${theme.palette.secondary.main}20)`,
-                                                color: theme.palette.primary.main,
+                                                bgcolor: feature.bgcolor,
+                                                color: feature.color,
                                                 mb: 3,
                                             }}
                                         >
                                             {feature.icon}
                                         </Box>
-                                        <Typography variant="h6" fontWeight={600} mb={1.5}>
+                                        <Typography variant="h6" fontWeight={700} color="#202124" mb={1.5}>
                                             {feature.title}
                                         </Typography>
                                         <Typography
                                             variant="body2"
-                                            sx={{ color: 'rgba(255, 255, 255, 0.7)', lineHeight: 1.7 }}
+                                            sx={{ color: '#5F6368', lineHeight: 1.7, flex: 1 }}
                                         >
                                             {feature.description}
                                         </Typography>
@@ -394,196 +456,132 @@ const LandingPage: React.FC = () => {
                 id="mobile-app"
                 sx={{
                     py: 12,
-                    background: `linear-gradient(135deg,
-                        ${theme.palette.background.default},
-                        rgba(66, 133, 244, 0.1))`,
+                    bgcolor: '#FFFFFF',
+                    overflow: 'hidden'
                 }}
             >
                 <Container maxWidth="lg">
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-                        <Box sx={{ width: { xs: '100%', md: '50%' }, flexGrow: { md: 1 } }}>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                        <Box sx={{ width: { xs: '100%', md: '50%' }, flexGrow: { md: 1 }, order: { xs: 2, md: 1 } }}>
                             <MotionBox
-                                initial={{ opacity: 0, x: -30 }}
+                                initial={{ opacity: 0, x: -50 }}
                                 whileInView={{ opacity: 1, x: 0 }}
                                 viewport={{ once: true }}
-                                transition={{ duration: 0.6 }}
+                                transition={{ duration: 0.7 }}
                             >
                                 <Typography
                                     variant="h2"
                                     sx={{
                                         fontSize: { xs: '2rem', md: '3rem' },
-                                        fontWeight: 700,
+                                        fontWeight: 800,
                                         mb: 3,
+                                        color: '#202124',
+                                        letterSpacing: '-1px'
                                     }}
                                 >
-                                    Emportez Light Church
-                                    <br />
-                                    partout avec vous
+                                    Emportez Kairos<br />partout avec vous
                                 </Typography>
 
                                 <Typography
                                     variant="h6"
                                     sx={{
-                                        color: 'rgba(255, 255, 255, 0.7)',
-                                        mb: 4,
+                                        color: '#5F6368',
+                                        mb: 5,
                                         lineHeight: 1.7,
+                                        fontSize: '1.1rem',
+                                        fontWeight: 400
                                     }}
                                 >
-                                    Téléchargez notre application mobile gratuite et restez connecté à
-                                    votre communauté. Recevez des notifications pour les événements à
-                                    proximité, consultez les horaires des cultes et bien plus encore.
+                                    L'expérience complète dans votre poche. Géolocalisation, notifications
+                                    et accès hors-ligne pour rester connecté à votre foi où que vous soyez.
                                 </Typography>
-
-                                <Stack spacing={3} sx={{ mb: 4 }}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                        <Box
-                                            sx={{
-                                                width: 50,
-                                                height: 50,
-                                                borderRadius: 1.5,
-                                                bgcolor: theme.palette.primary.main,
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                            }}
-                                        >
-                                            <MapPin size={24} />
-                                        </Box>
-                                        <Box>
-                                            <Typography variant="subtitle1" fontWeight={600}>
-                                                Géolocalisation en temps réel
-                                            </Typography>
-                                            <Typography variant="body2" color="text.secondary">
-                                                Trouvez les églises les plus proches
-                                            </Typography>
-                                        </Box>
-                                    </Box>
-
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                        <Box
-                                            sx={{
-                                                width: 50,
-                                                height: 50,
-                                                borderRadius: 1.5,
-                                                bgcolor: theme.palette.secondary.main,
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                            }}
-                                        >
-                                            <Calendar size={24} />
-                                        </Box>
-                                        <Box>
-                                            <Typography variant="subtitle1" fontWeight={600}>
-                                                Notifications d'événements
-                                            </Typography>
-                                            <Typography variant="body2" color="text.secondary">
-                                                Ne manquez plus aucune activité
-                                            </Typography>
-                                        </Box>
-                                    </Box>
-
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                        <Box
-                                            sx={{
-                                                width: 50,
-                                                height: 50,
-                                                borderRadius: 1.5,
-                                                bgcolor: '#34A853',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                            }}
-                                        >
-                                            <Smartphone size={24} />
-                                        </Box>
-                                        <Box>
-                                            <Typography variant="subtitle1" fontWeight={600}>
-                                                Interface optimisée mobile
-                                            </Typography>
-                                            <Typography variant="body2" color="text.secondary">
-                                                Expérience fluide sur tous les appareils
-                                            </Typography>
-                                        </Box>
-                                    </Box>
-                                </Stack>
 
                                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                                     <Button
-                                        variant="contained"
+                                        variant="outlined"
                                         size="large"
                                         startIcon={<Apple size={24} />}
                                         sx={{
                                             py: 1.5,
-                                            px: 4,
-                                            bgcolor: 'white',
-                                            color: 'black',
-                                            '&:hover': { bgcolor: '#f1f1f1' },
+                                            px: 3,
+                                            borderColor: '#DADCE0',
+                                            color: '#202124',
+                                            borderRadius: 2,
+                                            textTransform: 'none',
+                                            bgcolor: 'transparent',
+                                            '&:hover': {
+                                                bgcolor: '#F8F9FA',
+                                                borderColor: '#202124'
+                                            }
                                         }}
                                     >
-                                        <Box sx={{ textAlign: 'left' }}>
-                                            <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>
-                                                Télécharger sur
-                                            </Typography>
-                                            <Typography variant="subtitle1" fontWeight={600}>
-                                                App Store
-                                            </Typography>
+                                        <Box sx={{ textAlign: 'left', ml: 1 }}>
+                                            <Typography variant="caption" display="block" sx={{ lineHeight: 1, color: '#5F6368' }}>Disponible sur</Typography>
+                                            <Typography variant="subtitle1" fontWeight={700} sx={{ lineHeight: 1 }}>App Store</Typography>
                                         </Box>
                                     </Button>
 
                                     <Button
-                                        variant="contained"
+                                        variant="outlined"
                                         size="large"
                                         startIcon={<PlayCircle size={24} />}
                                         sx={{
                                             py: 1.5,
-                                            px: 4,
-                                            bgcolor: 'white',
-                                            color: 'black',
-                                            '&:hover': { bgcolor: '#f1f1f1' },
+                                            px: 3,
+                                            borderColor: '#DADCE0',
+                                            color: '#202124',
+                                            borderRadius: 2,
+                                            textTransform: 'none',
+                                            bgcolor: 'transparent',
+                                            '&:hover': {
+                                                bgcolor: '#F8F9FA',
+                                                borderColor: '#202124'
+                                            }
                                         }}
                                     >
-                                        <Box sx={{ textAlign: 'left' }}>
-                                            <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>
-                                                Télécharger sur
-                                            </Typography>
-                                            <Typography variant="subtitle1" fontWeight={600}>
-                                                Google Play
-                                            </Typography>
+                                        <Box sx={{ textAlign: 'left', ml: 1 }}>
+                                            <Typography variant="caption" display="block" sx={{ lineHeight: 1, color: '#5F6368' }}>Disponible sur</Typography>
+                                            <Typography variant="subtitle1" fontWeight={700} sx={{ lineHeight: 1 }}>Google Play</Typography>
                                         </Box>
                                     </Button>
                                 </Stack>
                             </MotionBox>
                         </Box>
 
-                        <Box sx={{ width: { xs: '100%', md: '50%' }, flexGrow: { md: 1 } }}>
+                        <Box sx={{ width: { xs: '100%', md: '40%' }, order: { xs: 1, md: 2 } }}>
                             <MotionBox
-                                initial={{ opacity: 0, x: 30 }}
-                                whileInView={{ opacity: 1, x: 0 }}
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                whileInView={{ opacity: 1, scale: 1 }}
                                 viewport={{ once: true }}
-                                transition={{ duration: 0.6 }}
+                                transition={{ duration: 0.7 }}
+                                sx={{ display: 'flex', justifyContent: 'center' }}
                             >
-                                {/* Placeholder for mobile mockup */}
+                                {/* Video Container without Mockup Frame */}
                                 <Box
                                     sx={{
+                                        width: 300,
                                         height: 600,
                                         borderRadius: 4,
-                                        background: `linear-gradient(135deg,
-                                            rgba(66, 133, 244, 0.2),
-                                            rgba(52, 168, 83, 0.2))`,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        border: '2px solid rgba(255, 255, 255, 0.1)',
-                                        position: 'relative',
                                         overflow: 'hidden',
+                                        boxShadow: '0 24px 60px -12px rgba(0,0,0,0.15)',
+                                        mx: 'auto'
                                     }}
                                 >
-                                    <Smartphone
-                                        size={200}
-                                        color={theme.palette.primary.main}
-                                        strokeWidth={1}
-                                    />
+                                    <video
+                                        autoPlay
+                                        loop
+                                        muted
+                                        playsInline
+                                        style={{
+                                            width: '100%',
+                                            height: '100%',
+                                            objectFit: 'cover',
+                                            display: 'block'
+                                        }}
+                                    >
+                                        <source src="/mobile.mp4" type="video/mp4" />
+                                        Votre navigateur ne supporte pas la vidéo.
+                                    </video>
                                 </Box>
                             </MotionBox>
                         </Box>
@@ -592,61 +590,50 @@ const LandingPage: React.FC = () => {
             </Box>
 
             {/* CTA Section */}
-            <Box
-                sx={{
-                    py: 12,
-                    bgcolor: 'background.paper',
-                }}
-            >
+            <Box sx={{ py: 10, bgcolor: '#F8F9FA' }}>
                 <Container maxWidth="md">
-                    <MotionBox
-                        initial={{ opacity: 0, y: 30 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.6 }}
+                    <Box
+                        sx={{
+                            textAlign: 'center',
+                            bgcolor: '#1A73E8',
+                            borderRadius: 4,
+                            p: { xs: 4, md: 8 },
+                            color: 'white',
+                            boxShadow: '0 20px 40px -10px rgba(26,115,232,0.3)',
+                            position: 'relative',
+                            overflow: 'hidden'
+                        }}
                     >
-                        <Box
+                        {/* Abstract BG */}
+                        <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'radial-gradient(circle at top right, rgba(255,255,255,0.2), transparent)', pointerEvents: 'none' }} />
+
+                        <Typography variant="h3" fontWeight={700} mb={2} sx={{ position: 'relative' }}>
+                            Prêt à commencer ?
+                        </Typography>
+                        <Typography variant="h6" sx={{ opacity: 0.9, mb: 4, maxWidth: 600, mx: 'auto', fontWeight: 400, position: 'relative' }}>
+                            Trouvez votre communauté évangélique Kairos aujourd'hui. C'est gratuit et ouvert à tous.
+                        </Typography>
+                        <Button
+                            variant="contained"
+                            size="large"
+                            onClick={() => navigate('/map')}
                             sx={{
-                                textAlign: 'center',
-                                p: 6,
-                                borderRadius: 4,
-                                background: `linear-gradient(135deg,
-                                    ${theme.palette.primary.main}20,
-                                    ${theme.palette.secondary.main}20)`,
-                                border: '2px solid rgba(255, 255, 255, 0.1)',
+                                bgcolor: 'white',
+                                color: '#1A73E8',
+                                py: 1.5,
+                                px: 5,
+                                fontWeight: 700,
+                                textTransform: 'none',
+                                fontSize: '1.1rem',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                                '&:hover': {
+                                    bgcolor: '#F1F3F4',
+                                }
                             }}
                         >
-                            <Typography
-                                variant="h3"
-                                fontWeight={700}
-                                mb={2}
-                                sx={{ fontSize: { xs: '1.8rem', md: '2.5rem' } }}
-                            >
-                                Prêt à commencer votre voyage spirituel ?
-                            </Typography>
-                            <Typography
-                                variant="h6"
-                                sx={{ color: 'rgba(255, 255, 255, 0.7)', mb: 4 }}
-                            >
-                                Rejoignez des milliers de chrétiens qui utilisent Light Church pour
-                                rester connectés.
-                            </Typography>
-                            <Button
-                                variant="contained"
-                                size="large"
-                                onClick={() => navigate('/map')}
-                                endIcon={<ArrowRight size={20} />}
-                                sx={{
-                                    py: 2,
-                                    px: 5,
-                                    fontSize: '1.1rem',
-                                    fontWeight: 600,
-                                }}
-                            >
-                                Commencer maintenant
-                            </Button>
-                        </Box>
-                    </MotionBox>
+                            Explorer maintenant
+                        </Button>
+                    </Box>
                 </Container>
             </Box>
 
@@ -654,148 +641,66 @@ const LandingPage: React.FC = () => {
             <Box
                 component="footer"
                 sx={{
-                    py: 6,
-                    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-                    bgcolor: 'background.default',
+                    py: 8,
+                    bgcolor: '#202124',
+                    color: '#9AA0A6'
                 }}
             >
                 <Container maxWidth="lg">
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                        <Box sx={{ width: { xs: '100%', md: '33.33%' }, flexGrow: { md: 1 } }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                                <Church size={28} color={theme.palette.primary.main} />
-                                <Typography variant="h6" fontWeight="bold">
-                                    Light Church
-                                </Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 6, mb: 8 }}>
+                        <Box sx={{ width: { xs: '100%', md: '30%' } }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <img src={kairosLogo} alt="Kairos" style={{ height: 40, width: 'auto', objectFit: 'contain' }} />
+                                </Box>
                             </Box>
-                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                Votre guide pour découvrir les églises et événements chrétiens près
-                                de chez vous.
+                            <Typography variant="body2" sx={{ lineHeight: 1.7 }}>
+                                Connecter les églises évangéliques, les événements et les croyants pour une communauté plus forte et unie.
                             </Typography>
                         </Box>
 
-                        <Box sx={{ width: { xs: '100%', sm: '50%', md: '16.67%' } }}>
-                            <Typography variant="subtitle1" fontWeight={600} mb={2}>
-                                Navigation
-                            </Typography>
-                            <Stack spacing={1}>
-                                <Button
-                                    color="inherit"
-                                    onClick={() => navigate('/map')}
-                                    sx={{ justifyContent: 'flex-start', color: 'text.secondary' }}
-                                >
-                                    Carte
-                                </Button>
-                                <Button
-                                    color="inherit"
-                                    onClick={() => navigate('/login')}
-                                    sx={{ justifyContent: 'flex-start', color: 'text.secondary' }}
-                                >
-                                    Connexion
-                                </Button>
-                                <Button
-                                    color="inherit"
-                                    onClick={() => navigate('/register')}
-                                    sx={{ justifyContent: 'flex-start', color: 'text.secondary' }}
-                                >
-                                    Inscription
-                                </Button>
-                            </Stack>
-                        </Box>
-
-                        <Box sx={{ width: { xs: '100%', sm: '50%', md: '16.67%' } }}>
-                            <Typography variant="subtitle1" fontWeight={600} mb={2}>
-                                Support
-                            </Typography>
-                            <Stack spacing={1}>
-                                <Button
-                                    color="inherit"
-                                    sx={{ justifyContent: 'flex-start', color: 'text.secondary' }}
-                                >
-                                    À propos
-                                </Button>
-                                <Button
-                                    color="inherit"
-                                    sx={{ justifyContent: 'flex-start', color: 'text.secondary' }}
-                                >
-                                    Contact
-                                </Button>
-                                <Button
-                                    color="inherit"
-                                    sx={{ justifyContent: 'flex-start', color: 'text.secondary' }}
-                                >
-                                    FAQ
-                                </Button>
-                            </Stack>
-                        </Box>
-
-                        <Box sx={{ width: { xs: '100%', sm: '50%', md: '16.67%' } }}>
-                            <Typography variant="subtitle1" fontWeight={600} mb={2}>
-                                Légal
-                            </Typography>
-                            <Stack spacing={1}>
-                                <Button
-                                    color="inherit"
-                                    sx={{ justifyContent: 'flex-start', color: 'text.secondary' }}
-                                >
-                                    Confidentialité
-                                </Button>
-                                <Button
-                                    color="inherit"
-                                    sx={{ justifyContent: 'flex-start', color: 'text.secondary' }}
-                                >
-                                    Conditions
-                                </Button>
-                                <Button
-                                    color="inherit"
-                                    sx={{ justifyContent: 'flex-start', color: 'text.secondary' }}
-                                >
-                                    Mentions légales
-                                </Button>
-                            </Stack>
-                        </Box>
-
-                        <Box sx={{ width: { xs: '100%', sm: '50%', md: '16.67%' } }}>
-                            <Typography variant="subtitle1" fontWeight={600} mb={2}>
-                                Télécharger
-                            </Typography>
-                            <Stack spacing={1}>
-                                <Button
-                                    color="inherit"
-                                    startIcon={<Apple size={18} />}
-                                    sx={{ justifyContent: 'flex-start', color: 'text.secondary' }}
-                                >
-                                    iOS
-                                </Button>
-                                <Button
-                                    color="inherit"
-                                    startIcon={<PlayCircle size={18} />}
-                                    sx={{ justifyContent: 'flex-start', color: 'text.secondary' }}
-                                >
-                                    Android
-                                </Button>
-                            </Stack>
+                        <Box sx={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'space-between' }}>
+                            <Box>
+                                <Typography variant="subtitle2" fontWeight={700} color="white" mb={2} textTransform="uppercase" letterSpacing={1}>
+                                    Navigation
+                                </Typography>
+                                <Stack spacing={1.5}>
+                                    <Box component="span" sx={{ cursor: 'pointer', '&:hover': { color: 'white' } }} onClick={() => navigate('/map')}>Carte</Box>
+                                    <Box component="span" sx={{ cursor: 'pointer', '&:hover': { color: 'white' } }} onClick={() => navigate('/login')}>Espace Responsable</Box>
+                                    <Box component="span" sx={{ cursor: 'pointer', '&:hover': { color: 'white' } }} onClick={() => navigate('/register')}>Ajouter mon église</Box>
+                                </Stack>
+                            </Box>
+                            <Box>
+                                <Typography variant="subtitle2" fontWeight={700} color="white" mb={2} textTransform="uppercase" letterSpacing={1}>
+                                    Ressources
+                                </Typography>
+                                <Stack spacing={1.5}>
+                                    <Box component="span" sx={{ cursor: 'pointer', '&:hover': { color: 'white' } }}>Blog</Box>
+                                    <Box component="span" sx={{ cursor: 'pointer', '&:hover': { color: 'white' } }}>Aide</Box>
+                                    <Box component="span" sx={{ cursor: 'pointer', '&:hover': { color: 'white' } }}>Pour les Pasteurs</Box>
+                                </Stack>
+                            </Box>
+                            <Box>
+                                <Typography variant="subtitle2" fontWeight={700} color="white" mb={2} textTransform="uppercase" letterSpacing={1}>
+                                    Légal
+                                </Typography>
+                                <Stack spacing={1.5}>
+                                    <Box component="span" sx={{ cursor: 'pointer', '&:hover': { color: 'white' } }}>Confidentialité</Box>
+                                    <Box component="span" sx={{ cursor: 'pointer', '&:hover': { color: 'white' } }}>Conditions</Box>
+                                </Stack>
+                            </Box>
                         </Box>
                     </Box>
 
-                    <Divider sx={{ my: 4, borderColor: 'rgba(255, 255, 255, 0.1)' }} />
+                    <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)', mb: 4 }} />
 
-                    <Box
-                        sx={{
-                            display: 'flex',
-                            flexDirection: { xs: 'column', sm: 'row' },
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            gap: 2,
-                        }}
-                    >
-                        <Typography variant="body2" color="text.secondary">
-                            © 2026 Light Church. Tous droits réservés.
+                    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
+                        <Typography variant="body2">
+                            © 2026 Kairos. Tous droits réservés.
                         </Typography>
-                        <Stack direction="row" spacing={1}>
-                            <Typography variant="body2" color="text.secondary">
-                                Fait avec ❤️ pour la communauté chrétienne
-                            </Typography>
+                        <Stack direction="row" spacing={3}>
+                            {/* Social icons placeholders could go here */}
+                            <Typography variant="body2">Fait avec passion.</Typography>
                         </Stack>
                     </Box>
                 </Container>
