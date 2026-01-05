@@ -66,7 +66,7 @@ MapEventsHandler.displayName = 'MapEventsHandler';
 // Icons (Same as before)
 const createChurchIcon = () => L.divIcon({
     className: 'custom-marker-church',
-    html: '<svg width="24" height="24" viewBox="0 0 24 24" fill="#4285F4" stroke="white" stroke-width="2"><path d="M18 15l-3-3V9c0-1.1-.9-2-2-2h-2V5h2V3H11v2h2v2H11c-1.1 0-2 .9-2 2v3l-3 3v2h12v-2zM11 20H9v2h6v-2h-2v-2h-2v2z"/></svg>',
+    html: '<svg width="24" height="24" viewBox="0 0 24 24" fill="#4285F4" stroke="white" stroke-width="2"><path d="M18 12.22V9l-6-4-6 4v3.22l-2 1V21h7v-5h2v5h7v-7.78l-2-1zM12 7l4 3v1h-8v-1l4-3z"/></svg>',
     iconSize: [36, 36],
     iconAnchor: [18, 18],
     popupAnchor: [0, -18]
@@ -78,6 +78,22 @@ const createEventIcon = () => L.divIcon({
     iconSize: [36, 36],
     iconAnchor: [18, 18],
     popupAnchor: [0, -18]
+});
+
+const createSelectedChurchIcon = () => L.divIcon({
+    className: 'custom-marker-church-selected marker-bounce',
+    html: '<svg width="48" height="48" viewBox="0 0 24 24" fill="#FBBC04" stroke="white" stroke-width="2" style="filter: drop-shadow(0 0 8px rgba(0,0,0,0.5));"><path d="M18 12.22V9l-6-4-6 4v3.22l-2 1V21h7v-5h2v5h7v-7.78l-2-1zM12 7l4 3v1h-8v-1l4-3z"/></svg>',
+    iconSize: [48, 48],
+    iconAnchor: [24, 24],
+    popupAnchor: [0, -24]
+});
+
+const createSelectedEventIcon = () => L.divIcon({
+    className: 'custom-marker-event-selected marker-bounce',
+    html: '<svg width="48" height="48" viewBox="0 0 24 24" fill="#FBBC04" stroke="white" stroke-width="2" style="filter: drop-shadow(0 0 8px rgba(0,0,0,0.5));"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V9h14v10zM5 7V5h14v2H5zm7 5h5v5h-5z"/></svg>',
+    iconSize: [48, 48],
+    iconAnchor: [24, 24],
+    popupAnchor: [0, -24]
 });
 
 const userIconInstance = L.divIcon({
@@ -243,7 +259,9 @@ const HomePage: React.FC = () => {
         setSelectedItem(null); // Clear previous item
         setSelectedType(type);
         setDetailDrawerOpen(true);
+        setDetailDrawerOpen(true);
         setMapCenter([item.latitude, item.longitude]);
+        setMapZoom(16); // Focus close on the selected item
 
         // Fetch full details
         try {
@@ -269,10 +287,13 @@ const HomePage: React.FC = () => {
     const handleCloseDrawer = () => {
         setDetailDrawerOpen(false);
         setSelectedItem(null);
+        handleRecenterMap();
     };
 
     const churchIcon = useMemo(() => createChurchIcon(), []);
     const eventIcon = useMemo(() => createEventIcon(), []);
+    const selectedChurchIcon = useMemo(() => createSelectedChurchIcon(), []);
+    const selectedEventIcon = useMemo(() => createSelectedEventIcon(), []);
 
     if (geoBlocked) {
         // ... (Keep existing geo blocked UI or simplify it)
@@ -420,16 +441,18 @@ const HomePage: React.FC = () => {
                         <Marker
                             key={`church-${church.id}`}
                             position={[church.latitude, church.longitude]}
-                            icon={churchIcon}
+                            icon={selectedItem?.id === church.id && selectedType === 'church' ? selectedChurchIcon : churchIcon}
                             eventHandlers={{ click: () => handleMarkerClick(church, 'church') }}
+                            zIndexOffset={selectedItem?.id === church.id ? 1000 : 0}
                         />
                     ))}
                     {showEvents && events.map(event => (
                         <Marker
                             key={`event-${event.id}`}
                             position={[event.latitude, event.longitude]}
-                            icon={eventIcon}
+                            icon={selectedItem?.id === event.id && selectedType === 'event' ? selectedEventIcon : eventIcon}
                             eventHandlers={{ click: () => handleMarkerClick(event, 'event') }}
+                            zIndexOffset={selectedItem?.id === event.id ? 1000 : 0}
                         />
                     ))}
                 </MarkerClusterGroup>
