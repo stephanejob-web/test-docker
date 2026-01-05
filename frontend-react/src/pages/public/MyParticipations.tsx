@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Box, Typography, List, ListItem, ListItemText, Button, Divider, CircularProgress } from '@mui/material';
+import { Box, Typography, List, ListItem, ListItemText, Button, Divider, CircularProgress, IconButton, AppBar, Toolbar } from '@mui/material';
+import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import type { EventDetails } from '../../types/publicMap';
 import { fetchEventDetails } from '../../services/publicMapService';
@@ -69,8 +70,27 @@ export default function MyParticipations() {
     }
 
     return (
-        <Box sx={{ p: 2 }}>
-            <Typography variant="h5" sx={{ mb: 2 }}>Mes participations</Typography>
+        <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+            {/* Header with back button */}
+            <AppBar position="static" elevation={1}>
+                <Toolbar>
+                    <IconButton
+                        edge="start"
+                        color="inherit"
+                        onClick={() => navigate('/map')}
+                        aria-label="Retour à la carte"
+                        sx={{ mr: 2 }}
+                    >
+                        <ArrowBackIcon />
+                    </IconButton>
+                    <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+                        Mes participations
+                    </Typography>
+                </Toolbar>
+            </AppBar>
+
+            {/* Content */}
+            <Box sx={{ p: 2, overflow: 'auto', flexGrow: 1 }}>
             <List>
                 {events.map(ev => (
                     <React.Fragment key={ev.id}>
@@ -86,6 +106,7 @@ export default function MyParticipations() {
                     </React.Fragment>
                 ))}
             </List>
+            </Box>
         </Box>
     );
 }

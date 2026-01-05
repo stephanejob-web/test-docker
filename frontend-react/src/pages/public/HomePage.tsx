@@ -6,11 +6,14 @@ import {
     useTheme,
     Typography,
     LinearProgress,
+    Badge,
 } from '@mui/material';
 import {
     MyLocation as MyLocationIcon,
     Layers,
+    Event as EventIcon,
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
@@ -128,6 +131,7 @@ const userIconInstance = L.divIcon({
 const HomePage: React.FC = () => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+    const navigate = useNavigate();
 
     // States
     const [churches, setChurches] = useState<Church[]>([]);
@@ -536,9 +540,24 @@ const HomePage: React.FC = () => {
 
             {/* 4. Floating Action Buttons (Bottom Right) */}
             <Box sx={{ position: 'absolute', bottom: 24, right: 24, display: 'flex', flexDirection: 'column', gap: 2, zIndex: 1000 }}>
-                {/* Map Layer Toggle - Matches Geolocate button size */}
+                {/* Mes participations */}
                 <Fab
-                    color="inherit" // or 'default' with white bg
+                    color="secondary"
+                    onClick={() => navigate('/my-participations')}
+                    aria-label="Mes participations"
+                    sx={{
+                        bgcolor: 'secondary.main',
+                        '&:hover': { bgcolor: 'secondary.dark' }
+                    }}
+                >
+                    <Badge badgeContent={localParticipations.size} color="primary" max={99}>
+                        <EventIcon />
+                    </Badge>
+                </Fab>
+
+                {/* Map Layer Toggle */}
+                <Fab
+                    color="inherit"
                     onClick={() => setMapType(t => t === 'standard' ? 'satellite' : 'standard')}
                     sx={{ bgcolor: 'white', '&:hover': { bgcolor: '#F1F3F4' } }}
                     aria-label="Changer de vue"
