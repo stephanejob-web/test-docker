@@ -96,6 +96,22 @@ const createSelectedEventIcon = () => L.divIcon({
     popupAnchor: [0, -24]
 });
 
+const createParticipatingEventIcon = () => L.divIcon({
+    className: 'custom-marker-event-participating',
+    html: '<svg width="28" height="28" viewBox="0 0 24 24" fill="#34A853" stroke="white" stroke-width="2"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 12l-4-4 1.4-1.4L10 12.2l6.6-6.6L18 7l-8 8z"/></svg>',
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+    popupAnchor: [0, -18]
+});
+
+const createParticipatingEventSelectedIcon = () => L.divIcon({
+    className: 'custom-marker-event-participating-selected marker-bounce',
+    html: '<svg width="48" height="48" viewBox="0 0 24 24" fill="#34A853" stroke="white" stroke-width="2" style="filter: drop-shadow(0 0 8px rgba(0,0,0,0.35));"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 12l-4-4 1.4-1.4L10 12.2l6.6-6.6L18 7l-8 8z"/></svg>',
+    iconSize: [48, 48],
+    iconAnchor: [24, 24],
+    popupAnchor: [0, -24]
+});
+
 const userIconInstance = L.divIcon({
     className: 'custom-marker-user-static',
     html: `
@@ -294,6 +310,20 @@ const HomePage: React.FC = () => {
     const eventIcon = useMemo(() => createEventIcon(), []);
     const selectedChurchIcon = useMemo(() => createSelectedChurchIcon(), []);
     const selectedEventIcon = useMemo(() => createSelectedEventIcon(), []);
+    const participatingEventIcon = useMemo(() => createParticipatingEventIcon(), []);
+    const participatingEventSelectedIcon = useMemo(() => createParticipatingEventSelectedIcon(), []);
+
+    // Read local participations from localStorage (fast, synchronous)
+    const localParticipations = useMemo(() => {
+        try {
+            const raw = localStorage.getItem('light_church:interested_events');
+            if (!raw) return new Set<number>();
+            const obj = JSON.parse(raw) as Record<string, number>;
+            return new Set<number>(Object.keys(obj).map(k => Number(k)).filter(Boolean));
+        } catch {
+            return new Set<number>();
+        }
+    }, [events]);
 
     if (geoBlocked) {
         // ... (Keep existing geo blocked UI or simplify it)
@@ -492,7 +522,11 @@ const HomePage: React.FC = () => {
                         <Marker
                             key={`event-${event.id}`}
                             position={[event.latitude, event.longitude]}
-                            icon={selectedItem?.id === event.id && selectedType === 'event' ? selectedEventIcon : eventIcon}
+                            icon={
+                                selectedItem?.id === event.id && selectedType === 'event'
+                                    ? (localParticipations.has(event.id) ? participatingEventSelectedIcon : selectedEventIcon)
+                                    : (localParticipations.has(event.id) ? participatingEventIcon : eventIcon)
+                            }
                             eventHandlers={{ click: () => handleMarkerClick(event, 'event') }}
                             zIndexOffset={selectedItem?.id === event.id ? 1000 : 0}
                         />

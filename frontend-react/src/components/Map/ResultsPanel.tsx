@@ -25,6 +25,7 @@ import {
     Clear as ClearIcon,
     Check as CheckIcon
 } from '@mui/icons-material';
+import useEventInterestWeb from '../../hooks/useEventInterestWeb';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { Church, Event } from '../../types/publicMap';
@@ -232,6 +233,9 @@ const EventCard: React.FC<{
     onClick: () => void;
 }> = React.memo(({ event, onClick }) => {
     const [currentTime, setCurrentTime] = useState(new Date());
+
+    // Hook web pour gérer la participation (optimistic + localStorage)
+    const { isInterested, interestedCount: localInterestedCount, isPending, toggle } = useEventInterestWeb(event.id, false, event.interested_count);
 
     // Mettre à jour le temps chaque minute pour le décompte
     useEffect(() => {
@@ -452,7 +456,7 @@ const EventCard: React.FC<{
                                     📍 {formatDistance(event.distance_km)}
                                 </Typography>
                             )}
-                            {event.interested_count !== undefined && event.interested_count > 0 && (
+                            {((localInterestedCount ?? event.interested_count) !== undefined && (localInterestedCount ?? event.interested_count)! > 0) && (
                                 <Typography
                                     variant="body2"
                                     sx={{
@@ -464,7 +468,7 @@ const EventCard: React.FC<{
                                         fontSize: '0.875rem'
                                     }}
                                 >
-                                    👥 {event.interested_count} {event.interested_count === 1 ? 'intéressé' : 'intéressés'}
+                                    👥 {localInterestedCount ?? event.interested_count} {(localInterestedCount ?? event.interested_count) === 1 ? 'intéressé' : 'intéressés'}
                                 </Typography>
                             )}
                         </Stack>
@@ -495,6 +499,34 @@ const EventCard: React.FC<{
                     >
                         Voir plus
                     </Button>
+                    {/* Participation web */}
+                    <Button
+                        variant={isInterested ? 'contained' : 'outlined'}
+                        size="small"
+                        startIcon={<CheckIcon />}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            toggle().catch((err) => {
+                                console.error('Interest toggle failed', err);
+                                // simple feedback
+                                alert('Impossible de mettre à jour votre participation.');
+                            });
+                        }}
+                        disabled={isPending}
+                        fullWidth
+                        sx={{
+                            textTransform: 'none',
+                            fontWeight: 500,
+                            borderColor: isInterested ? undefined : '#DADCE0',
+                            bgcolor: isInterested ? '#1A73E8' : undefined,
+                            color: isInterested ? 'white' : undefined,
+                            '&:hover': {
+                                bgcolor: isInterested ? '#1765CC' : '#F8F9FA'
+                            }
+                        }}
+                    >
+                        {isPending ? '...' : (isInterested ? 'Ne plus participer' : 'Je participe')}
+                    </Button>
                 </Stack>
             </Box>
         </Box>
@@ -524,6 +556,7 @@ const ResultsPanel: React.FC<ResultsPanelProps> = React.memo(({
     const [searchQuery, setSearchQuery] = useState('');
     const [filterChurches, setFilterChurches] = useState(true);
     const [filterEvents, setFilterEvents] = useState(true);
+    const [showMyParticipations, setShowMyParticipations] = useState(false);
     const [sortBy, setSortBy] = useState<SortType>('distance');
 
     // Taille fixe du panneau
@@ -550,6 +583,13 @@ const ResultsPanel: React.FC<ResultsPanelProps> = React.memo(({
             setFilterChurches(false);
             setFilterEvents(true);
         }
+    }, []);
+
+    const toggleShowMyParticipations = useCallback(() => {
+        setShowMyParticipations(prev => !prev);
+        // when showing only participations, ensure events filter is active
+        setFilterEvents(true);
+        setFilterChurches(false);
     }, []);
 
     // Filtrer et trier les données
@@ -586,6 +626,19 @@ const ResultsPanel: React.FC<ResultsPanelProps> = React.memo(({
                     );
                 }
             });
+        }
+
+        // Filtrer uniquement les participations locales si demandé
+        if (showMyParticipations) {
+            let local: Record<string, number> = {};
+            try {
+                const raw = localStorage.getItem('light_church:interested_events');
+                if (raw) local = JSON.parse(raw) as Record<string, number>;
+            } catch {
+                local = {};
+            }
+
+            filteredItems = filteredItems.filter(item => item.type === 'event' && local[String(item.data.id)] !== undefined);
         }
 
         // Tri
@@ -795,6 +848,22 @@ const ResultsPanel: React.FC<ResultsPanelProps> = React.memo(({
                     <Box sx={{ p: 4, textAlign: 'center' }}>
                         {searchQuery ? (
                             <>
+                                {/* Mes participations */}
+                                <Chip
+                                    icon={showMyParticipations ? <CheckIcon sx={{ fontSize: 16 }} /> : undefined}
+                                    label="Mes participations"
+                                    onClick={toggleShowMyParticipations}
+                                    sx={{
+                                        bgcolor: showMyParticipations ? '#E8F0FE' : '#F1F3F4',
+                                        color: showMyParticipations ? '#1A73E8' : '#5F6368',
+                                        borderColor: showMyParticipations ? '#1A73E8' : '#DADCE0',
+                                        borderWidth: 1,
+                                        borderStyle: 'solid',
+                                        fontWeight: 500,
+                                        fontSize: '0.875rem',
+                                        '&:hover': { bgcolor: showMyParticipations ? '#D2E3FC' : '#E8EAED' }
+                                    }}
+                                />
                                 <SearchIcon sx={{ fontSize: 64, color: '#DADCE0', mb: 2 }} />
                                 <Typography variant="h6" sx={{ color: '#5F6368', fontWeight: 500, fontSize: '1rem', mb: 1 }}>
                                     Aucun résultat
