@@ -54,3 +54,28 @@ export const searchCities = async (query: string): Promise<CitySuggestion[]> => 
         return [];
     }
 };
+
+export const geocodeAddress = async (address: string): Promise<{ latitude: number; longitude: number } | null> => {
+    if (!address || address.trim().length === 0) return null;
+
+    try {
+        const response = await axios.get<GeoApiResponse>(`https://api-adresse.data.gouv.fr/search/`, {
+            params: {
+                q: address,
+                limit: 1,
+                autocomplete: 0
+            }
+        });
+
+        const feature = response.data.features[0];
+        if (!feature) return null;
+
+        return {
+            latitude: feature.geometry.coordinates[1],
+            longitude: feature.geometry.coordinates[0]
+        };
+    } catch (error) {
+        console.error('Error geocoding address:', error);
+        return null;
+    }
+};

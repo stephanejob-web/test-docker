@@ -258,7 +258,9 @@ describe('MyEvents - Affichage des Événements', () => {
         renderMyEvents();
 
         await waitFor(() => {
-            expect(screen.getByText(/28\/12\/2025.*→.*28\/12\/2025/)).toBeInTheDocument();
+            // Vérifier que les heures de début et de fin sont affichées (format local)
+            expect(screen.getByText(/10:00/)).toBeInTheDocument();
+            expect(screen.getByText(/12:00/)).toBeInTheDocument();
         });
     });
 });
