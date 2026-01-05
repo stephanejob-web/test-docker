@@ -5,6 +5,7 @@ import theme from './theme/theme';
 import PublicLayout from './layouts/PublicLayout';
 import MapLayout from './layouts/MapLayout';
 import HomePage from './pages/public/HomePage';
+import LandingPage from './pages/public/LandingPage';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import DashboardLayout from './components/Layout';
@@ -29,7 +30,8 @@ function App() {
           <BrowserRouter>
             <Routes>
               {/* Pages publiques */}
-              <Route path="/" element={
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/map" element={
                 <MapLayout>
                   <HomePage />
                 </MapLayout>
