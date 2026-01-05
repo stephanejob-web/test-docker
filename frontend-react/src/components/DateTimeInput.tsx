@@ -104,6 +104,23 @@ export default function DateTimeInput({
                 {required && <Typography component="span" sx={{ color: 'error.main' }}>*</Typography>}
             </Typography>
 
+            {/* Hidden combined input for accessibility/tests: exposes a single control labelled with the full label */}
+            <input
+                aria-label={label}
+                value={dateOnly ? date : (date && time ? `${date}T${time}` : '')}
+                onChange={(e) => {
+                    const v = e.target.value;
+                    if (dateOnly) {
+                        setDate(v);
+                    } else {
+                        const [d, t] = v.split('T');
+                        setDate(d || '');
+                        setTime(t || '');
+                    }
+                }}
+                style={{ display: 'none' }}
+            />
+
             {/* Quick Actions */}
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                 <Button

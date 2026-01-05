@@ -72,6 +72,7 @@ import {
 } from '@mui/icons-material';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import DateTimeInput from '../components/DateTimeInput';
+import { geocodeAddress } from '../services/geoService';
 
 interface EventFormData {
     title: string;
@@ -150,6 +151,8 @@ export default function MyEvents() {
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
     const [formData, setFormData] = useState<EventFormData>(initialFormState);
+    const [useChurchAddress, setUseChurchAddress] = useState<boolean>(false);
+    const [, setChurchData] = useState<any | null>(null);
     const [dateError, setDateError] = useState('');
     const [hasChurch, setHasChurch] = useState<boolean | null>(null);
     const [isChurchComplete, setIsChurchComplete] = useState<boolean>(false);
@@ -315,6 +318,16 @@ export default function MyEvents() {
 
     const validateStep3 = () => {
         const newErrors: Record<string, string> = {};
+
+        if (useChurchAddress) {
+            if (!formData.address || formData.address.trim().length === 0) {
+                newErrors.address = 'L\'adresse de l\'église est manquante';
+            }
+            if (!formData.latitude || !formData.longitude) {
+                newErrors.address = 'Les coordonnées GPS de l\'église sont manquantes';
+            }
+            return newErrors;
+        }
 
         if (!formData.address || formData.address.trim().length === 0) {
             newErrors.address = 'L\'adresse est obligatoire';
@@ -1210,6 +1223,59 @@ export default function MyEvents() {
                             </Typography>
                         </Box>
 
+                        <FormControlLabel
+                            control={
+                                <Checkbox
+                                    checked={useChurchAddress}
+                                    onChange={async (e) => {
+                                        const checked = e.target.checked;
+                                        setUseChurchAddress(checked);
+                                        if (checked) {
+                                            try {
+                                                const { data } = await api.get('/church/my-church');
+                                                setChurchData(data);
+                                                const addr = data.details?.address || data.address || '';
+                                                const street_number = data.details?.street_number || data.street_number || '';
+                                                const street_name = data.details?.street_name || data.street_name || '';
+                                                const postal_code = data.details?.postal_code || data.postal_code || '';
+                                                const city = data.details?.city || data.city || '';
+
+                                                let lat = data.latitude;
+                                                let lon = data.longitude;
+                                                if ((!lat || !lon) && addr) {
+                                                    const geo = await geocodeAddress(addr);
+                                                    if (geo) {
+                                                        lat = geo.latitude;
+                                                        lon = geo.longitude;
+                                                    }
+                                                }
+
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    address: addr,
+                                                    street_number: street_number || prev.street_number,
+                                                    street_name: street_name || prev.street_name,
+                                                    postal_code: postal_code || prev.postal_code,
+                                                    city: city || prev.city,
+                                                    latitude: lat ? String(lat) : prev.latitude,
+                                                    longitude: lon ? String(lon) : prev.longitude
+                                                }));
+                                                setErrors(prev => ({ ...prev, address: '' }));
+                                            } catch (err) {
+                                                console.error('Failed to load church address:', err);
+                                                setUseChurchAddress(false);
+                                                setChurchData(null);
+                                                showSnackbar('Impossible de récupérer l\'adresse de l\'église', 'error');
+                                            }
+                                        } else {
+                                            setChurchData(null);
+                                        }
+                                    }}
+                                />
+                            }
+                            label="Utiliser l'adresse de l'église"
+                        />
+
                         {touched.address && errors.address ? (
                             <Alert severity="error" icon={<InfoIcon />}>
                                 {errors.address}
@@ -1220,24 +1286,25 @@ export default function MyEvents() {
                             </Alert>
                         )}
 
-                        <AddressAutocomplete
-                            defaultValue={formData.address || ''}
-                            onAddressSelect={(addressData) => {
-                                setFormData(prev => ({
-                                    ...prev,
-                                    address: addressData.full_address,
-                                    street_number: addressData.street_number,
-                                    street_name: addressData.street_name,
-                                    postal_code: addressData.postal_code,
-                                    city: addressData.city,
-                                    latitude: addressData.latitude.toString(),
-                                    longitude: addressData.longitude.toString()
-                                }));
-                                // Clear address errors when an address is selected
-                                setErrors(prev => ({ ...prev, address: '' }));
-                                setTouched(prev => ({ ...prev, address: true }));
-                            }}
-                        />
+                        {!useChurchAddress && (
+                            <AddressAutocomplete
+                                defaultValue={formData.address || ''}
+                                onAddressSelect={(addressData) => {
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        address: addressData.full_address,
+                                        street_number: addressData.street_number,
+                                        street_name: addressData.street_name,
+                                        postal_code: addressData.postal_code,
+                                        city: addressData.city,
+                                        latitude: addressData.latitude.toString(),
+                                        longitude: addressData.longitude.toString()
+                                    }));
+                                    setErrors(prev => ({ ...prev, address: '' }));
+                                    setTouched(prev => ({ ...prev, address: true }));
+                                }}
+                            />
+                        )}
 
                         <Paper elevation={0} sx={{ p: 3, bgcolor: 'action.hover', borderRadius: 2 }}>
                             <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 'bold' }}>

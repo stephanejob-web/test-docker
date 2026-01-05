@@ -1,5 +1,5 @@
 import React from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, Link } from 'react-router-dom';
 import {
     AppBar,
     Toolbar,
@@ -7,9 +7,10 @@ import {
     Button,
     Box,
     Container,
-    useScrollTrigger
+    useScrollTrigger,
+    Stack
 } from '@mui/material';
-import { Login as LoginIcon } from '@mui/icons-material';
+import { Login as LoginIcon, Dashboard as DashboardIcon } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 
 /**
@@ -73,34 +74,54 @@ const PublicLayout: React.FC = React.memo(() => {
                                 Light Church
                             </Typography>
 
-                            {/* Bouton Connexion ou Dashboard */}
-                            {user ? (
+                            {/* Navigation */}
+                            <Stack direction="row" spacing={2} alignItems="center">
                                 <Button
-                                    variant="outlined"
-                                    onClick={handleDashboardClick}
-                                    sx={{
-                                        borderRadius: 2,
-                                        textTransform: 'none',
-                                        fontWeight: 600
-                                    }}
+                                    color="inherit"
+                                    component={Link}
+                                    to="/map"
+                                    sx={{ textTransform: 'none' }}
                                 >
-                                    Tableau de bord
+                                    Carte
                                 </Button>
-                            ) : (
                                 <Button
-                                    variant="contained"
-                                    startIcon={<LoginIcon />}
-                                    onClick={handleLoginClick}
-                                    sx={{
-                                        borderRadius: 2,
-                                        textTransform: 'none',
-                                        fontWeight: 600,
-                                        boxShadow: 2
-                                    }}
+                                    color="inherit"
+                                    onClick={() => navigate('/my-participations')}
+                                    sx={{ textTransform: 'none' }}
                                 >
-                                    Connexion
+                                    Mes participations
                                 </Button>
-                            )}
+
+                                {/* Bouton Connexion ou Dashboard */}
+                                {user ? (
+                                    <Button
+                                        variant="outlined"
+                                        startIcon={<DashboardIcon />}
+                                        onClick={handleDashboardClick}
+                                        sx={{
+                                            borderRadius: 2,
+                                            textTransform: 'none',
+                                            fontWeight: 600
+                                        }}
+                                    >
+                                        Dashboard
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        variant="contained"
+                                        startIcon={<LoginIcon />}
+                                        onClick={handleLoginClick}
+                                        sx={{
+                                            borderRadius: 2,
+                                            textTransform: 'none',
+                                            fontWeight: 600,
+                                            boxShadow: 2
+                                        }}
+                                    >
+                                        Connexion
+                                    </Button>
+                                )}
+                            </Stack>
                         </Toolbar>
                     </Container>
                 </AppBar>
