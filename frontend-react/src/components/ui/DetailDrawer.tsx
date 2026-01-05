@@ -10,9 +10,10 @@ interface DetailDrawerProps {
     data: ChurchDetails | EventDetails | null;
     type: 'church' | 'event' | null;
     embedded?: boolean;
+    onOrganizerClick?: (churchId: string) => void;
 }
 
-const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, data, type, embedded = false }) => {
+const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, data, type, embedded = false, onOrganizerClick }) => {
 
     const renderChurchDetails = (church: ChurchDetails) => {
         // Helper to get social icon
@@ -495,12 +496,27 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
                 {event.church && (
                     <>
                         <Divider sx={{ my: 3, borderColor: '#E8EAED' }} />
-                        <Box sx={{ p: 2, bgcolor: '#F8F9FA', borderRadius: 1 }}>
+                        <Box
+                            sx={{
+                                p: 3,
+                                bgcolor: '#F8F9FA',
+                                borderRadius: 2,
+                                cursor: onOrganizerClick ? 'pointer' : 'default',
+                                '&:hover': onOrganizerClick ? { bgcolor: '#E8F0FE' } : undefined,
+                                transition: 'background-color 0.2s'
+                            }}
+                            onClick={() => onOrganizerClick && event.church_id && onOrganizerClick(String(event.church_id))}
+                        >
                             <Typography variant="caption" color="#5F6368">Organisé par</Typography>
-                            <Typography variant="body2" fontWeight="500" color="#202124">{event.church.church_name}</Typography>
-                            {event.church.denomination_name && (
-                                <Typography variant="caption" color="#5F6368">{event.church.denomination_name}</Typography>
-                            )}
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <Box>
+                                    <Typography variant="body2" fontWeight="500" color="#1A73E8">{event.church.church_name}</Typography>
+                                    {event.church.denomination_name && (
+                                        <Typography variant="caption" color="#5F6368">{event.church.denomination_name}</Typography>
+                                    )}
+                                </Box>
+                                {onOrganizerClick && <Directions sx={{ color: '#1A73E8', fontSize: 20 }} />}
+                            </Box>
                         </Box>
                     </>
                 )}
