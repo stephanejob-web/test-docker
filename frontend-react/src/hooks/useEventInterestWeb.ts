@@ -59,6 +59,8 @@ export default function useEventInterestWeb(eventId: number, initialInterested =
                 const local = readLocalInterested();
                 delete local[idStr];
                 writeLocalInterested(local);
+                // notify same-tab listeners that interests changed
+                try { window.dispatchEvent(new CustomEvent('light_church:interests_updated', { detail: { eventId, interested: false } })); } catch {}
             } else {
                 const res = await api.post(`/public/events/${eventId}/interest`, { device_id });
                 // server may return interested_count
@@ -68,6 +70,8 @@ export default function useEventInterestWeb(eventId: number, initialInterested =
                 const local = readLocalInterested();
                 local[idStr] = Date.now();
                 writeLocalInterested(local);
+                // notify same-tab listeners that interests changed
+                try { window.dispatchEvent(new CustomEvent('light_church:interests_updated', { detail: { eventId, interested: true } })); } catch {}
             }
         } catch (err) {
             // revert

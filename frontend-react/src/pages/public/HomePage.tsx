@@ -197,6 +197,51 @@ const HomePage: React.FC = () => {
         };
     }, []);
 
+    // Focus event handler: center map and open detail drawer when requested
+    useEffect(() => {
+        let mounted = true;
+
+        const doFocus = async (eventId: number) => {
+            try {
+                const { fetchEventDetails } = await import('../../services/publicMapService');
+                const details = await fetchEventDetails(Number(eventId));
+                if (!mounted || !details) return;
+                setSelectedItem(details);
+                setSelectedType('event');
+                setDetailDrawerOpen(true);
+                if (details.latitude && details.longitude) {
+                    setMapCenter([details.latitude, details.longitude]);
+                    setMapZoom(16);
+                }
+            } catch (e) {
+                console.error('Focus event failed', e);
+            }
+        };
+
+        const handler = (e: any) => {
+            const id = e?.detail?.eventId;
+            if (id) doFocus(Number(id));
+        };
+
+        window.addEventListener('light_church:focus_event', handler as EventListener);
+
+        // If URL has focusEvent param (e.g., /map?focusEvent=123), handle it
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const focusId = params.get('focusEvent');
+            if (focusId) {
+                // remove param from URL
+                const url = new URL(window.location.href);
+                params.delete('focusEvent');
+                url.search = params.toString();
+                window.history.replaceState({}, '', url.toString());
+                doFocus(Number(focusId));
+            }
+        } catch (e) { /* ignore */ }
+
+        return () => { mounted = false; window.removeEventListener('light_church:focus_event', handler as EventListener); };
+    }, []);
+
     // Load Data
     const loadDataForBounds = useCallback(async (bounds: L.LatLngBounds) => {
         if (abortControllerRef.current) abortControllerRef.current.abort();
@@ -317,8 +362,8 @@ const HomePage: React.FC = () => {
     const participatingEventIcon = useMemo(() => createParticipatingEventIcon(), []);
     const participatingEventSelectedIcon = useMemo(() => createParticipatingEventSelectedIcon(), []);
 
-    // Read local participations from localStorage (fast, synchronous)
-    const localParticipations = useMemo(() => {
+    // Local participations: keep as state and listen to updates so UI updates without full refresh
+    const [localParticipations, setLocalParticipations] = useState<Set<number>>(() => {
         try {
             const raw = localStorage.getItem('light_church:interested_events');
             if (!raw) return new Set<number>();
@@ -327,6 +372,32 @@ const HomePage: React.FC = () => {
         } catch {
             return new Set<number>();
         }
+    });
+
+    useEffect(() => {
+        const refresh = () => {
+            try {
+                const raw = localStorage.getItem('light_church:interested_events');
+                if (!raw) { setLocalParticipations(new Set<number>()); return; }
+                const obj = JSON.parse(raw) as Record<string, number>;
+                setLocalParticipations(new Set<number>(Object.keys(obj).map(k => Number(k)).filter(Boolean)));
+            } catch {
+                setLocalParticipations(new Set<number>());
+            }
+        };
+
+        // initial read
+        refresh();
+
+        // listen for same-tab custom events and storage events (cross-tab)
+        window.addEventListener('light_church:interests_updated', refresh as EventListener);
+        const storageHandler = (e: StorageEvent) => { if (e.key === 'light_church:interested_events') refresh(); };
+        window.addEventListener('storage', storageHandler);
+
+        return () => {
+            window.removeEventListener('light_church:interests_updated', refresh as EventListener);
+            window.removeEventListener('storage', storageHandler);
+        };
     }, [events]);
 
     if (geoBlocked) {

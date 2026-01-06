@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Drawer, Box, Typography, Button, IconButton, Skeleton, Divider, Chip, Link, Stack, Alert } from '@mui/material';
-import { Close, Directions, Share, PunchClock, Call, Language, LocationOn, LocalParking, Accessible, Mic, Person, People, AttachMoney, YouTube, InsertLink, CancelOutlined, Info, Email, Translate, Facebook, Instagram, Twitter, LinkedIn } from '@mui/icons-material';
+import { Close, Directions, PunchClock, Call, Language, LocationOn, LocalParking, Accessible, Mic, Person, People, AttachMoney, YouTube, InsertLink, CancelOutlined, Info, Email, Translate, Facebook, Instagram, Twitter, LinkedIn } from '@mui/icons-material';
 import type { ChurchDetails, EventDetails } from '../../types/publicMap';
 
 interface DetailDrawerProps {
@@ -14,6 +15,14 @@ interface DetailDrawerProps {
 }
 
 const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, data, type, embedded = false, onOrganizerClick }) => {
+    const [overrideData, setOverrideData] = useState<ChurchDetails | null>(null);
+    const [overrideType, setOverrideType] = useState<'church' | 'event' | null>(null);
+
+    const handleClose = () => {
+        setOverrideData(null);
+        setOverrideType(null);
+        onClose();
+    };
 
     const renderChurchDetails = (church: ChurchDetails) => {
         // Helper to get social icon
@@ -65,32 +74,7 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
                     >
                         Itinéraire
                     </Button>
-                    <Button
-                        variant="outlined"
-                        startIcon={<Share />}
-                        onClick={() => {
-                            const url = window.location.href;
-                            if (navigator.share) {
-                                navigator.share({ title: church.church_name, url });
-                            } else {
-                                navigator.clipboard.writeText(url);
-                                alert('Lien copié dans le presse-papiers !');
-                            }
-                        }}
-                        sx={{
-                            borderRadius: 1,
-                            borderColor: '#DADCE0',
-                            color: '#5F6368',
-                            textTransform: 'none',
-                            fontWeight: 500,
-                            '&:hover': {
-                                borderColor: '#DADCE0',
-                                bgcolor: '#F8F9FA'
-                            }
-                        }}
-                    >
-                        Partager
-                    </Button>
+                    {/* share removed per UX request */}
                 </Box>
 
                 <Divider sx={{ my: 2, borderColor: '#E8EAED' }} />
@@ -239,6 +223,7 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
     };
 
     const renderEventDetails = (event: EventDetails) => {
+        const navigate = useNavigate();
         const isCancelled = Boolean(event.cancelled_at);
 
         return (
@@ -300,15 +285,15 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
                     </Button>
                     <Button
                         variant="outlined"
-                        startIcon={<Share />}
+                        startIcon={<LocationOn />}
                         onClick={() => {
-                            const url = window.location.href;
-                            if (navigator.share) {
-                                navigator.share({ title: event.title, url });
-                            } else {
-                                navigator.clipboard.writeText(url);
-                                alert('Lien copié dans le presse-papiers !');
-                            }
+                            // navigate to /map with focus param then emit event for HomePage to center
+                            try {
+                                navigate(`/map?focusEvent=${event.id}`);
+                            } catch {}
+                            try {
+                                window.dispatchEvent(new CustomEvent('light_church:focus_event', { detail: { eventId: event.id } }));
+                            } catch {}
                         }}
                         sx={{
                             borderRadius: 1,
@@ -322,8 +307,9 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
                             }
                         }}
                     >
-                        Partager
+                        Voir sur la carte
                     </Button>
+                    {/* share removed per UX request */}
                 </Box>
 
                 <Divider sx={{ my: 2, borderColor: '#E8EAED' }} />
@@ -501,11 +487,28 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
                                 p: 3,
                                 bgcolor: '#F8F9FA',
                                 borderRadius: 2,
-                                cursor: onOrganizerClick ? 'pointer' : 'default',
-                                '&:hover': onOrganizerClick ? { bgcolor: '#E8F0FE' } : undefined,
-                                transition: 'background-color 0.2s'
-                            }}
-                            onClick={() => onOrganizerClick && event.church_id && onOrganizerClick(String(event.church_id))}
+                                        cursor: 'pointer',
+                                        '&:hover': { bgcolor: '#E8F0FE' },
+                                        transition: 'background-color 0.2s'
+                                    }}
+                                    onClick={async () => {
+                                        if (onOrganizerClick && event.church_id) {
+                                            onOrganizerClick(String(event.church_id));
+                                            return;
+                                        }
+                                        try {
+                                            const { fetchChurchDetails } = await import('../../services/publicMapService');
+                                            if (event.church_id) {
+                                                const ch = await fetchChurchDetails(Number(event.church_id));
+                                                if (ch) {
+                                                    setOverrideData(ch);
+                                                    setOverrideType('church');
+                                                }
+                                            }
+                                        } catch (e) {
+                                            console.error('Failed to fetch organizer church', e);
+                                        }
+                                    }}
                         >
                             <Typography variant="caption" color="#5F6368">Organisé par</Typography>
                             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -545,7 +548,7 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
                 }}
             >
                 <IconButton
-                    onClick={onClose}
+                    onClick={handleClose}
                     sx={{
                         position: 'absolute',
                         top: 8,
@@ -560,9 +563,9 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
                 </IconButton>
             </Box>
 
-            {type === 'church'
-                ? renderChurchDetails(data as ChurchDetails)
-                : renderEventDetails(data as EventDetails)
+            {overrideType === 'church' && overrideData
+                ? renderChurchDetails(overrideData as ChurchDetails)
+                : (type === 'church' ? renderChurchDetails(data as ChurchDetails) : renderEventDetails(data as EventDetails))
             }
         </Box>
     ) : null;
@@ -579,7 +582,7 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
         <Drawer
             anchor="left"
             open={open}
-            onClose={onClose}
+            onClose={handleClose}
             variant="persistent"
             PaperProps={{
                 sx: {
