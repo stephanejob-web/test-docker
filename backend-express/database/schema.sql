@@ -28,7 +28,7 @@ CREATE TABLE `activity_types` (
   `label_fr` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
   `icon` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -56,7 +56,7 @@ CREATE TABLE `admins` (
   KEY `idx_admins_role` (`role`),
   KEY `idx_admins_status_created` (`status`,`created_at`),
   KEY `idx_admins_status_role` (`status`,`role`)
-) ENGINE=InnoDB AUTO_INCREMENT=9008 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -113,7 +113,7 @@ CREATE TABLE `church_schedules` (
   KEY `fk_sch_type` (`activity_type_id`),
   CONSTRAINT `fk_sch_church` FOREIGN KEY (`church_id`) REFERENCES `churches` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_sch_type` FOREIGN KEY (`activity_type_id`) REFERENCES `activity_types` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=15048 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -131,7 +131,7 @@ CREATE TABLE `church_socials` (
   PRIMARY KEY (`id`),
   KEY `fk_social_church` (`church_id`),
   CONSTRAINT `fk_social_church` FOREIGN KEY (`church_id`) REFERENCES `churches` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=5815 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -149,7 +149,7 @@ CREATE TABLE `church_unions` (
   `logo_url` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `is_active` tinyint(1) DEFAULT '1',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -176,7 +176,7 @@ CREATE TABLE `churches` (
   FULLTEXT KEY `idx_church_name_search` (`church_name`),
   CONSTRAINT `fk_ch_admin` FOREIGN KEY (`admin_id`) REFERENCES `admins` (`id`),
   CONSTRAINT `fk_ch_den` FOREIGN KEY (`denomination_id`) REFERENCES `denominations` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=9005 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -195,7 +195,7 @@ CREATE TABLE `denominations` (
   PRIMARY KEY (`id`),
   KEY `fk_den_union` (`union_id`),
   CONSTRAINT `fk_den_union` FOREIGN KEY (`union_id`) REFERENCES `church_unions` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -249,7 +249,7 @@ CREATE TABLE `event_interests` (
   KEY `idx_created_at` (`created_at`),
   CONSTRAINT `fk_interest_device` FOREIGN KEY (`device_id`) REFERENCES `push_tokens` (`device_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_interest_event` FOREIGN KEY (`event_id`) REFERENCES `events` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=47 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -269,7 +269,7 @@ CREATE TABLE `event_translations` (
   KEY `idx_event_translations_event_id` (`event_id`),
   CONSTRAINT `fk_event_trans_event` FOREIGN KEY (`event_id`) REFERENCES `events` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_event_trans_lang` FOREIGN KEY (`language_id`) REFERENCES `languages` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -311,7 +311,7 @@ CREATE TABLE `events` (
   CONSTRAINT `fk_events_cancelled_by` FOREIGN KEY (`cancelled_by`) REFERENCES `admins` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_evt_admin` FOREIGN KEY (`admin_id`) REFERENCES `admins` (`id`),
   CONSTRAINT `fk_evt_lang_id` FOREIGN KEY (`language_id`) REFERENCES `languages` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=6026 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -331,7 +331,7 @@ CREATE TABLE `languages` (
   `display_order` int DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `code_UNIQUE` (`code`)
-) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -353,7 +353,7 @@ CREATE TABLE `push_tokens` (
   UNIQUE KEY `unique_device` (`device_id`),
   KEY `fk_token_lang_id` (`language_id`),
   CONSTRAINT `fk_token_lang_id` FOREIGN KEY (`language_id`) REFERENCES `languages` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --

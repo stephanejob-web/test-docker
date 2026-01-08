@@ -32,6 +32,11 @@ tmp/
 temp/
 *.tmp
 
-# Database backups (keep schema.sql versioned)
+# Database backups (keep schema.sql and seeders.sql versioned)
+backend-express/database/backups/
 backup_*.sql
 bas_ok.sql
+*.sql.bak
+
+# macOS
+.DS_Store

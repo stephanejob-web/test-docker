@@ -13,12 +13,10 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       TZ: Europe/Paris
     ports:
-      - "3306:3306"
+      - "${MYSQL_PORT:-3306}:3306"
     volumes:
       - mysql-data:/var/lib/mysql
-      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
-      - ./backend-express/seeders/01-denominations.sql:/docker-entrypoint-initdb.d/02-denominations.sql
-      - ./backend-express/seeders/02-churches-data.sql:/docker-entrypoint-initdb.d/03-churches-data.sql
+      - ./backend-express/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
     networks:
       - app-network
     healthcheck:
