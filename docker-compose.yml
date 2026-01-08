@@ -37,11 +37,11 @@ services:
       DB_USER: ${MYSQL_USER}
       DB_PASSWORD: ${MYSQL_PASSWORD}
       DB_NAME: ${MYSQL_DATABASE}
-      PORT: 3000
+      PORT: ${EXPRESS_PORT:-3000}
       JWT_SECRET: ${JWT_SECRET:-super_secret_jwt_key}
       TZ: Europe/Paris
     ports:
-      - "3000:3000"
+      - "${EXPRESS_PORT:-3000}:${EXPRESS_PORT:-3000}"
     depends_on:
       mysql:
         condition: service_healthy
