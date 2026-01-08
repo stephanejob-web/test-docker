@@ -14,10 +14,17 @@ RUN npm run build
 # Production stage
 FROM nginx:alpine
 
+# Copier les fichiers buildés
 COPY --from=build /app/dist /usr/share/nginx/html
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copier le template nginx (pas le fichier final)
+COPY nginx.conf.template /etc/nginx/conf.d/nginx.conf.template
+
+# Copier et rendre exécutable le script d'entrypoint
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+# Utiliser notre entrypoint pour générer la config nginx dynamiquement
+ENTRYPOINT ["/docker-entrypoint.sh"]
