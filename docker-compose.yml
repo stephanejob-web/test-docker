@@ -5,7 +5,7 @@ services:
     image: mysql:8.0
     container_name: mysql-db
     restart: unless-stopped
-    command: --default-time-zone='+01:00'
+    command: --default-time-zone='+01:00' --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
@@ -16,7 +16,9 @@ services:
       - "3306:3306"
     volumes:
       - mysql-data:/var/lib/mysql
-      - ./bas_ok.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./backend-express/seeders/01-denominations.sql:/docker-entrypoint-initdb.d/02-denominations.sql
+      - ./backend-express/seeders/02-churches-data.sql:/docker-entrypoint-initdb.d/03-churches-data.sql
     networks:
       - app-network
     healthcheck:
