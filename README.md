@@ -65,13 +65,24 @@ cd test-docker
 cat > .env <<EOF
 MYSQL_ROOT_PASSWORD=root
 MYSQL_DATABASE=light_church
-MYSQL_USER=light_user
-MYSQL_PASSWORD=light_password
+MYSQL_USER=admin
+MYSQL_PASSWORD=admin
+MYSQL_PORT=3306
+EXPRESS_PORT=3000
+FRONTEND_PORT=80
 JWT_SECRET=your_secret_key_here_change_in_production
 EOF
 ```
 
 ⚠️ **IMPORTANT** : En production, utilisez des mots de passe forts et uniques !
+
+**💡 Configuration des ports** : Si vous avez déjà des services sur les ports 3306, 3000 ou 80 (Grafana, MySQL, Apache...), modifiez simplement les valeurs dans `.env`. Par exemple :
+```bash
+MYSQL_PORT=3307        # Évite conflit avec MySQL existant
+EXPRESS_PORT=5000      # Évite conflit avec Grafana
+FRONTEND_PORT=8080     # Évite conflit avec Apache
+```
+Le projet s'adapte automatiquement, aucune modification de code nécessaire !
 
 ### 3. Construire et lancer les conteneurs
 

@@ -132,20 +132,15 @@ export const searchCities = async (query: string): Promise<CitySuggestion[]> => 
 export const geocodeAddress = async (address: string): Promise<{ latitude: number; longitude: number } | null> => {
     if (!address || address.trim().length === 0) return null;
 
-    console.log('🌍 Géocodage de:', address);
-
     // Tentative 1 : data.gouv.fr
     const dataGouvResult = await geocodeWithDataGouv(address);
     if (dataGouvResult) {
-        console.log('✅ Géocodé avec data.gouv.fr:', dataGouvResult);
         return dataGouvResult;
     }
 
     // Tentative 2 : Nominatim (fallback)
-    console.log('⚠️ data.gouv.fr failed, trying Nominatim...');
     const nominatimResult = await geocodeWithNominatim(address);
     if (nominatimResult) {
-        console.log('✅ Géocodé avec Nominatim:', nominatimResult);
         return nominatimResult;
     }
 
