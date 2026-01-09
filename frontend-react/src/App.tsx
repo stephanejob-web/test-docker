@@ -6,7 +6,7 @@ import PublicLayout from './layouts/PublicLayout';
 import MapLayout from './layouts/MapLayout';
 import HomePage from './pages/public/HomePage';
 import LandingPage from './pages/public/LandingPage';
-import MyParticipations from './pages/public/MyParticipations';
+
 import Login from './pages/Login';
 import Register from './pages/Register';
 import DashboardLayout from './components/Layout';
@@ -39,7 +39,7 @@ function App() {
               } />
               <Route path="/my-participations" element={
                 <MapLayout>
-                  <MyParticipations />
+                  <HomePage viewMode="participations" />
                 </MapLayout>
               } />
               <Route element={<PublicLayout />}>

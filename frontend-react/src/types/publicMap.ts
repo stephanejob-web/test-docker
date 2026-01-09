@@ -12,6 +12,7 @@ export interface Church {
     city: string | null;
     postal_code: string | null;
     distance_km: number | null;
+    logo_url?: string | null;
 }
 
 export interface ChurchDetails {
@@ -72,6 +73,7 @@ export interface Event {
     event_postal_code: string | null;
     distance_km: number | null;
     interested_count?: number;
+    image_url?: string | null;
 }
 
 export interface Language {
