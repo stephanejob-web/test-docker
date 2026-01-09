@@ -12,6 +12,7 @@ import {
     MyLocation as MyLocationIcon,
     Layers,
     Event as EventIcon,
+    Home as HomeIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
@@ -472,7 +473,7 @@ const HomePage: React.FC<HomePageProps> = ({ viewMode = 'explore' }) => {
                         bottom: 24,
                         width: { xs: 'calc(100% - 32px)', sm: 360 },
                         zIndex: 900, // Below DetailDrawer but above map
-                        display: resultsPanelOpen && !detailDrawerOpen ? 'block' : 'none',
+                        display: (resultsPanelOpen || viewMode === 'participations') && !detailDrawerOpen ? 'block' : 'none',
                         pointerEvents: 'none' // Let clicks pass through container
                     }}>
                         <Box sx={{
@@ -482,17 +483,23 @@ const HomePage: React.FC<HomePageProps> = ({ viewMode = 'explore' }) => {
                             overflow: 'hidden',
                             boxShadow: 3
                         }}>
-                            <ResultsPanel
-                                churches={churches}
-                                events={events}
-                                loading={loading}
-                                onChurchClick={(church) => handleMarkerClick(church, 'church')}
-                                onEventClick={(event) => handleMarkerClick(event, 'event')}
-                                onClose={() => setResultsPanelOpen(false)}
-                                open={resultsPanelOpen}
-                                isGeolocated={!!userLocation}
-                                isMobileView={isMobile}
-                            />
+                            {viewMode === 'participations' ? (
+                                <MyParticipationsSidebar
+                                    onEventClick={(event) => handleMarkerClick(event, 'event')}
+                                />
+                            ) : (
+                                <ResultsPanel
+                                    churches={churches}
+                                    events={events}
+                                    loading={loading}
+                                    onChurchClick={(church) => handleMarkerClick(church, 'church')}
+                                    onEventClick={(event) => handleMarkerClick(event, 'event')}
+                                    onClose={() => setResultsPanelOpen(false)}
+                                    open={resultsPanelOpen}
+                                    isGeolocated={!!userLocation}
+                                    isMobileView={isMobile}
+                                />
+                            )}
                         </Box>
                     </Box>
 
@@ -640,6 +647,24 @@ const HomePage: React.FC<HomePageProps> = ({ viewMode = 'explore' }) => {
 
             {/* 4. Floating Action Buttons (Bottom Right) */}
             <Box sx={{ position: 'absolute', bottom: 24, right: 24, display: 'flex', flexDirection: 'column', gap: 2, zIndex: 1000 }}>
+                {/* Home Button */}
+                <Paper
+                    elevation={2}
+                    sx={{
+                        bgcolor: 'white',
+                        borderRadius: 2,
+                        width: 40,
+                        height: 40,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        '&:hover': { bgcolor: '#F1F3F4' }
+                    }}
+                    onClick={() => navigate('/')}
+                >
+                    <HomeIcon sx={{ color: '#666' }} />
+                </Paper>
                 {/* Mes participations */}
                 <Paper
                     elevation={2}
