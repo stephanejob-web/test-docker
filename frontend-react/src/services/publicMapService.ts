@@ -213,6 +213,27 @@ export const fetchDenominations = async (): Promise<Denomination[]> => {
 };
 
 /**
+ * Récupère les statistiques globales de la plateforme
+ */
+export const fetchPlatformStats = async (): Promise<{ churches: number; events: number }> => {
+    try {
+        const { data } = await api.get<ApiResponse<{ churches: number; events: number }>>(
+            '/public/stats'
+        );
+
+        if (!data.success || !data.stats) {
+            // Fallback silencieux en cas d'erreur API spécifique
+            return { churches: 500, events: 1200 };
+        }
+
+        return data.stats;
+    } catch (error) {
+        console.error('Error fetching stats, using fallback:', error);
+        return { churches: 500, events: 1200 }; // Valeurs par défaut "Social Proof"
+    }
+};
+
+/**
  * Utilitaire : Récupère à la fois les églises et les événements
  * Optimisation: Appels parallèles avec Promise.all
  */

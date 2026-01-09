@@ -74,6 +74,8 @@ export interface Event {
     distance_km: number | null;
     interested_count?: number;
     image_url?: string | null;
+    cancelled_at?: string | null;
+    cancellation_reason?: string | null;
 }
 
 export interface Language {
@@ -178,4 +180,5 @@ export interface ApiResponse<T> {
     denominations?: T extends Denomination[] ? T : never;
     church?: T extends ChurchDetails ? T : never;
     event?: T extends EventDetails ? T : never;
+    stats?: T extends { churches: number; events: number } ? T : never;
 }

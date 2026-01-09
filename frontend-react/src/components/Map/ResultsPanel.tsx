@@ -239,6 +239,7 @@ const EventCard: React.FC<{
     const startDate = new Date(event.start_datetime);
     const endDate = event.end_datetime ? new Date(event.end_datetime) : null;
     const isOngoing = endDate && currentTime >= startDate && currentTime <= endDate;
+    const isCancelled = !!event.cancelled_at;
     const smartTimeDisplay = getSmartTimeDisplay(event.start_datetime, event.end_datetime, currentTime);
 
     return (
@@ -249,16 +250,17 @@ const EventCard: React.FC<{
                 display: 'flex',
                 gap: 2.5,
                 borderBottom: '1px solid #E8EAED',
-                bgcolor: isOngoing ? '#FFF8F0' : '#FFFFFF',
+                bgcolor: isCancelled ? '#F1F3F4' : (isOngoing ? '#FFF8F0' : '#FFFFFF'),
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
                 borderRadius: '8px',
                 mx: 1,
                 my: 0.5,
-                borderLeft: isOngoing ? '4px solid #E37400' : 'none',
-                pl: isOngoing ? 2.5 : 3,
+                borderLeft: isCancelled ? '4px solid #EA4335' : (isOngoing ? '4px solid #E37400' : 'none'),
+                pl: (isCancelled || isOngoing) ? 2.5 : 3,
+                opacity: isCancelled ? 0.8 : 1,
                 '&:hover': {
-                    bgcolor: isOngoing ? '#FFF3E6' : '#F8F9FA',
+                    bgcolor: isCancelled ? '#E8EAED' : (isOngoing ? '#FFF3E6' : '#F8F9FA'),
                     transform: 'translateX(4px)',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
                 }
@@ -267,8 +269,31 @@ const EventCard: React.FC<{
         >
             {/* Left Content */}
             <Box sx={{ flex: 1, minWidth: 0 }}>
-                {/* Badge EN COURS pour événements en cours */}
-                {isOngoing && (
+                {/* Badge ANNULÉ */}
+                {isCancelled && (
+                    <Box sx={{ mb: 1 }}>
+                        <Chip
+                            label="ANNULÉ"
+                            size="small"
+                            sx={{
+                                height: 20,
+                                fontSize: '0.65rem',
+                                fontWeight: 700,
+                                bgcolor: '#EA4335',
+                                color: '#FFFFFF',
+                                letterSpacing: '0.5px'
+                            }}
+                        />
+                        {event.cancellation_reason && (
+                            <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: '#EA4335', fontStyle: 'italic' }}>
+                                "{event.cancellation_reason}"
+                            </Typography>
+                        )}
+                    </Box>
+                )}
+
+                {/* Badge EN COURS pour événements en cours (si pas annulé) */}
+                {(isOngoing && !isCancelled) && (
                     <Box sx={{ mb: 0.5 }}>
                         <Chip
                             label="EN COURS"
@@ -293,7 +318,7 @@ const EventCard: React.FC<{
                     </Box>
                 )}
 
-                <Typography variant="subtitle1" sx={{ fontWeight: 500, color: '#202124', lineHeight: 1.2, mb: 0.5 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 500, color: isCancelled ? '#5F6368' : '#202124', lineHeight: 1.2, mb: 0.5, textDecoration: isCancelled ? 'line-through' : 'none' }}>
                     {event.title}
                 </Typography>
 

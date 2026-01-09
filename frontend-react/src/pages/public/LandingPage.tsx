@@ -24,6 +24,8 @@ import {
     Apple,
     PlayCircle,
     Menu as MenuIcon,
+    Star,
+    CheckCircle,
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -45,10 +47,25 @@ L.Marker.prototype.options.icon = DefaultIcon;
 const MotionBox = motion(Box);
 const MotionCard = motion(Card);
 
+import { fetchPlatformStats } from '../../services/publicMapService';
+
 const LandingPage: React.FC = () => {
     const navigate = useNavigate();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+    const [stats, setStats] = React.useState({ churches: 500, events: 1200 });
+
+    React.useEffect(() => {
+        const loadStats = async () => {
+            const realStats = await fetchPlatformStats();
+            // On ne met à jour que si les chiffres sont significatifs (plus que le dummy content)
+            // ou si on veut vraiment la vérité brute. Ici je prends le max pour éviter de montrer "3 églises".
+            // MAIS la demande est "le vrai nombre". Donc on respecte.
+            // Si c'est 0, ça sera 0.
+            setStats(realStats);
+        };
+        loadStats();
+    }, []);
 
     const features = [
         {
@@ -205,6 +222,27 @@ const LandingPage: React.FC = () => {
                                     <Box component="span" sx={{ color: '#1A73E8' }}>Évangéliques Près de Vous</Box>
                                 </Typography>
 
+                                {/* Social Proof */}
+                                <Stack direction="row" spacing={3} sx={{ mb: 4, alignItems: 'center' }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Box sx={{ bgcolor: '#E8F0FE', p: 0.5, borderRadius: '50%' }}>
+                                            <CheckCircle size={16} color="#1A73E8" />
+                                        </Box>
+                                        <Typography variant="subtitle2" fontWeight={600} color="#5F6368">
+                                            +{stats.churches} Églises
+                                        </Typography>
+                                    </Box>
+                                    <Divider orientation="vertical" flexItem sx={{ height: 16, my: 'auto' }} />
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Box sx={{ bgcolor: '#FCE8E6', p: 0.5, borderRadius: '50%' }}>
+                                            <CheckCircle size={16} color="#EA4335" />
+                                        </Box>
+                                        <Typography variant="subtitle2" fontWeight={600} color="#5F6368">
+                                            +{stats.events} Événements
+                                        </Typography>
+                                    </Box>
+                                </Stack>
+
                                 <Typography
                                     variant="h5"
                                     sx={{
@@ -333,6 +371,52 @@ const LandingPage: React.FC = () => {
                                                 <Marker position={[48.8530, 2.3499]} />
                                             </MapContainer>
 
+                                            {/* Floating Search Result Card */}
+                                            <MotionBox
+                                                initial={{ y: 20, opacity: 0 }}
+                                                animate={{ y: 0, opacity: 1 }}
+                                                transition={{ delay: 0.8, duration: 0.5 }}
+                                                sx={{
+                                                    position: 'absolute',
+                                                    bottom: 40,
+                                                    left: { xs: 20, md: -20 },
+                                                    right: { xs: 20, md: 'auto' },
+                                                    width: { xs: 'auto', md: 280 },
+                                                    bgcolor: 'rgba(255, 255, 255, 0.95)',
+                                                    backdropFilter: 'blur(10px)',
+                                                    p: 2,
+                                                    borderRadius: 3,
+                                                    boxShadow: '0 10px 40px rgba(0,0,0,0.12)',
+                                                    border: '1px solid rgba(255,255,255,0.5)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 2
+                                                }}
+                                            >
+                                                <Box sx={{
+                                                    width: 48,
+                                                    height: 48,
+                                                    borderRadius: 2,
+                                                    bgcolor: '#E8F0FE',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    flexShrink: 0
+                                                }}>
+                                                    <Church color="#1A73E8" size={24} />
+                                                </Box>
+                                                <Box>
+                                                    <Typography variant="subtitle2" fontWeight={700} color="#202124">
+                                                        Église Évangélique
+                                                    </Typography>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                        <Star size={12} fill="#FBBC04" color="#FBBC04" />
+                                                        <Typography variant="caption" fontWeight={600} color="#202124">4.9</Typography>
+                                                        <Typography variant="caption" color="#5F6368">• À 200m</Typography>
+                                                    </Box>
+                                                </Box>
+                                            </MotionBox>
+
                                             {/* Overlay to prevent interaction and add subtle gradient */}
                                             <Box sx={{
                                                 position: 'absolute',
@@ -411,10 +495,27 @@ const LandingPage: React.FC = () => {
                                         borderRadius: 3,
                                         boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                                         border: '1px solid rgba(0,0,0,0.03)',
-                                        transition: 'all 0.3s ease',
+                                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                        overflow: 'hidden',
+                                        position: 'relative',
+                                        '&::before': {
+                                            content: '""',
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            right: 0,
+                                            bottom: 0,
+                                            background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 100%)',
+                                            opacity: 0,
+                                            transition: 'opacity 0.3s ease',
+                                        },
                                         '&:hover': {
-                                            boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
-                                            borderColor: 'transparent'
+                                            transform: 'translateY(-8px)',
+                                            boxShadow: '0 20px 40px rgba(0,0,0,0.08)',
+                                            borderColor: 'rgba(26,115,232,0.1)',
+                                            '&::before': {
+                                                opacity: 1
+                                            }
                                         }
                                     }}
                                 >

@@ -653,6 +653,11 @@ const EventActions: React.FC<{ event: EventDetails; navigate: any }> = ({ event,
             >
                 {isInterested ? "Se désinscrire de l'événement" : "S'inscrire à l'événement"}
             </Button>
+            {event.cancelled_at && (
+                <Typography variant="caption" color="error" align="center" sx={{ display: 'block', mt: -1 }}>
+                    Les inscriptions sont closes car l'événement est annulé.
+                </Typography>
+            )}
         </Box>
     );
 };
