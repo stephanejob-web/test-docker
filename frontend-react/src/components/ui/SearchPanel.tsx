@@ -171,13 +171,15 @@ const SearchPanel: React.FC<SearchPanelProps & { embedded?: boolean }> = ({ onSe
             {/* Autocomplete Dropdown */}
             {isAutocompleteOpen && suggestions.length > 0 && (
                 <Paper
+                    elevation={3}
                     sx={{
                         mt: 0.5,
                         maxHeight: 300,
                         overflow: 'auto',
                         borderRadius: 2,
-                        boxShadow: 3,
-                        position: embedded ? 'absolute' : 'static', // Floating on embedded too if needed, or static pushing content? Better absolute in Sidebar
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                        bgcolor: '#FFFFFF', // Explicit white
+                        position: embedded ? 'absolute' : 'static',
                         top: embedded ? '100%' : 'auto',
                         width: '100%',
                         zIndex: 2100
@@ -189,11 +191,16 @@ const SearchPanel: React.FC<SearchPanelProps & { embedded?: boolean }> = ({ onSe
                                 key={index}
                                 onClick={() => handleSelectLocation(suggestion)}
                                 divider={index < suggestions.length - 1}
+                                sx={{
+                                    '&:hover': { bgcolor: '#F1F3F4' }
+                                }}
                             >
-                                <LocationOn sx={{ mr: 2, color: 'text.secondary' }} />
+                                <LocationOn sx={{ mr: 2, color: '#5F6368' }} />
                                 <ListItemText
                                     primary={suggestion.label}
                                     secondary={suggestion.context}
+                                    primaryTypographyProps={{ color: '#202124', fontWeight: 400 }}
+                                    secondaryTypographyProps={{ color: '#70757A' }}
                                 />
                             </ListItemButton>
                         ))}

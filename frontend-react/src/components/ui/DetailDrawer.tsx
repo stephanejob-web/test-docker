@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Drawer, Box, Typography, Button, IconButton, Skeleton, Divider, Chip, Link, Stack, Alert } from '@mui/material';
-import { Close, Directions, PunchClock, Call, Language, LocationOn, LocalParking, Accessible, Mic, Person, People, AttachMoney, YouTube, InsertLink, CancelOutlined, Info, Email, Translate, Facebook, Instagram, Twitter, LinkedIn, EventBusy } from '@mui/icons-material';
+import { Close, Directions, PunchClock, Call, Language, LocationOn, LocalParking, Accessible, Mic, Person, People, Euro, YouTube, InsertLink, CancelOutlined, Info, Email, Translate, Facebook, Instagram, Twitter, LinkedIn, EventBusy, Image as ImageIcon } from '@mui/icons-material';
 import type { ChurchDetails, EventDetails } from '../../types/publicMap';
 import useEventInterestWeb from '../../hooks/useEventInterestWeb';
 
@@ -254,7 +254,7 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
                 <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap' }}>
                     <Chip label="Événement" size="small" sx={{ bgcolor: '#E8F0FE', color: '#1A73E8', fontWeight: 500 }} />
                     <Chip label={new Date(event.start_datetime).toLocaleDateString('fr-FR')} size="small" sx={{ bgcolor: '#F1F3F4', color: '#5F6368' }} />
-                    {event.details?.is_free && <Chip label="Gratuit" size="small" sx={{ bgcolor: '#E6F4EA', color: '#137333', fontWeight: 500 }} icon={<AttachMoney />} />}
+                    {event.details?.is_free && <Chip label="Gratuit" size="small" sx={{ bgcolor: '#E6F4EA', color: '#137333', fontWeight: 500 }} icon={<Euro />} />}
                 </Stack>
 
                 {/* Raison d'annulation */}
@@ -503,13 +503,22 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
             <Box
                 sx={{
                     height: 200,
-                    backgroundColor: '#E8EAED',
-                    backgroundImage: `url(${(type === 'church' ? (data as ChurchDetails).details?.logo_url : (data as EventDetails).details?.image_url) || 'https://images.unsplash.com/photo-1438232992991-995b7058bbb3?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'})`,
+                    backgroundColor: '#F1F3F4',
+                    backgroundImage: (type === 'church' ? (data as ChurchDetails).details?.logo_url : (data as EventDetails).details?.image_url)
+                        ? `url(${(type === 'church' ? (data as ChurchDetails).details?.logo_url : (data as EventDetails).details?.image_url)})`
+                        : 'none',
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
-                    position: 'relative'
+                    position: 'relative',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
                 }}
             >
+                {!(type === 'church' ? (data as ChurchDetails).details?.logo_url : (data as EventDetails).details?.image_url) && (
+                    <ImageIcon sx={{ fontSize: 48, color: '#DADCE0' }} />
+                )}
+
                 <IconButton
                     onClick={handleClose}
                     sx={{

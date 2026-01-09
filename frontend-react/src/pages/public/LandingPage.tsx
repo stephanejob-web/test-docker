@@ -14,7 +14,7 @@ import {
     Divider,
 } from '@mui/material';
 import { motion } from 'framer-motion';
-import kairosLogo from '../../assets/kairos_white.png';
+import lightChurchLogo from '../../assets/light-church.png';
 import {
     Church,
     Calendar,
@@ -113,7 +113,7 @@ const LandingPage: React.FC = () => {
                                 alignItems: 'center',
                                 justifyContent: 'center'
                             }}>
-                                <img src={kairosLogo} alt="Kairos" style={{ height: 40, width: 'auto', objectFit: 'contain', filter: 'invert(1)' }} />
+                                <img src={lightChurchLogo} alt="Light Church" style={{ height: 40, width: 'auto', objectFit: 'contain' }} />
                             </Box>
                         </Box>
                         {!isMobile ? (
@@ -479,7 +479,7 @@ const LandingPage: React.FC = () => {
                                         letterSpacing: '-1px'
                                     }}
                                 >
-                                    Emportez Kairos<br />partout avec vous
+                                    Emportez Light Church<br />partout avec vous
                                 </Typography>
 
                                 <Typography
@@ -611,7 +611,7 @@ const LandingPage: React.FC = () => {
                             Prêt à commencer ?
                         </Typography>
                         <Typography variant="h6" sx={{ opacity: 0.9, mb: 4, maxWidth: 600, mx: 'auto', fontWeight: 400, position: 'relative' }}>
-                            Trouvez votre communauté évangélique Kairos aujourd'hui. C'est gratuit et ouvert à tous.
+                            Trouvez votre communauté évangélique Light Church aujourd'hui. C'est gratuit et ouvert à tous.
                         </Typography>
                         <Button
                             variant="contained"
@@ -651,7 +651,7 @@ const LandingPage: React.FC = () => {
                         <Box sx={{ width: { xs: '100%', md: '30%' } }}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <img src={kairosLogo} alt="Kairos" style={{ height: 40, width: 'auto', objectFit: 'contain' }} />
+                                    <img src={lightChurchLogo} alt="Light Church" style={{ height: 40, width: 'auto', objectFit: 'contain' }} />
                                 </Box>
                             </Box>
                             <Typography variant="body2" sx={{ lineHeight: 1.7 }}>
@@ -696,7 +696,7 @@ const LandingPage: React.FC = () => {
 
                     <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
                         <Typography variant="body2">
-                            © 2026 Kairos. Tous droits réservés.
+                            © 2026 Light Church. Tous droits réservés.
                         </Typography>
                         <Stack direction="row" spacing={3}>
                             {/* Social icons placeholders could go here */}
