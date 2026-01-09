@@ -484,7 +484,7 @@ router.get('/events/:id', async (req, res) => {
 // Modifier un événement (Admin)
 router.put('/events/:id', async (req, res) => {
     const {
-        title, start_datetime, end_datetime, latitude, longitude,
+        title, start_datetime, end_datetime, latitude, longitude, language_id,
         description, address, street_number, street_name, postal_code, city,
         speaker_name, max_seats, image_url, is_free, registration_link,
         youtube_live, has_parking, parking_capacity, is_parking_free, parking_details,
@@ -507,6 +507,7 @@ router.put('/events/:id', async (req, res) => {
             updateQuery += 'event_location = ST_GeomFromText(?), ';
             updateParams.push(`POINT(${longitude} ${latitude})`);
         }
+        if (language_id !== undefined) { updateQuery += 'language_id = ?, '; updateParams.push(language_id); }
 
         if (updateParams.length > 0) {
             updateQuery = updateQuery.slice(0, -2); // Remove trailing comma

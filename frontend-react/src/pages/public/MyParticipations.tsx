@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Box, Typography, List, ListItem, ListItemText, Button, Divider, CircularProgress, IconButton, AppBar, Toolbar, useMediaQuery, useTheme, Fab } from '@mui/material';
+import { Box, Typography, List, ListItem, Button, Divider, CircularProgress, IconButton, AppBar, Toolbar, useMediaQuery, useTheme, Fab, Chip, Stack } from '@mui/material';
 import { ArrowBack as ArrowBackIcon, Map as MapIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import type { EventDetails } from '../../types/publicMap';
@@ -44,6 +44,7 @@ export default function MyParticipations() {
                 const promises = ids.map(id => fetchEventDetails(id).catch(() => null));
                 const results = await Promise.all(promises);
                 const good = results.filter(Boolean) as EventDetails[];
+                console.log('Loaded events:', good);
                 if (mounted) setEvents(good);
             } catch (err) {
                 console.error('Erreur chargement participations', err);
@@ -98,45 +99,34 @@ export default function MyParticipations() {
             {/* Content */}
             <Box sx={{ p: 2, overflow: 'auto', flexGrow: 1 }}>
             <List>
-                {events.map(ev => (
-                    <React.Fragment key={ev.id}>
-                        <ListItem
-                            sx={{
-                                flexDirection: isMobile ? 'column' : 'row',
-                                alignItems: isMobile ? 'stretch' : 'center',
-                                py: 2,
-                                gap: isMobile ? 2 : 0
-                            }}
-                            secondaryAction={!isMobile ? (
-                                <Box sx={{ display: 'flex', gap: 1 }}>
-                                    <Button size="small" variant="outlined" onClick={async () => {
-                                        setDetailLoading(true);
-                                        try {
-                                            const details = await fetchEventDetails(ev.id);
-                                            setSelectedEvent(details);
-                                            setDrawerOpen(true);
-                                        } catch (e) {
-                                            console.error('Failed to load event details', e);
-                                        } finally {
-                                            setDetailLoading(false);
-                                        }
-                                    }}>Détails</Button>
-                                    <ParticipationButton eventId={ev.id} />
-                                </Box>
-                            ) : undefined}
-                        >
-                            <ListItemText
-                                primary={ev.title}
-                                secondary={ev.details?.city ? `${ev.details.city} • ${new Date(ev.start_datetime).toLocaleString('fr-FR')}` : new Date(ev.start_datetime).toLocaleString('fr-FR')}
-                                sx={{ pr: isMobile ? 0 : 2 }}
-                            />
-                            {isMobile && (
-                                <Box sx={{ display: 'flex', gap: 1, width: '100%' }}>
-                                    <Button
-                                        fullWidth
-                                        size="small"
-                                        variant="outlined"
-                                        onClick={async () => {
+                {events.map(ev => {
+                    const now = new Date();
+                    const endDate = ev.end_datetime ? new Date(ev.end_datetime) : null;
+                    const isCompleted = !!(endDate && now > endDate);
+
+                    // Debug log
+                    if (ev.title.toLowerCase().includes('jesus')) {
+                        console.log('Event:', ev.title);
+                        console.log('Now:', now.toISOString(), now.getTime());
+                        console.log('End date string:', ev.end_datetime);
+                        console.log('End date parsed:', endDate?.toISOString(), endDate?.getTime());
+                        console.log('Is completed:', isCompleted);
+                    }
+
+                    return (
+                        <React.Fragment key={ev.id}>
+                            <ListItem
+                                sx={{
+                                    flexDirection: isMobile ? 'column' : 'row',
+                                    alignItems: isMobile ? 'stretch' : 'center',
+                                    py: 2,
+                                    gap: isMobile ? 2 : 0,
+                                    opacity: isCompleted ? 0.6 : 1,
+                                    bgcolor: isCompleted ? '#F8F9FA' : 'transparent'
+                                }}
+                                secondaryAction={!isMobile ? (
+                                    <Box sx={{ display: 'flex', gap: 1 }}>
+                                        <Button size="small" variant="outlined" onClick={async () => {
                                             setDetailLoading(true);
                                             try {
                                                 const details = await fetchEventDetails(ev.id);
@@ -147,17 +137,61 @@ export default function MyParticipations() {
                                             } finally {
                                                 setDetailLoading(false);
                                             }
-                                        }}
-                                    >
-                                        Détails
-                                    </Button>
-                                    <ParticipationButton eventId={ev.id} fullWidth />
+                                        }}>Détails</Button>
+                                        <ParticipationButton eventId={ev.id} isCompleted={isCompleted} />
+                                    </Box>
+                                ) : undefined}
+                            >
+                                <Box sx={{ flex: 1, pr: isMobile ? 0 : 2 }}>
+                                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+                                        <Typography variant="body1">{ev.title}</Typography>
+                                        {isCompleted && (
+                                            <Chip
+                                                label="TERMINÉ"
+                                                size="small"
+                                                sx={{
+                                                    height: 20,
+                                                    fontSize: '0.65rem',
+                                                    fontWeight: 700,
+                                                    bgcolor: '#EA4335',
+                                                    color: '#FFFFFF'
+                                                }}
+                                            />
+                                        )}
+                                    </Stack>
+                                    <Typography variant="body2" color="text.secondary">
+                                        {ev.details?.city ? `${ev.details.city} • ${new Date(ev.start_datetime).toLocaleString('fr-FR')}` : new Date(ev.start_datetime).toLocaleString('fr-FR')}
+                                    </Typography>
                                 </Box>
-                            )}
-                        </ListItem>
-                        <Divider />
-                    </React.Fragment>
-                ))}
+                                {isMobile && (
+                                    <Box sx={{ display: 'flex', gap: 1, width: '100%' }}>
+                                        <Button
+                                            fullWidth
+                                            size="small"
+                                            variant="outlined"
+                                            onClick={async () => {
+                                                setDetailLoading(true);
+                                                try {
+                                                    const details = await fetchEventDetails(ev.id);
+                                                    setSelectedEvent(details);
+                                                    setDrawerOpen(true);
+                                                } catch (e) {
+                                                    console.error('Failed to load event details', e);
+                                                } finally {
+                                                    setDetailLoading(false);
+                                                }
+                                            }}
+                                        >
+                                            Détails
+                                        </Button>
+                                        <ParticipationButton eventId={ev.id} fullWidth isCompleted={isCompleted} />
+                                    </Box>
+                                )}
+                            </ListItem>
+                            <Divider />
+                        </React.Fragment>
+                    );
+                })}
             </List>
             </Box>
             <DetailDrawer
@@ -195,8 +229,16 @@ export default function MyParticipations() {
     );
 }
 
-function ParticipationButton({ eventId, fullWidth }: { eventId: number; fullWidth?: boolean }) {
+function ParticipationButton({ eventId, fullWidth, isCompleted }: { eventId: number; fullWidth?: boolean; isCompleted?: boolean }) {
     const { isInterested, isPending, toggle } = useEventInterestWeb(eventId, true);
+
+    const getButtonText = () => {
+        if (isPending) return '...';
+        if (isCompleted) {
+            return isInterested ? 'Retirer de ma liste' : 'Je participe';
+        }
+        return isInterested ? 'Ne plus participer' : 'Je participe';
+    };
 
     return (
         <Button
@@ -205,8 +247,17 @@ function ParticipationButton({ eventId, fullWidth }: { eventId: number; fullWidt
             variant={isInterested ? 'contained' : 'outlined'}
             onClick={() => toggle().catch(() => {})}
             disabled={isPending}
+            sx={isCompleted ? {
+                bgcolor: isInterested ? '#757575' : undefined,
+                borderColor: '#757575',
+                color: isInterested ? '#FFFFFF' : '#757575',
+                '&:hover': {
+                    bgcolor: isInterested ? '#616161' : undefined,
+                    borderColor: '#616161'
+                }
+            } : undefined}
         >
-            {isPending ? '...' : (isInterested ? 'Ne plus participer' : 'Je participe')}
+            {getButtonText()}
         </Button>
     );
 }

@@ -19,10 +19,12 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
     const navigate = useNavigate();
     const [overrideData, setOverrideData] = useState<ChurchDetails | null>(null);
     const [overrideType, setOverrideType] = useState<'church' | 'event' | null>(null);
+    const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
     const handleClose = () => {
         setOverrideData(null);
         setOverrideType(null);
+        setIsDescriptionExpanded(false);
         onClose();
     };
 
@@ -329,7 +331,39 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
                         <Divider sx={{ my: 3, borderColor: '#E8EAED' }} />
                         <Box>
                             <Typography variant="subtitle2" fontWeight="500" color="#202124" sx={{ mb: 1 }}>Détails</Typography>
-                            <Typography variant="body2" color="#5F6368" sx={{ lineHeight: 1.6 }}>{event.details.description}</Typography>
+                            <Typography variant="body2" color="#5F6368" sx={{ lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                                {(() => {
+                                    const description = event.details.description;
+                                    const charLimit = 300;
+                                    const isLongText = description.length > charLimit;
+
+                                    if (isLongText && !isDescriptionExpanded) {
+                                        return description.substring(0, charLimit) + '...';
+                                    }
+                                    return description;
+                                })()}
+                            </Typography>
+                            {event.details.description.length > 300 && (
+                                <Button
+                                    size="small"
+                                    onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                                    sx={{
+                                        mt: 1,
+                                        color: '#1A73E8',
+                                        textTransform: 'none',
+                                        fontWeight: 500,
+                                        fontSize: '0.875rem',
+                                        p: 0,
+                                        minWidth: 'auto',
+                                        '&:hover': {
+                                            bgcolor: 'transparent',
+                                            textDecoration: 'underline'
+                                        }
+                                    }}
+                                >
+                                    {isDescriptionExpanded ? 'Voir moins' : 'Lire la suite'}
+                                </Button>
+                            )}
                         </Box>
                     </>
                 )}
@@ -347,17 +381,25 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
                                     <Chip
                                         label={`${event.primary_language.flag || ''} ${event.primary_language.name}`}
                                         size="small"
-                                        sx={{ bgcolor: '#E8F0FE', color: '#1A73E8' }}
+                                        sx={{ bgcolor: '#E8F0FE', color: '#1A73E8', fontWeight: 500 }}
                                     />
                                 )}
-                                {event.translations && event.translations.map((lang, idx) => (
-                                    <Chip
-                                        key={idx}
-                                        label={`${lang.flag || ''} ${lang.name}`}
-                                        size="small"
-                                        sx={{ bgcolor: '#F1F3F4', color: '#5F6368' }}
-                                    />
-                                ))}
+                                {event.translations && event.translations.length > 0 && (
+                                    <Typography variant="body2" color="#5F6368" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                        • traduit en {event.translations.map((lang: any, idx: number) => {
+                                            const name = lang.language_name || lang.name;
+                                            const flag = lang.language_flag || lang.flag || '';
+                                            return (
+                                                <Chip
+                                                    key={idx}
+                                                    label={`${flag} ${name}`}
+                                                    size="small"
+                                                    sx={{ bgcolor: '#F1F3F4', color: '#5F6368', ml: idx > 0 ? 0.5 : 0 }}
+                                                />
+                                            );
+                                        })}
+                                    </Typography>
+                                )}
                             </Stack>
                         </Box>
                     </>

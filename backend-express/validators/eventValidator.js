@@ -73,7 +73,7 @@ const validateEvent = [
   body('description')
     .optional()
     .trim()
-    .isLength({ max: 5000 }).withMessage('La description ne doit pas dépasser 5000 caractères'),
+    .isLength({ max: 50000 }).withMessage('La description ne doit pas dépasser 50 000 caractères'),
 
   body('max_seats')
     .optional({ nullable: true, checkFalsy: true })

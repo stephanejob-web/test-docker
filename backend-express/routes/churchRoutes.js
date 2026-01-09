@@ -429,7 +429,7 @@ router.post('/events/:id/reactivate', async (req, res) => {
 router.put('/events/:id', validateEvent, async (req, res) => {
     const eventId = req.params.id;
     const {
-        title, start_datetime, end_datetime, latitude, longitude,
+        title, start_datetime, end_datetime, latitude, longitude, language_id,
         description, address, street_number, street_name, postal_code, city, speaker_name, max_seats, image_url,
         is_free, registration_link, youtube_live,
         has_parking, parking_capacity, is_parking_free, parking_details,
@@ -467,7 +467,7 @@ router.put('/events/:id', validateEvent, async (req, res) => {
         }
 
         // 3. Update Event Core (excluding status - it's computed automatically)
-        if (title || start_datetime || end_datetime || (latitude && longitude)) {
+        if (title || start_datetime || end_datetime || (latitude && longitude) || language_id) {
             let updateQuery = 'UPDATE events SET ';
             const updateParams = [];
 
@@ -475,6 +475,7 @@ router.put('/events/:id', validateEvent, async (req, res) => {
             if (start_datetime) { updateQuery += 'start_datetime = ?, '; updateParams.push(start_datetime); }
             if (end_datetime) { updateQuery += 'end_datetime = ?, '; updateParams.push(end_datetime); }
             if (latitude && longitude) { updateQuery += 'event_location = ST_GeomFromText(?), '; updateParams.push(`POINT(${longitude} ${latitude})`); }
+            if (language_id) { updateQuery += 'language_id = ?, '; updateParams.push(language_id); }
 
             // Remove trailing comma
             updateQuery = updateQuery.slice(0, -2);
