@@ -68,7 +68,8 @@ import {
     Search as SearchIcon,
     AccessTime as AccessTimeIcon,
     Sort as SortIcon,
-    DateRange as DateRangeIcon
+    DateRange as DateRangeIcon,
+    Group as GroupIcon
 } from '@mui/icons-material';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import DateTimeInput from '../components/DateTimeInput';
@@ -2190,6 +2191,7 @@ export default function MyEvents() {
                             <Card sx={{
                                 overflow: 'hidden',
                                 transition: 'all 0.3s',
+                                opacity: event.status === 'COMPLETED' ? 0.6 : 1,
                                 '&:hover': {
                                     transform: 'translateY(-4px)',
                                     boxShadow: 6,
@@ -2207,6 +2209,7 @@ export default function MyEvents() {
                                                 height: '100%',
                                                 objectFit: 'cover',
                                                 transition: 'transform 0.5s',
+                                                filter: event.status === 'COMPLETED' ? 'grayscale(100%)' : 'none',
                                                 '&:hover': {
                                                     transform: 'scale(1.05)'
                                                 }
@@ -2427,16 +2430,18 @@ export default function MyEvents() {
                                                 display: 'inline-flex',
                                                 alignItems: 'center',
                                                 gap: 0.75,
-                                                bgcolor: 'success.light',
-                                                color: 'success.dark',
+                                                bgcolor: '#E8F5E9',
+                                                color: '#2E7D32',
                                                 px: 1.5,
-                                                py: 0.5,
+                                                py: 0.75,
                                                 borderRadius: 2,
                                                 mt: 0.5,
-                                                boxShadow: '0 2px 8px rgba(76, 175, 80, 0.2)',
+                                                border: '1px solid #C8E6C9',
+                                                width: 'fit-content',
                                             }}>
-                                                <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>
-                                                    👥 {event.interested_count} {event.interested_count === 1 ? 'personne intéressée' : 'personnes intéressées'}
+                                                <GroupIcon sx={{ fontSize: 16 }} />
+                                                <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                                                    {event.interested_count} {event.interested_count === 1 ? 'intéressé' : 'intéressés'}
                                                 </Typography>
                                             </Box>
                                         )}
@@ -2552,6 +2557,7 @@ export default function MyEvents() {
                         <Card key={event.id} sx={{
                             overflow: 'hidden',
                             transition: 'all 0.2s',
+                            opacity: event.status === 'COMPLETED' ? 0.6 : 1,
                             '&:hover': {
                                 boxShadow: 4,
                                 borderColor: 'primary.main'
@@ -2575,7 +2581,8 @@ export default function MyEvents() {
                                             sx={{
                                                 width: '100%',
                                                 height: '100%',
-                                                objectFit: 'cover'
+                                                objectFit: 'cover',
+                                                filter: event.status === 'COMPLETED' ? 'grayscale(100%)' : 'none'
                                             }}
                                         />
                                     ) : (
@@ -2800,16 +2807,18 @@ export default function MyEvents() {
                                                 display: 'inline-flex',
                                                 alignItems: 'center',
                                                 gap: 0.75,
-                                                bgcolor: 'success.light',
-                                                color: 'success.dark',
+                                                bgcolor: '#E8F5E9',
+                                                color: '#2E7D32',
                                                 px: 1.5,
-                                                py: 0.5,
+                                                py: 0.75,
                                                 borderRadius: 2,
                                                 mt: 1,
-                                                boxShadow: '0 2px 8px rgba(76, 175, 80, 0.2)',
+                                                border: '1px solid #C8E6C9',
+                                                width: 'fit-content',
                                             }}>
-                                                <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>
-                                                    👥 {event.interested_count} {event.interested_count === 1 ? 'personne intéressée' : 'personnes intéressées'}
+                                                <GroupIcon sx={{ fontSize: 16 }} />
+                                                <Typography variant="caption" sx={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                                                    {event.interested_count} {event.interested_count === 1 ? 'intéressé' : 'intéressés'}
                                                 </Typography>
                                             </Box>
                                         )}
