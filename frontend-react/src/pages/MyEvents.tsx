@@ -285,6 +285,8 @@ export default function MyEvents() {
             newErrors.description = 'La description est obligatoire';
         } else if (formData.description.trim().length < 10) {
             newErrors.description = 'La description doit contenir au moins 10 caractères';
+        } else if (formData.description.trim().length > 50000) {
+            newErrors.description = 'La description ne doit pas dépasser 50 000 caractères';
         }
 
         return newErrors;
@@ -960,7 +962,28 @@ export default function MyEvents() {
                                     }}
                                     onBlur={() => handleFieldBlur('description')}
                                     error={touched.description && !!errors.description}
-                                    helperText={touched.description && errors.description ? errors.description : "Une description complète aidera les participants à mieux comprendre votre événement"}
+                                    helperText={
+                                        touched.description && errors.description
+                                            ? errors.description
+                                            : (() => {
+                                                const charCount = formData.description.length;
+                                                const wordCount = formData.description.trim() ? formData.description.trim().split(/\s+/).length : 0;
+                                                const charLimit = 50000;
+                                                const percentage = (charCount / charLimit) * 100;
+                                                const colorStyle = percentage > 90 ? '#d32f2f' : percentage > 75 ? '#ed6c02' : '#5F6368';
+                                                return (
+                                                    <span>
+                                                        <span style={{ color: colorStyle, fontWeight: percentage > 90 ? 500 : 400 }}>
+                                                            {charCount.toLocaleString()} / {charLimit.toLocaleString()} caractères
+                                                        </span>
+                                                        {' • '}
+                                                        <span style={{ color: '#5F6368' }}>
+                                                            {wordCount.toLocaleString()} mot{wordCount > 1 ? 's' : ''}
+                                                        </span>
+                                                    </span>
+                                                );
+                                            })()
+                                    }
                                     placeholder="Décrivez votre événement : thème, programme, public visé..."
                                 />
                             </Grid>
