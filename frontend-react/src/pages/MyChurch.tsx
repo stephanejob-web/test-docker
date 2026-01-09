@@ -70,12 +70,12 @@ export default function MyChurch() {
     });
 
     // useFieldArray for dynamic arrays
-    const { fields: socialFields, append: appendSocial, remove: removeSocial } = useFieldArray({
+    const { fields: socialFields, append: appendSocial, remove: removeSocial, replace: replaceSocials } = useFieldArray({
         control,
         name: 'socials',
     });
 
-    const { fields: scheduleFields, append: appendSchedule, remove: removeSchedule } = useFieldArray({
+    const { fields: scheduleFields, append: appendSchedule, remove: removeSchedule, replace: replaceSchedules } = useFieldArray({
         control,
         name: 'schedules',
     });
@@ -152,6 +152,7 @@ export default function MyChurch() {
                 : '/church/my-church';
 
             const { data } = await api.get(endpoint);
+
             if (data && data.id) {
                 // Normaliser les horaires: convertir HH:MM:SS en HH:MM
                 const normalizedSchedules = (data.schedules || []).map((schedule: any) => ({
@@ -183,6 +184,11 @@ export default function MyChurch() {
                     socials: data.socials || [],
                     schedules: normalizedSchedules,
                 });
+
+                // ✅ FIX: Forcer la mise à jour de useFieldArray avec replace()
+                // C'est nécessaire car reset() ne met pas toujours à jour les fields automatiquement
+                replaceSocials(data.socials || []);
+                replaceSchedules(normalizedSchedules);
 
                 // Forcer la validation complète après le chargement des données
                 setTimeout(() => trigger(), 100);
@@ -658,7 +664,7 @@ export default function MyChurch() {
                                             <Select
                                                 {...register(`socials.${idx}.platform` as const)}
                                                 label="Plateforme"
-                                                defaultValue="FACEBOOK"
+                                                value={watch(`socials.${idx}.platform`) || 'FACEBOOK'}
                                             >
                                                 {platforms.map(p => <MenuItem key={p} value={p}>{p}</MenuItem>)}
                                             </Select>
@@ -714,7 +720,7 @@ export default function MyChurch() {
                                             <Select
                                                 {...register(`schedules.${idx}.day_of_week` as const)}
                                                 label="Jour *"
-                                                defaultValue="SUNDAY"
+                                                value={watch(`schedules.${idx}.day_of_week`) || 'SUNDAY'}
                                             >
                                                 {days.map(d => <MenuItem key={d} value={d}>{daysTranslation[d]}</MenuItem>)}
                                             </Select>
@@ -732,7 +738,7 @@ export default function MyChurch() {
                                             <Select
                                                 {...register(`schedules.${idx}.activity_type_id` as const, { valueAsNumber: true })}
                                                 label="Type d'activité *"
-                                                defaultValue={activityTypes[0]?.id || 1}
+                                                value={watch(`schedules.${idx}.activity_type_id`) || activityTypes[0]?.id || 1}
                                             >
                                                 {activityTypes.map(t => <MenuItem key={t.id} value={t.id}>{t.label_fr}</MenuItem>)}
                                             </Select>
