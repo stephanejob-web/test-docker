@@ -9,12 +9,17 @@ import {
     ListItemButton,
     ListItemText,
     CircularProgress,
-    InputAdornment
+    InputAdornment,
+    Button,
+    Alert
 } from '@mui/material';
 import {
     LocationOn as LocationOnIcon,
-    Search as SearchIcon
+    Search as SearchIcon,
+    Edit as EditIcon,
+    Warning as WarningIcon
 } from '@mui/icons-material';
+import ManualAddressInput from './ManualAddressInput';
 
 interface AddressSuggestion {
     label: string;
@@ -51,6 +56,8 @@ export default function AddressAutocomplete({
     const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
     const [isOpen, setIsOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [manualMode, setManualMode] = useState(false);
+    const [apiError, setApiError] = useState(false);
     const wrapperRef = useRef<HTMLDivElement>(null);
 
     // Fermer la liste quand on clique en dehors
@@ -64,7 +71,7 @@ export default function AddressAutocomplete({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // Recherche avec l'API du gouvernement français
+    // Recherche avec fallback automatique (data.gouv.fr → Nominatim)
     useEffect(() => {
         if (query.length < 3) {
             setSuggestions([]);
@@ -74,26 +81,69 @@ export default function AddressAutocomplete({
         const timeoutId = setTimeout(async () => {
             setIsLoading(true);
             try {
-                const response = await fetch(
-                    `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&limit=5`
+                // Tentative 1 : API française (data.gouv.fr)
+                let response = await fetch(
+                    `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&limit=5`,
+                    { signal: AbortSignal.timeout(5000) }
                 );
+
+                if (!response.ok) throw new Error('data.gouv.fr unavailable');
+
                 const data = await response.json();
 
-                const formattedSuggestions: AddressSuggestion[] = data.features.map((feature: any) => ({
-                    label: feature.properties.label,
-                    city: feature.properties.city,
-                    postcode: feature.properties.postcode,
-                    name: feature.properties.name,
-                    street: feature.properties.street || feature.properties.name,
-                    housenumber: feature.properties.housenumber,
-                    coordinates: feature.geometry.coordinates, // [lng, lat]
-                }));
+                if (data.features && data.features.length > 0) {
+                    const formattedSuggestions: AddressSuggestion[] = data.features.map((feature: any) => ({
+                        label: feature.properties.label,
+                        city: feature.properties.city,
+                        postcode: feature.properties.postcode,
+                        name: feature.properties.name,
+                        street: feature.properties.street || feature.properties.name,
+                        housenumber: feature.properties.housenumber,
+                        coordinates: feature.geometry.coordinates, // [lng, lat]
+                    }));
 
-                setSuggestions(formattedSuggestions);
-                setIsOpen(true);
+                    setSuggestions(formattedSuggestions);
+                    setIsOpen(true);
+                    setIsLoading(false);
+                    return;
+                }
+
+                // Si aucun résultat de data.gouv.fr, essayer Nominatim
+                console.warn('data.gouv.fr returned no results, trying Nominatim...');
+                throw new Error('No results from data.gouv.fr');
+
             } catch (error) {
-                console.error('Erreur API adresse:', error);
-                setSuggestions([]);
+                // Tentative 2 : Nominatim (fallback international)
+                console.warn('Trying Nominatim as fallback...', error);
+                try {
+                    const nominatimResponse = await fetch(
+                        `https://nominatim.openstreetmap.org/search?` +
+                        `q=${encodeURIComponent(query)}&format=json&limit=5&addressdetails=1`,
+                        {
+                            headers: { 'User-Agent': 'LightChurch/1.0' },
+                            signal: AbortSignal.timeout(5000)
+                        }
+                    );
+
+                    const nominatimData = await nominatimResponse.json();
+
+                    const formattedSuggestions: AddressSuggestion[] = nominatimData.map((place: any) => ({
+                        label: place.display_name,
+                        city: place.address?.city || place.address?.town || place.address?.village || '',
+                        postcode: place.address?.postcode || '',
+                        name: place.address?.road || place.display_name,
+                        street: place.address?.road || '',
+                        housenumber: place.address?.house_number,
+                        coordinates: [parseFloat(place.lon), parseFloat(place.lat)], // [lng, lat]
+                    }));
+
+                    setSuggestions(formattedSuggestions);
+                    setIsOpen(true);
+                } catch (nominatimError) {
+                    console.error('Toutes les APIs de géocodage ont échoué:', nominatimError);
+                    setSuggestions([]);
+                    setApiError(true); // Marquer qu'il y a eu une erreur
+                }
             } finally {
                 setIsLoading(false);
             }
@@ -118,8 +168,45 @@ export default function AddressAutocomplete({
         onAddressSelect(addressData);
     };
 
+    // Si mode manuel activé
+    if (manualMode) {
+        return (
+            <Box>
+                <Button
+                    onClick={() => setManualMode(false)}
+                    startIcon={<SearchIcon />}
+                    sx={{ mb: 2 }}
+                >
+                    Retour à la recherche automatique
+                </Button>
+                <ManualAddressInput onAddressSelect={onAddressSelect} />
+            </Box>
+        );
+    }
+
     return (
         <Box ref={wrapperRef} sx={{ position: 'relative' }}>
+            {/* Alerte si les APIs ne fonctionnent pas */}
+            {apiError && (
+                <Alert
+                    severity="warning"
+                    icon={<WarningIcon />}
+                    sx={{ mb: 2 }}
+                    action={
+                        <Button
+                            color="inherit"
+                            size="small"
+                            startIcon={<EditIcon />}
+                            onClick={() => setManualMode(true)}
+                        >
+                            Saisir manuellement
+                        </Button>
+                    }
+                >
+                    Les services d'adresses sont temporairement indisponibles
+                </Alert>
+            )}
+
             <TextField
                 fullWidth
                 label={
@@ -130,10 +217,13 @@ export default function AddressAutocomplete({
                     </Box>
                 }
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => {
+                    setQuery(e.target.value);
+                    setApiError(false); // Réinitialiser l'erreur lors d'une nouvelle saisie
+                }}
                 placeholder="Ex: 10 Rue de la Paix, Paris"
                 error={!!error}
-                helperText={error || "💡 Tapez au moins 3 caractères pour rechercher une adresse française"}
+                helperText={error || "💡 Tapez au moins 3 caractères pour rechercher une adresse"}
                 InputProps={{
                     startAdornment: (
                         <InputAdornment position="start">
@@ -147,6 +237,18 @@ export default function AddressAutocomplete({
                     ) : null,
                 }}
             />
+
+            {/* Bouton pour basculer en mode manuel */}
+            {!apiError && (
+                <Button
+                    size="small"
+                    startIcon={<EditIcon />}
+                    onClick={() => setManualMode(true)}
+                    sx={{ mt: 1 }}
+                >
+                    Saisir manuellement
+                </Button>
+            )}
 
             {/* Liste des suggestions */}
             {isOpen && suggestions.length > 0 && (

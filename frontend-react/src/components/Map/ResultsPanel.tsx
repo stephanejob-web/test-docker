@@ -10,20 +10,18 @@ import {
     Drawer,
     useMediaQuery,
     useTheme,
-    Button,
     Chip,
     Skeleton,
     InputBase
 } from '@mui/material';
 import {
     Close as CloseIcon,
-    Church as ChurchIcon,
+    AccountBalance as AccountBalanceIcon,
     Place as PlaceIcon,
-    InfoOutlined as InfoIcon,
-    AccessTime as AccessTimeIcon,
     Search as SearchIcon,
     Clear as ClearIcon,
-    Check as CheckIcon
+    Check as CheckIcon,
+    CheckCircle as CheckCircleIcon,
 } from '@mui/icons-material';
 import useEventInterestWeb from '../../hooks/useEventInterestWeb';
 import { formatDistanceToNow } from 'date-fns';
@@ -46,25 +44,60 @@ interface ResultsPanelProps {
 }
 
 /**
- * Helper function pour obtenir le temps relatif en français
+ * Helper function pour obtenir le texte temporel intelligent selon le statut de l'événement
+ * Retourne null si aucun texte à afficher
  */
-const getRelativeTime = (dateTimeString: string | null | undefined) => {
-    if (!dateTimeString) return 'Date inconnue';
+const getSmartTimeDisplay = (
+    startDatetime: string | null | undefined,
+    endDatetime: string | null | undefined,
+    currentTime: Date
+): { text: string; color: string } | null => {
+    if (!startDatetime) return null;
+
     try {
-        const date = new Date(dateTimeString);
-        if (isNaN(date.getTime())) return 'Date invalide';
-        return formatDistanceToNow(date, {
-            addSuffix: true,
-            locale: fr
-        });
+        const start = new Date(startDatetime);
+        const end = endDatetime ? new Date(endDatetime) : null;
+
+        if (isNaN(start.getTime())) return null;
+
+        const now = currentTime.getTime();
+        const startTime = start.getTime();
+        const endTime = end ? end.getTime() : null;
+
+        // Événement en cours
+        if (now >= startTime && endTime && now <= endTime) {
+            const remaining = getRemainingTime(endDatetime);
+            if (remaining) {
+                return {
+                    text: `Se termine dans ${remaining.text}`,
+                    color: '#E37400' // Orange
+                };
+            }
+        }
+
+        // Événement futur (tous, sans limite)
+        if (now < startTime) {
+            const timeText = formatDistanceToNow(start, {
+                addSuffix: true,
+                locale: fr
+            });
+            return {
+                text: timeText.charAt(0).toUpperCase() + timeText.slice(1),
+                color: '#1A73E8' // Bleu
+            };
+        }
+
+        // Événement passé - ne rien afficher
+        return null;
+
     } catch {
-        return 'Date invalide';
+        return null;
     }
 };
 
 /**
  * Helper function pour calculer le temps restant jusqu'à la fin d'un événement
- * Retourne un objet avec le texte et les minutes totales restantes
+ * Retourne un objet avec le texte (sans préfixe) et les minutes totales restantes
  */
 const getRemainingTime = (endDatetime: string | null | undefined): { text: string; totalMinutes: number } | null => {
     if (!endDatetime) return null;
@@ -82,11 +115,11 @@ const getRemainingTime = (endDatetime: string | null | undefined): { text: strin
 
         let text = '';
         if (hours > 0) {
-            text = `Fin dans ${hours}h${minutes > 0 ? ` ${minutes}min` : ''}`;
+            text = `${hours}h${minutes > 0 ? ` ${minutes}min` : ''}`;
         } else if (minutes > 0) {
-            text = `Fin dans ${minutes} min`;
+            text = `${minutes} min`;
         } else {
-            text = 'Se termine maintenant';
+            text = 'quelques secondes';
         }
 
         return { text, totalMinutes };
@@ -105,120 +138,80 @@ const ChurchCard: React.FC<{
     <Box
         sx={{
             py: 2,
-            px: 2,
+            px: 3,
+            display: 'flex',
+            gap: 2.5,
+            borderBottom: '1px solid #E8EAED',
             bgcolor: '#FFFFFF',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            borderRadius: '8px',
+            mx: 1,
+            my: 0.5,
             '&:hover': {
-                backgroundColor: '#F8F9FA'
-            },
-            transition: 'background-color 0.2s',
-            cursor: 'pointer'
+                bgcolor: '#F8F9FA',
+                transform: 'translateX(4px)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+            }
         }}
         onClick={onClick}
     >
-        <Box sx={{ width: '100%' }}>
-            {/* En-tête avec Icone Church Badge */}
-            <Stack direction="row" spacing={2} alignItems="flex-start" sx={{ mb: 1.5 }}>
-                <Paper
-                    elevation={0}
-                    sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: 48,
-                        height: 52,
-                        borderRadius: 2,
-                        border: '1px solid #DADCE0', // Consistent border
-                        bgcolor: '#FFFFFF',
-                        flexShrink: 0,
-                        mt: 0.5
-                    }}
-                >
-                    <ChurchIcon
-                        sx={{
-                            fontSize: 30, // Slightly larger for the badge
-                            color: '#1A73E8'
-                        }}
-                    />
-                </Paper>
-                <Box sx={{ flex: 1 }}>
-                    <Typography
-                        variant="h6"
-                        sx={{
-                            fontSize: '1rem',
-                            lineHeight: 1.4,
-                            mb: 0.5,
-                            color: '#202124',
-                            fontWeight: 500
-                        }}
-                    >
-                        {church.church_name}
-                    </Typography>
-
-                    {/* Pasteur */}
-                    {church.pastor_name && (
-                        <Typography
-                            variant="body2"
-                            sx={{ mb: 0.5, color: '#5F6368', fontSize: '0.875rem' }}
-                        >
-                            Pasteur: {church.pastor_name}
-                        </Typography>
-                    )}
-
-                    {/* Ville et Code Postal */}
-                    {(church.city || church.postal_code) && (
-                        <Stack direction="row" spacing={0.5} alignItems="center">
-                            <PlaceIcon sx={{ fontSize: 16, color: '#5F6368' }} />
-                            <Typography variant="body2" sx={{ color: '#5F6368', fontSize: '0.875rem' }}>
-                                {church.city && church.postal_code
-                                    ? `${church.city}, ${church.postal_code}`
-                                    : church.city || church.postal_code
-                                }
-                            </Typography>
-                        </Stack>
-                    )}
-
-                    {/* Distance */}
-                    {church.distance_km !== null && (
-                        <Typography
-                            variant="body2"
-                            sx={{
-                                mt: 0.5,
-                                color: '#1A73E8',
-                                fontWeight: 500,
-                                fontSize: '0.875rem'
-                            }}
-                        >
-                            📍 {formatDistance(church.distance_km)}
-                        </Typography>
-                    )}
-                </Box>
+        {/* Left Content */}
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 500, color: '#202124', lineHeight: 1.2, mb: 0.5 }}>
+                {church.church_name}
+            </Typography>
+            <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mb: 0.5 }}>
+                <Typography variant="body2" sx={{ color: '#E37400', fontWeight: 500, fontSize: '0.875rem' }}>
+                    {church.denomination_name || 'Église'}
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#5F6368', fontSize: '0.875rem' }}>
+                    • {church.city}
+                </Typography>
             </Stack>
 
-            {/* Boutons d'action */}
-            <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-                <Button
-                    variant="outlined"
+            {/* Metadata */}
+            <Typography variant="body2" sx={{ color: '#5F6368', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <PlaceIcon sx={{ fontSize: 14 }} />
+                {formatDistance(church.distance_km)}
+            </Typography>
+
+            {/* Action Chips */}
+            <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
+                <Chip
+                    label="Itinéraire"
                     size="small"
-                    startIcon={<InfoIcon />}
+                    icon={<PlaceIcon style={{ fontSize: 14 }} />}
                     onClick={(e) => {
                         e.stopPropagation();
-                        onClick();
+                        window.open(`https://www.google.com/maps/dir/?api=1&destination=${church.latitude},${church.longitude}`, '_blank');
                     }}
-                    fullWidth
                     sx={{
-                        textTransform: 'none',
-                        fontWeight: 500,
-                        borderColor: '#DADCE0',
-                        color: '#5F6368',
-                        '&:hover': {
-                            borderColor: '#DADCE0',
-                            bgcolor: '#F8F9FA'
-                        }
+                        height: 24,
+                        fontSize: '0.75rem',
+                        bgcolor: '#F1F3F4',
+                        color: '#3C4043',
+                        '&:hover': { bgcolor: '#E8EAED' }
                     }}
-                >
-                    Voir plus
-                </Button>
+                />
             </Stack>
+        </Box>
+
+        {/* Right Icon (Church Badge) */}
+        <Box
+            sx={{
+                width: 72,
+                height: 72,
+                borderRadius: 2,
+                bgcolor: '#F8F9FA',
+                border: '1px solid #E8EAED',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+            }}
+        >
+            <AccountBalanceIcon sx={{ fontSize: 32, color: '#1A73E8' }} />
         </Box>
     </Box>
 ));
@@ -237,298 +230,193 @@ const EventCard: React.FC<{
     // Hook web pour gérer la participation (optimistic + localStorage)
     const { isInterested, interestedCount: localInterestedCount, isPending, toggle } = useEventInterestWeb(event.id, false, event.interested_count);
 
-    // Mettre à jour le temps chaque minute pour le décompte
+    // Mettre à jour le temps chaque minute
     useEffect(() => {
-        const timer = setInterval(() => {
-            setCurrentTime(new Date());
-        }, 60000); // Update every minute
-
+        const timer = setInterval(() => setCurrentTime(new Date()), 60000);
         return () => clearInterval(timer);
     }, []);
 
     const startDate = new Date(event.start_datetime);
     const endDate = event.end_datetime ? new Date(event.end_datetime) : null;
-
-    // Calculer le statut de l'événement
     const isOngoing = endDate && currentTime >= startDate && currentTime <= endDate;
-    const isUpcoming = currentTime < startDate;
-
-    const day = startDate.getDate();
-    const month = startDate.toLocaleDateString('fr-FR', { month: 'short' }).toUpperCase().replace('.', '');
+    const isCancelled = !!event.cancelled_at;
+    const smartTimeDisplay = getSmartTimeDisplay(event.start_datetime, event.end_datetime, currentTime);
 
     return (
         <Box
             sx={{
                 py: 2,
-                px: 2,
-                bgcolor: '#FFFFFF',
+                px: 3,
+                display: 'flex',
+                gap: 2.5,
+                borderBottom: '1px solid #E8EAED',
+                bgcolor: isCancelled ? '#F1F3F4' : (isOngoing ? '#FFF8F0' : '#FFFFFF'),
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                borderRadius: '8px',
+                mx: 1,
+                my: 0.5,
+                borderLeft: isCancelled ? '4px solid #EA4335' : (isOngoing ? '4px solid #E37400' : 'none'),
+                pl: (isCancelled || isOngoing) ? 2.5 : 3,
+                opacity: isCancelled ? 0.8 : 1,
                 '&:hover': {
-                    backgroundColor: '#F8F9FA'
-                },
-                transition: 'background-color 0.2s',
-                cursor: 'pointer'
+                    bgcolor: isCancelled ? '#E8EAED' : (isOngoing ? '#FFF3E6' : '#F8F9FA'),
+                    transform: 'translateX(4px)',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+                }
             }}
             onClick={onClick}
         >
-            <Box sx={{ width: '100%' }}>
-                {/* En-tête avec Date Badge et Titre */}
-                <Stack direction="row" spacing={2} alignItems="flex-start" sx={{ mb: 1.5 }}>
-                    {/* Calendar Badge: Day on top, Month in Red below */}
-                    <Paper
-                        elevation={0}
-                        sx={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: 48,
-                            height: 52,
-                            borderRadius: 2,
-                            border: '1px solid #DADCE0',
-                            bgcolor: '#FFFFFF',
-                            flexShrink: 0,
-                            mt: 0.5
-                        }}
-                    >
-                        <Typography
+            {/* Left Content */}
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+                {/* Badge ANNULÉ */}
+                {isCancelled && (
+                    <Box sx={{ mb: 1 }}>
+                        <Chip
+                            label="ANNULÉ"
+                            size="small"
                             sx={{
-                                fontSize: '1.25rem',
-                                fontWeight: 700,
-                                lineHeight: 1,
-                                color: '#202124',
-                                mb: 0.2
-                            }}
-                        >
-                            {day}
-                        </Typography>
-                        <Typography
-                            sx={{
+                                height: 20,
                                 fontSize: '0.65rem',
-                                fontWeight: 800,
-                                textTransform: 'uppercase',
-                                color: '#EA4335',
-                                lineHeight: 1
+                                fontWeight: 700,
+                                bgcolor: '#EA4335',
+                                color: '#FFFFFF',
+                                letterSpacing: '0.5px'
                             }}
-                        >
-                            {month}
-                        </Typography>
-                    </Paper>
-                    <Box sx={{ flex: 1 }}>
-                        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
-                            <Typography
-                                variant="h6"
-                                sx={{
-                                    fontSize: '1rem',
-                                    lineHeight: 1.4,
-                                    color: '#202124',
-                                    fontWeight: 500
-                                }}
-                            >
-                                {event.title}
-                            </Typography>
-                            {/* Badge de statut */}
-                            {isOngoing ? (
-                                <Chip
-                                    label="En cours"
-                                    size="small"
-                                    sx={{
-                                        bgcolor: '#FF9800',
-                                        color: 'white',
-                                        fontWeight: 500,
-                                        fontSize: '0.7rem',
-                                        height: 20
-                                    }}
-                                />
-                            ) : isUpcoming ? (
-                                <Chip
-                                    label="À venir"
-                                    size="small"
-                                    sx={{
-                                        bgcolor: '#E8F0FE',
-                                        color: '#1A73E8',
-                                        fontWeight: 500,
-                                        fontSize: '0.7rem',
-                                        height: 20
-                                    }}
-                                />
-                            ) : null}
-                        </Stack>
-
-                        {/* Décompte temps réel pour événements EN COURS */}
-                        {isOngoing && endDate && (() => {
-                            const remaining = getRemainingTime(event.end_datetime);
-                            if (!remaining) return null;
-
-                            const isUrgent = remaining.totalMinutes <= 30;
-
-                            return (
-                                <Box
-                                    sx={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: 0.8,
-                                        px: 1.5,
-                                        py: 0.8,
-                                        mb: 0.8,
-                                        borderRadius: 1,
-                                        bgcolor: isUrgent ? '#EA4335' : '#FF9800',
-                                        color: 'white',
-                                        fontWeight: 500,
-                                        boxShadow: 'none'
-                                    }}
-                                >
-                                    <AccessTimeIcon sx={{ fontSize: 18 }} />
-                                    <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.875rem' }}>
-                                        {remaining.text}
-                                    </Typography>
-                                </Box>
-                            );
-                        })()}
-
-                        {/* Temps relatif */}
-                        <Typography
-                            variant="body2"
-                            sx={{
-                                mb: 0.8,
-                                mt: 0.5,
-                                fontWeight: 500,
-                                color: isOngoing ? '#FF9800' : '#1A73E8',
-                                fontSize: '0.875rem'
-                            }}
-                        >
-                            {getRelativeTime(event.start_datetime)}
-                        </Typography>
-
-                        {/* Date de début */}
-                        <Typography
-                            variant="body2"
-                            sx={{ mb: 0.3, color: '#5F6368', fontSize: '0.875rem' }}
-                        >
-                            Début: {startDate.toLocaleDateString('fr-FR', {
-                                day: 'numeric',
-                                month: 'long',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                            })}
-                        </Typography>
-
-                        {/* Date de fin */}
-                        {endDate && (
-                            <Typography
-                                variant="body2"
-                                sx={{ mb: 0.5, color: '#5F6368', fontSize: '0.875rem' }}
-                            >
-                                Fin: {endDate.toLocaleDateString('fr-FR', {
-                                    day: 'numeric',
-                                    month: 'long',
-                                    year: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                })}
+                        />
+                        {event.cancellation_reason && (
+                            <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: '#EA4335', fontStyle: 'italic' }}>
+                                "{event.cancellation_reason}"
                             </Typography>
                         )}
-
-                        {/* Ville et Code Postal */}
-                        {(event.event_city || event.event_postal_code) && (
-                            <Stack direction="row" spacing={0.5} alignItems="center">
-                                <PlaceIcon sx={{ fontSize: 16, color: '#5F6368' }} />
-                                <Typography variant="body2" sx={{ color: '#5F6368', fontSize: '0.875rem' }}>
-                                    {event.event_city && event.event_postal_code
-                                        ? `${event.event_city}, ${event.event_postal_code}`
-                                        : event.event_city || event.event_postal_code
-                                    }
-                                </Typography>
-                            </Stack>
-                        )}
-
-                        {/* Distance et compteur d'intéressés */}
-                        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 0.5 }}>
-                            {event.distance_km !== null && (
-                                <Typography
-                                    variant="body2"
-                                    sx={{
-                                        color: '#EA4335',
-                                        fontWeight: 500,
-                                        fontSize: '0.875rem'
-                                    }}
-                                >
-                                    📍 {formatDistance(event.distance_km)}
-                                </Typography>
-                            )}
-                            {((localInterestedCount ?? event.interested_count) !== undefined && (localInterestedCount ?? event.interested_count)! > 0) && (
-                                <Typography
-                                    variant="body2"
-                                    sx={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 0.5,
-                                        color: '#1A73E8',
-                                        fontWeight: 500,
-                                        fontSize: '0.875rem'
-                                    }}
-                                >
-                                    👥 {localInterestedCount ?? event.interested_count} {(localInterestedCount ?? event.interested_count) === 1 ? 'intéressé' : 'intéressés'}
-                                </Typography>
-                            )}
-                        </Stack>
                     </Box>
+                )}
+
+                {/* Badge EN COURS pour événements en cours (si pas annulé) */}
+                {(isOngoing && !isCancelled) && (
+                    <Box sx={{ mb: 0.5 }}>
+                        <Chip
+                            label="EN COURS"
+                            size="small"
+                            sx={{
+                                height: 20,
+                                fontSize: '0.65rem',
+                                fontWeight: 700,
+                                bgcolor: '#EA4335',
+                                color: '#FFFFFF',
+                                letterSpacing: '0.5px',
+                                animation: 'pulse 2s ease-in-out infinite',
+                                '@keyframes pulse': {
+                                    '0%, 100%': { opacity: 1 },
+                                    '50%': { opacity: 0.85 }
+                                },
+                                '& .MuiChip-label': {
+                                    px: 1
+                                }
+                            }}
+                        />
+                    </Box>
+                )}
+
+                <Typography variant="subtitle1" sx={{ fontWeight: 500, color: isCancelled ? '#5F6368' : '#202124', lineHeight: 1.2, mb: 0.5, textDecoration: isCancelled ? 'line-through' : 'none' }}>
+                    {event.title}
+                </Typography>
+
+                {smartTimeDisplay && (
+                    <Typography variant="body2" sx={{ color: smartTimeDisplay.color, fontWeight: 500, fontSize: '0.875rem', mb: 0.5 }}>
+                        {smartTimeDisplay.text}
+                    </Typography>
+                )}
+
+                <Typography variant="body2" sx={{ color: '#5F6368', fontSize: '0.875rem' }}>
+                    {event.event_city} • {event.church_name}
+                </Typography>
+
+                {/* Metadata */}
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5 }}>
+                    <Typography variant="caption" sx={{ color: '#5F6368', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <PlaceIcon sx={{ fontSize: 14 }} /> {formatDistance(event.distance_km)}
+                    </Typography>
+                    {((localInterestedCount ?? event.interested_count) !== undefined && (localInterestedCount ?? event.interested_count)! > 0) && (
+                        <Typography variant="caption" sx={{ color: '#5F6368', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <CheckIcon sx={{ fontSize: 14 }} /> {localInterestedCount ?? event.interested_count} participations
+                        </Typography>
+                    )}
                 </Stack>
 
-                {/* Boutons d'action */}
-                <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-                    <Button
-                        variant="outlined"
+                {/* Action Chips */}
+                <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
+                    <Chip
+                        label={isInterested ? "Inscrit" : "Participer"}
                         size="small"
-                        startIcon={<InfoIcon />}
+                        icon={isInterested ? <CheckCircleIcon style={{ fontSize: 14 }} /> : undefined}
                         onClick={(e) => {
                             e.stopPropagation();
-                            onClick();
-                        }}
-                        fullWidth
-                        sx={{
-                            textTransform: 'none',
-                            fontWeight: 500,
-                            borderColor: '#DADCE0',
-                            color: '#5F6368',
-                            '&:hover': {
-                                borderColor: '#DADCE0',
-                                bgcolor: '#F8F9FA'
-                            }
-                        }}
-                    >
-                        Voir plus
-                    </Button>
-                    {/* Participation web */}
-                    <Button
-                        variant={isInterested ? 'contained' : 'outlined'}
-                        size="small"
-                        startIcon={<CheckIcon />}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            toggle().catch((err) => {
-                                console.error('Interest toggle failed', err);
-                                // simple feedback
-                                alert('Impossible de mettre à jour votre participation.');
-                            });
+                            toggle().catch(() => { });
                         }}
                         disabled={isPending}
-                        fullWidth
                         sx={{
-                            textTransform: 'none',
+                            height: 24,
+                            fontSize: '0.75rem',
+                            bgcolor: isInterested ? '#E8F0FE' : '#F1F3F4',
+                            color: isInterested ? '#1A73E8' : '#3C4043',
                             fontWeight: 500,
-                            borderColor: isInterested ? undefined : '#DADCE0',
-                            bgcolor: isInterested ? '#1A73E8' : undefined,
-                            color: isInterested ? 'white' : undefined,
-                            '&:hover': {
-                                bgcolor: isInterested ? '#1765CC' : '#F8F9FA'
-                            }
+                            '&:hover': { bgcolor: isInterested ? '#D2E3FC' : '#E8EAED' }
                         }}
-                    >
-                        {isPending ? '...' : (isInterested ? 'Ne plus participer' : 'Je participe')}
-                    </Button>
+                    />
                 </Stack>
             </Box>
+
+            {/* Right Icon (Event Date Badge) */}
+            <Paper
+                elevation={0}
+                sx={{
+                    width: 72,
+                    height: 72,
+                    borderRadius: 2,
+                    border: '1px solid #DADCE0',
+                    bgcolor: '#FFFFFF',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                }}
+            >
+                <Typography
+                    variant="caption"
+                    sx={{
+                        color: '#EA4335',
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        fontSize: '0.7rem',
+                        lineHeight: 1
+                    }}
+                >
+                    {startDate.toLocaleDateString('fr-FR', { month: 'short' }).replace('.', '')}
+                </Typography>
+                <Typography
+                    variant="h5"
+                    sx={{
+                        color: '#202124',
+                        fontWeight: 400,
+                        fontSize: '1.5rem',
+                        lineHeight: 1.2
+                    }}
+                >
+                    {startDate.getDate()}
+                </Typography>
+                <Typography
+                    variant="caption"
+                    sx={{
+                        color: '#5F6368',
+                        fontSize: '0.65rem',
+                        mt: 0.5
+                    }}
+                >
+                    {startDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                </Typography>
+            </Paper>
         </Box>
     );
 });
@@ -742,7 +630,7 @@ const ResultsPanel: React.FC<ResultsPanelProps> = React.memo(({
                     top: 0,
                     bgcolor: '#FFFFFF',
                     zIndex: 10,
-                    borderBottom: '1px solid #E8EAED',
+                    borderBottom: '1px solid rgba(0,0,0,0.06)',
                     overflowX: isMobile ? 'auto' : 'visible',
                     '&::-webkit-scrollbar': { display: 'none' },
                     scrollbarWidth: 'none'
@@ -754,7 +642,7 @@ const ResultsPanel: React.FC<ResultsPanelProps> = React.memo(({
                     useFlexGap
                     sx={{
                         px: 2,
-                        py: 1.5,
+                        py: 1,
                         minWidth: isMobile ? 'max-content' : 'auto',
                         flexWrap: isMobile ? 'nowrap' : 'wrap'
                     }}
@@ -765,14 +653,20 @@ const ResultsPanel: React.FC<ResultsPanelProps> = React.memo(({
                         label={`Églises (${churches.length})`}
                         onClick={handleToggleChurches}
                         sx={{
-                            bgcolor: filterChurches ? '#E8F0FE' : '#F1F3F4',
+                            bgcolor: '#FFFFFF',
                             color: filterChurches ? '#1A73E8' : '#5F6368',
                             borderColor: filterChurches ? '#1A73E8' : '#DADCE0',
-                            borderWidth: 1,
+                            borderWidth: filterChurches ? 2 : 1,
                             borderStyle: 'solid',
-                            fontWeight: 500,
+                            fontWeight: filterChurches ? 500 : 400,
                             fontSize: '0.875rem',
-                            '&:hover': { bgcolor: filterChurches ? '#D2E3FC' : '#E8EAED' }
+                            height: 32,
+                            borderRadius: '16px',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                bgcolor: '#FAFAFA',
+                                borderColor: filterChurches ? '#1A73E8' : '#5F6368'
+                            }
                         }}
                     />
 
@@ -782,19 +676,22 @@ const ResultsPanel: React.FC<ResultsPanelProps> = React.memo(({
                         label={`Événements (${events.length})`}
                         onClick={handleToggleEvents}
                         sx={{
-                            bgcolor: filterEvents ? '#FEE8E6' : '#F1F3F4',
-                            color: filterEvents ? '#EA4335' : '#5F6368',
-                            borderColor: filterEvents ? '#EA4335' : '#DADCE0',
-                            borderWidth: 1,
+                            bgcolor: '#FFFFFF',
+                            color: filterEvents ? '#1A73E8' : '#5F6368',
+                            borderColor: filterEvents ? '#1A73E8' : '#DADCE0',
+                            borderWidth: filterEvents ? 2 : 1,
                             borderStyle: 'solid',
-                            fontWeight: 500,
+                            fontWeight: filterEvents ? 500 : 400,
                             fontSize: '0.875rem',
-                            '&:hover': { bgcolor: filterEvents ? '#FDD7D3' : '#E8EAED' }
+                            height: 32,
+                            borderRadius: '16px',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                bgcolor: '#FAFAFA',
+                                borderColor: filterEvents ? '#1A73E8' : '#5F6368'
+                            }
                         }}
                     />
-
-                    {/* Divider */}
-                    <Box sx={{ width: 1, height: 24, bgcolor: '#DADCE0', alignSelf: 'center', mx: 0.5 }} />
 
                     {/* Les plus proches */}
                     <Chip
@@ -802,14 +699,20 @@ const ResultsPanel: React.FC<ResultsPanelProps> = React.memo(({
                         label="Les plus proches"
                         onClick={() => handleSortChange('distance')}
                         sx={{
-                            bgcolor: sortBy === 'distance' ? '#E8F0FE' : '#F1F3F4',
+                            bgcolor: '#FFFFFF',
                             color: sortBy === 'distance' ? '#1A73E8' : '#5F6368',
                             borderColor: sortBy === 'distance' ? '#1A73E8' : '#DADCE0',
-                            borderWidth: 1,
+                            borderWidth: sortBy === 'distance' ? 2 : 1,
                             borderStyle: 'solid',
-                            fontWeight: 500,
+                            fontWeight: sortBy === 'distance' ? 500 : 400,
                             fontSize: '0.875rem',
-                            '&:hover': { bgcolor: sortBy === 'distance' ? '#D2E3FC' : '#E8EAED' }
+                            height: 32,
+                            borderRadius: '16px',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                bgcolor: '#FAFAFA',
+                                borderColor: sortBy === 'distance' ? '#1A73E8' : '#5F6368'
+                            }
                         }}
                     />
 
@@ -819,14 +722,20 @@ const ResultsPanel: React.FC<ResultsPanelProps> = React.memo(({
                         label="Les plus récents"
                         onClick={() => handleSortChange('date')}
                         sx={{
-                            bgcolor: sortBy === 'date' ? '#E8F0FE' : '#F1F3F4',
+                            bgcolor: '#FFFFFF',
                             color: sortBy === 'date' ? '#1A73E8' : '#5F6368',
                             borderColor: sortBy === 'date' ? '#1A73E8' : '#DADCE0',
-                            borderWidth: 1,
+                            borderWidth: sortBy === 'date' ? 2 : 1,
                             borderStyle: 'solid',
-                            fontWeight: 500,
+                            fontWeight: sortBy === 'date' ? 500 : 400,
                             fontSize: '0.875rem',
-                            '&:hover': { bgcolor: sortBy === 'date' ? '#D2E3FC' : '#E8EAED' }
+                            height: 32,
+                            borderRadius: '16px',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                bgcolor: '#FAFAFA',
+                                borderColor: sortBy === 'date' ? '#1A73E8' : '#5F6368'
+                            }
                         }}
                     />
                 </Stack>
@@ -854,14 +763,20 @@ const ResultsPanel: React.FC<ResultsPanelProps> = React.memo(({
                                     label="Mes participations"
                                     onClick={toggleShowMyParticipations}
                                     sx={{
-                                        bgcolor: showMyParticipations ? '#E8F0FE' : '#F1F3F4',
+                                        bgcolor: '#FFFFFF',
                                         color: showMyParticipations ? '#1A73E8' : '#5F6368',
                                         borderColor: showMyParticipations ? '#1A73E8' : '#DADCE0',
-                                        borderWidth: 1,
+                                        borderWidth: showMyParticipations ? 2 : 1,
                                         borderStyle: 'solid',
-                                        fontWeight: 500,
+                                        fontWeight: showMyParticipations ? 500 : 400,
                                         fontSize: '0.875rem',
-                                        '&:hover': { bgcolor: showMyParticipations ? '#D2E3FC' : '#E8EAED' }
+                                        height: 32,
+                                        borderRadius: '16px',
+                                        transition: 'all 0.2s ease',
+                                        '&:hover': {
+                                            bgcolor: '#FAFAFA',
+                                            borderColor: showMyParticipations ? '#1A73E8' : '#5F6368'
+                                        }
                                     }}
                                 />
                                 <SearchIcon sx={{ fontSize: 64, color: '#DADCE0', mb: 2 }} />

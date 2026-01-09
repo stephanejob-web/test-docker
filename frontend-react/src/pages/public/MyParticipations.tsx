@@ -1,17 +1,23 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Box, Typography, List, ListItem, ListItemText, Button, Divider, CircularProgress, IconButton, AppBar, Toolbar } from '@mui/material';
-import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
+import { Box, Typography, List, ListItem, ListItemText, Button, Divider, CircularProgress, IconButton, AppBar, Toolbar, useMediaQuery, useTheme, Fab } from '@mui/material';
+import { ArrowBack as ArrowBackIcon, Map as MapIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import type { EventDetails } from '../../types/publicMap';
 import { fetchEventDetails } from '../../services/publicMapService';
 import useEventInterestWeb from '../../hooks/useEventInterestWeb';
+import DetailDrawer from '../../components/ui/DetailDrawer';
 
 const STORAGE_KEY = 'light_church:interested_events';
 
 export default function MyParticipations() {
     const navigate = useNavigate();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [loading, setLoading] = useState(true);
     const [events, setEvents] = useState<EventDetails[]>([]);
+    const [drawerOpen, setDrawerOpen] = useState(false);
+    const [selectedEvent, setSelectedEvent] = useState<EventDetails | null>(null);
+    const [detailLoading, setDetailLoading] = useState(false);
 
     const loadLocal = useCallback(() => {
         try {
@@ -94,28 +100,112 @@ export default function MyParticipations() {
             <List>
                 {events.map(ev => (
                     <React.Fragment key={ev.id}>
-                        <ListItem secondaryAction={
-                            <Box sx={{ display: 'flex', gap: 1 }}>
-                                <Button size="small" variant="outlined" onClick={() => navigate('/map')}>Voir sur la carte</Button>
-                                <ParticipationButton eventId={ev.id} />
-                            </Box>
-                        }>
-                            <ListItemText primary={ev.title} secondary={ev.details?.city ? `${ev.details.city} • ${new Date(ev.start_datetime).toLocaleString('fr-FR')}` : new Date(ev.start_datetime).toLocaleString('fr-FR')} />
+                        <ListItem
+                            sx={{
+                                flexDirection: isMobile ? 'column' : 'row',
+                                alignItems: isMobile ? 'stretch' : 'center',
+                                py: 2,
+                                gap: isMobile ? 2 : 0
+                            }}
+                            secondaryAction={!isMobile ? (
+                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                    <Button size="small" variant="outlined" onClick={async () => {
+                                        setDetailLoading(true);
+                                        try {
+                                            const details = await fetchEventDetails(ev.id);
+                                            setSelectedEvent(details);
+                                            setDrawerOpen(true);
+                                        } catch (e) {
+                                            console.error('Failed to load event details', e);
+                                        } finally {
+                                            setDetailLoading(false);
+                                        }
+                                    }}>Détails</Button>
+                                    <ParticipationButton eventId={ev.id} />
+                                </Box>
+                            ) : undefined}
+                        >
+                            <ListItemText
+                                primary={ev.title}
+                                secondary={ev.details?.city ? `${ev.details.city} • ${new Date(ev.start_datetime).toLocaleString('fr-FR')}` : new Date(ev.start_datetime).toLocaleString('fr-FR')}
+                                sx={{ pr: isMobile ? 0 : 2 }}
+                            />
+                            {isMobile && (
+                                <Box sx={{ display: 'flex', gap: 1, width: '100%' }}>
+                                    <Button
+                                        fullWidth
+                                        size="small"
+                                        variant="outlined"
+                                        onClick={async () => {
+                                            setDetailLoading(true);
+                                            try {
+                                                const details = await fetchEventDetails(ev.id);
+                                                setSelectedEvent(details);
+                                                setDrawerOpen(true);
+                                            } catch (e) {
+                                                console.error('Failed to load event details', e);
+                                            } finally {
+                                                setDetailLoading(false);
+                                            }
+                                        }}
+                                    >
+                                        Détails
+                                    </Button>
+                                    <ParticipationButton eventId={ev.id} fullWidth />
+                                </Box>
+                            )}
                         </ListItem>
                         <Divider />
                     </React.Fragment>
                 ))}
             </List>
             </Box>
+            <DetailDrawer
+                open={drawerOpen}
+                onClose={() => { setDrawerOpen(false); setSelectedEvent(null); }}
+                loading={detailLoading}
+                data={selectedEvent}
+                type="event"
+            />
+
+            {/* FAB - Floating Action Button pour retourner à la carte */}
+            <Fab
+                variant={isMobile ? 'circular' : 'extended'}
+                color="primary"
+                onClick={() => navigate('/map')}
+                sx={{
+                    position: 'fixed',
+                    bottom: isMobile ? 16 : 24,
+                    right: isMobile ? 16 : 24,
+                    bgcolor: '#1A73E8',
+                    color: '#FFFFFF',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                    textTransform: 'none',
+                    fontWeight: 500,
+                    '&:hover': {
+                        bgcolor: '#1565C0',
+                        boxShadow: '0 6px 16px rgba(0,0,0,0.3)'
+                    }
+                }}
+            >
+                <MapIcon sx={{ mr: isMobile ? 0 : 1 }} />
+                {!isMobile && 'Carte'}
+            </Fab>
         </Box>
     );
 }
 
-function ParticipationButton({ eventId }: { eventId: number }) {
+function ParticipationButton({ eventId, fullWidth }: { eventId: number; fullWidth?: boolean }) {
     const { isInterested, isPending, toggle } = useEventInterestWeb(eventId, true);
 
     return (
-        <Button size="small" variant={isInterested ? 'contained' : 'outlined'} onClick={() => toggle().catch(() => {})} disabled={isPending}>
+        <Button
+            fullWidth={fullWidth}
+            size="small"
+            variant={isInterested ? 'contained' : 'outlined'}
+            onClick={() => toggle().catch(() => {})}
+            disabled={isPending}
+        >
             {isPending ? '...' : (isInterested ? 'Ne plus participer' : 'Je participe')}
         </Button>
     );

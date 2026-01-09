@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Drawer, Box, Typography, Button, IconButton, Skeleton, Divider, Chip, Link, Stack, Alert } from '@mui/material';
-import { Close, Directions, Share, PunchClock, Call, Language, LocationOn, LocalParking, Accessible, Mic, Person, People, AttachMoney, YouTube, InsertLink, CancelOutlined, Info, Email, Translate, Facebook, Instagram, Twitter, LinkedIn } from '@mui/icons-material';
+import { Close, Directions, PunchClock, Call, Language, LocationOn, LocalParking, Accessible, Mic, Person, People, Euro, YouTube, InsertLink, CancelOutlined, Info, Email, Translate, Facebook, Instagram, Twitter, LinkedIn, EventBusy, Image as ImageIcon } from '@mui/icons-material';
 import type { ChurchDetails, EventDetails } from '../../types/publicMap';
+import useEventInterestWeb from '../../hooks/useEventInterestWeb';
 
 interface DetailDrawerProps {
     open: boolean;
@@ -14,6 +16,15 @@ interface DetailDrawerProps {
 }
 
 const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, data, type, embedded = false, onOrganizerClick }) => {
+    const navigate = useNavigate();
+    const [overrideData, setOverrideData] = useState<ChurchDetails | null>(null);
+    const [overrideType, setOverrideType] = useState<'church' | 'event' | null>(null);
+
+    const handleClose = () => {
+        setOverrideData(null);
+        setOverrideType(null);
+        onClose();
+    };
 
     const renderChurchDetails = (church: ChurchDetails) => {
         // Helper to get social icon
@@ -43,7 +54,7 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
                 <Divider sx={{ my: 2, borderColor: '#E8EAED' }} />
 
                 {/* Actions - Google Maps Style */}
-                <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                <Box sx={{ display: 'flex', gap: 1, mb: 3 }}>
                     <Button
                         variant="contained"
                         startIcon={<Directions />}
@@ -55,7 +66,7 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
                             );
                         }}
                         sx={{
-                            borderRadius: 1,
+                            borderRadius: 8,
                             bgcolor: '#1A73E8',
                             textTransform: 'none',
                             fontWeight: 500,
@@ -65,32 +76,7 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
                     >
                         Itinéraire
                     </Button>
-                    <Button
-                        variant="outlined"
-                        startIcon={<Share />}
-                        onClick={() => {
-                            const url = window.location.href;
-                            if (navigator.share) {
-                                navigator.share({ title: church.church_name, url });
-                            } else {
-                                navigator.clipboard.writeText(url);
-                                alert('Lien copié dans le presse-papiers !');
-                            }
-                        }}
-                        sx={{
-                            borderRadius: 1,
-                            borderColor: '#DADCE0',
-                            color: '#5F6368',
-                            textTransform: 'none',
-                            fontWeight: 500,
-                            '&:hover': {
-                                borderColor: '#DADCE0',
-                                bgcolor: '#F8F9FA'
-                            }
-                        }}
-                    >
-                        Partager
-                    </Button>
+                    {/* share removed per UX request */}
                 </Box>
 
                 <Divider sx={{ my: 2, borderColor: '#E8EAED' }} />
@@ -240,6 +226,17 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
 
     const renderEventDetails = (event: EventDetails) => {
         const isCancelled = Boolean(event.cancelled_at);
+        // Hook for unsubscription logic in detail view might be needed, or we just rely on parent updates?
+        // Actually, DetailDrawer doesn't have the subscription hook. We should probably accept an onToggleInterest prop or similar,
+        // but for now, since subscription state is local/cached, we can't easily toggle it HERE without the hook.
+        // However, the user request says "pas de buttons pour me desinscritre".
+        // The Participation logic is currently inside EventCard and MyParticipationsSidebar via `useEventInterestWeb`.
+        // To add it here, we need to import `useEventInterestWeb`.
+
+        // NOTE: We cannot use hooks inside this render function (nested function). 
+        // We will need to extract this or use a separate component.
+        // Let's create a sub-component for actions.
+
 
         return (
             <Box sx={{ p: 3 }}>
@@ -257,7 +254,7 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
                 <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap' }}>
                     <Chip label="Événement" size="small" sx={{ bgcolor: '#E8F0FE', color: '#1A73E8', fontWeight: 500 }} />
                     <Chip label={new Date(event.start_datetime).toLocaleDateString('fr-FR')} size="small" sx={{ bgcolor: '#F1F3F4', color: '#5F6368' }} />
-                    {event.details?.is_free && <Chip label="Gratuit" size="small" sx={{ bgcolor: '#E6F4EA', color: '#137333', fontWeight: 500 }} icon={<AttachMoney />} />}
+                    {event.details?.is_free && <Chip label="Gratuit" size="small" sx={{ bgcolor: '#E6F4EA', color: '#137333', fontWeight: 500 }} icon={<Euro />} />}
                 </Stack>
 
                 {/* Raison d'annulation */}
@@ -276,55 +273,7 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
                 <Divider sx={{ my: 2, borderColor: '#E8EAED' }} />
 
                 {/* Actions - Google Maps Style */}
-                <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-                    <Button
-                        variant="contained"
-                        startIcon={<Directions />}
-                        fullWidth
-                        onClick={() => {
-                            window.open(
-                                `https://www.google.com/maps/dir/?api=1&destination=${event.latitude},${event.longitude}`,
-                                '_blank'
-                            );
-                        }}
-                        sx={{
-                            borderRadius: 1,
-                            bgcolor: '#1A73E8',
-                            textTransform: 'none',
-                            fontWeight: 500,
-                            boxShadow: 'none',
-                            '&:hover': { bgcolor: '#1765CC', boxShadow: 'none' }
-                        }}
-                    >
-                        Itinéraire
-                    </Button>
-                    <Button
-                        variant="outlined"
-                        startIcon={<Share />}
-                        onClick={() => {
-                            const url = window.location.href;
-                            if (navigator.share) {
-                                navigator.share({ title: event.title, url });
-                            } else {
-                                navigator.clipboard.writeText(url);
-                                alert('Lien copié dans le presse-papiers !');
-                            }
-                        }}
-                        sx={{
-                            borderRadius: 1,
-                            borderColor: '#DADCE0',
-                            color: '#5F6368',
-                            textTransform: 'none',
-                            fontWeight: 500,
-                            '&:hover': {
-                                borderColor: '#DADCE0',
-                                bgcolor: '#F8F9FA'
-                            }
-                        }}
-                    >
-                        Partager
-                    </Button>
-                </Box>
+                <EventActions event={event} navigate={navigate} />
 
                 <Divider sx={{ my: 2, borderColor: '#E8EAED' }} />
 
@@ -501,11 +450,28 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
                                 p: 3,
                                 bgcolor: '#F8F9FA',
                                 borderRadius: 2,
-                                cursor: onOrganizerClick ? 'pointer' : 'default',
-                                '&:hover': onOrganizerClick ? { bgcolor: '#E8F0FE' } : undefined,
+                                cursor: 'pointer',
+                                '&:hover': { bgcolor: '#E8F0FE' },
                                 transition: 'background-color 0.2s'
                             }}
-                            onClick={() => onOrganizerClick && event.church_id && onOrganizerClick(String(event.church_id))}
+                            onClick={async () => {
+                                if (onOrganizerClick && event.church_id) {
+                                    onOrganizerClick(String(event.church_id));
+                                    return;
+                                }
+                                try {
+                                    const { fetchChurchDetails } = await import('../../services/publicMapService');
+                                    if (event.church_id) {
+                                        const ch = await fetchChurchDetails(Number(event.church_id));
+                                        if (ch) {
+                                            setOverrideData(ch);
+                                            setOverrideType('church');
+                                        }
+                                    }
+                                } catch (e) {
+                                    console.error('Failed to fetch organizer church', e);
+                                }
+                            }}
                         >
                             <Typography variant="caption" color="#5F6368">Organisé par</Typography>
                             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -537,15 +503,24 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
             <Box
                 sx={{
                     height: 200,
-                    backgroundColor: '#E8EAED',
-                    backgroundImage: `url(${(type === 'church' ? (data as ChurchDetails).details?.logo_url : (data as EventDetails).details?.image_url) || 'https://images.unsplash.com/photo-1438232992991-995b7058bbb3?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'})`,
+                    backgroundColor: '#F1F3F4',
+                    backgroundImage: (type === 'church' ? (data as ChurchDetails).details?.logo_url : (data as EventDetails).details?.image_url)
+                        ? `url(${(type === 'church' ? (data as ChurchDetails).details?.logo_url : (data as EventDetails).details?.image_url)})`
+                        : 'none',
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
-                    position: 'relative'
+                    position: 'relative',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
                 }}
             >
+                {!(type === 'church' ? (data as ChurchDetails).details?.logo_url : (data as EventDetails).details?.image_url) && (
+                    <ImageIcon sx={{ fontSize: 48, color: '#DADCE0' }} />
+                )}
+
                 <IconButton
-                    onClick={onClose}
+                    onClick={handleClose}
                     sx={{
                         position: 'absolute',
                         top: 8,
@@ -560,9 +535,9 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
                 </IconButton>
             </Box>
 
-            {type === 'church'
-                ? renderChurchDetails(data as ChurchDetails)
-                : renderEventDetails(data as EventDetails)
+            {overrideType === 'church' && overrideData
+                ? renderChurchDetails(overrideData as ChurchDetails)
+                : (type === 'church' ? renderChurchDetails(data as ChurchDetails) : renderEventDetails(data as EventDetails))
             }
         </Box>
     ) : null;
@@ -579,7 +554,7 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
         <Drawer
             anchor="left"
             open={open}
-            onClose={onClose}
+            onClose={handleClose}
             variant="persistent"
             PaperProps={{
                 sx: {
@@ -595,6 +570,95 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
         >
             {innerContent}
         </Drawer>
+    );
+};
+
+const EventActions: React.FC<{ event: EventDetails; navigate: any }> = ({ event, navigate }) => {
+    const { isInterested, isPending, toggle } = useEventInterestWeb(event.id, false, event.interested_count);
+
+    return (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 3 }}>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                    variant="contained"
+                    startIcon={<Directions />}
+                    onClick={() => {
+                        window.open(
+                            `https://www.google.com/maps/dir/?api=1&destination=${event.latitude},${event.longitude}`,
+                            '_blank'
+                        );
+                    }}
+                    sx={{
+                        flex: 1,
+                        borderRadius: 8,
+                        bgcolor: '#1A73E8',
+                        textTransform: 'none',
+                        fontWeight: 500,
+                        boxShadow: 'none',
+                        '&:hover': { bgcolor: '#1765CC', boxShadow: 'none' }
+                    }}
+                >
+                    Itinéraire
+                </Button>
+                <Button
+                    variant="outlined"
+                    startIcon={<LocationOn />}
+                    onClick={() => {
+                        try {
+                            navigate(`/map?focusEvent=${event.id}`);
+                        } catch { }
+                        try {
+                            window.dispatchEvent(new CustomEvent('light_church:focus_event', { detail: { eventId: event.id } }));
+                        } catch { }
+                    }}
+                    sx={{
+                        flex: 1,
+                        borderRadius: 8,
+                        borderColor: '#DADCE0',
+                        color: '#1A73E8',
+                        textTransform: 'none',
+                        fontWeight: 500,
+                        '&:hover': {
+                            borderColor: '#DADCE0',
+                            bgcolor: '#F1F3F4'
+                        }
+                    }}
+                >
+                    Centrer la carte
+                </Button>
+            </Box>
+
+            {/* Inscription / Désinscription Bouton Large */}
+            <Button
+                variant={isInterested ? "outlined" : "contained"}
+                color={isInterested ? "error" : "primary"}
+                startIcon={isInterested ? <EventBusy /> : null}
+                onClick={() => toggle()}
+                disabled={isPending}
+                sx={{
+                    width: '100%',
+                    borderRadius: 8,
+                    textTransform: 'none',
+                    fontWeight: 500,
+                    boxShadow: 'none',
+                    bgcolor: isInterested ? 'transparent' : '#1A73E8',
+                    color: isInterested ? '#d32f2f' : '#fff',
+                    borderColor: isInterested ? '#d32f2f' : 'transparent',
+                    '&:hover': {
+                        bgcolor: isInterested ? '#ffebee' : '#1765CC',
+                        borderColor: isInterested ? '#d32f2f' : 'transparent',
+                        boxShadow: 'none'
+                    }
+                }}
+            >
+                {isInterested ? "Se désinscrire de l'événement" : "S'inscrire à l'événement"}
+            </Button>
+            {event.cancelled_at && (
+                <Typography variant="caption" color="error" align="center" sx={{ display: 'block', mt: -1 }}>
+                    Les inscriptions sont closes car l'événement est annulé.
+                </Typography>
+            )}
+        </Box>
     );
 };
 

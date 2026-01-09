@@ -11,6 +11,50 @@ const db = require('../config/db');
  *   - OU Distance: latitude, longitude, radius (km)
  *   - Autres: denomination_id, limit, search
  */
+
+/**
+ * Route publique : GET /api/public/stats
+ * Retourne les statistiques globales de la plateforme (pour la landing page)
+ */
+router.get('/stats', async (req, res) => {
+    try {
+        // Compter les églises (avec admin validé)
+        const [churchesResult] = await db.query(`
+            SELECT COUNT(c.id) as count 
+            FROM churches c 
+            INNER JOIN admins a ON a.id = c.admin_id 
+            WHERE a.status = 'VALIDATED' AND a.role = 'PASTOR'
+        `);
+
+        // Compter les événements à venir (avec admin validé, sans les annulés)
+        const [eventsResult] = await db.query(`
+            SELECT COUNT(e.id) as count 
+            FROM events e 
+            INNER JOIN admins a ON a.id = e.admin_id 
+            WHERE a.status = 'VALIDATED' 
+            AND e.cancelled_at IS NULL
+            AND COALESCE(e.end_datetime, e.start_datetime) >= NOW()
+        `);
+
+        res.json({
+            success: true,
+            stats: {
+                churches: churchesResult[0].count || 0,
+                events: eventsResult[0].count || 0
+            }
+        });
+    } catch (err) {
+        console.error('Error fetching stats:', err);
+        res.status(500).json({
+            success: false,
+            message: 'Erreur lors du chargement des statistiques'
+        });
+    }
+});
+
+/**
+ * Route publique : GET /api/public/churches
+ */
 router.get('/churches', [
     query('north').optional().isFloat({ min: -90, max: 90 }),
     query('south').optional().isFloat({ min: -90, max: 90 }),

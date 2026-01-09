@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
     Box,
-    Fab,
+    Paper,
     useMediaQuery,
     useTheme,
     Typography,
@@ -12,6 +12,7 @@ import {
     MyLocation as MyLocationIcon,
     Layers,
     Event as EventIcon,
+    Home as HomeIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
@@ -30,6 +31,7 @@ import SearchPanel from '../../components/ui/SearchPanel';
 import DetailDrawer from '../../components/ui/DetailDrawer';
 import ResultsPanel from '../../components/Map/ResultsPanel';
 import Sidebar from '../../components/Map/Sidebar';
+import MyParticipationsSidebar from '../../components/Map/MyParticipationsSidebar';
 
 // Fix Leaflet default icon (Same as before)
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -69,7 +71,7 @@ MapEventsHandler.displayName = 'MapEventsHandler';
 // Icons (Same as before)
 const createChurchIcon = () => L.divIcon({
     className: 'custom-marker-church',
-    html: '<svg width="24" height="24" viewBox="0 0 24 24" fill="#4285F4" stroke="white" stroke-width="2"><path d="M18 12.22V9l-6-4-6 4v3.22l-2 1V21h7v-5h2v5h7v-7.78l-2-1zM12 7l4 3v1h-8v-1l4-3z"/></svg>',
+    html: '<svg width="24" height="24" viewBox="0 0 24 24" fill="#4285F4" stroke="white" stroke-width="2"><path d="M4 10v7h3v-7H4zm6 0v7h3v-7h-3zM2 22h19v-3H2v3zm14-12v7h3v-7h-3zm-4.5-9L2 6v2h19V6l-9.5-5z"/></svg>',
     iconSize: [36, 36],
     iconAnchor: [18, 18],
     popupAnchor: [0, -18]
@@ -85,7 +87,7 @@ const createEventIcon = () => L.divIcon({
 
 const createSelectedChurchIcon = () => L.divIcon({
     className: 'custom-marker-church-selected marker-bounce',
-    html: '<svg width="48" height="48" viewBox="0 0 24 24" fill="#FBBC04" stroke="white" stroke-width="2" style="filter: drop-shadow(0 0 8px rgba(0,0,0,0.5));"><path d="M18 12.22V9l-6-4-6 4v3.22l-2 1V21h7v-5h2v5h7v-7.78l-2-1zM12 7l4 3v1h-8v-1l4-3z"/></svg>',
+    html: '<svg width="48" height="48" viewBox="0 0 24 24" fill="#FBBC04" stroke="white" stroke-width="2" style="filter: drop-shadow(0 0 8px rgba(0,0,0,0.5));"><path d="M4 10v7h3v-7H4zm6 0v7h3v-7h-3zM2 22h19v-3H2v3zm14-12v7h3v-7h-3zm-4.5-9L2 6v2h19V6l-9.5-5z"/></svg>',
     iconSize: [48, 48],
     iconAnchor: [24, 24],
     popupAnchor: [0, -24]
@@ -128,7 +130,11 @@ const userIconInstance = L.divIcon({
     popupAnchor: [0, -10]
 });
 
-const HomePage: React.FC = () => {
+interface HomePageProps {
+    viewMode?: 'explore' | 'participations';
+}
+
+const HomePage: React.FC<HomePageProps> = ({ viewMode = 'explore' }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const navigate = useNavigate();
@@ -152,12 +158,30 @@ const HomePage: React.FC = () => {
     const [selectedType, setSelectedType] = useState<'church' | 'event' | null>(null);
 
     // Map Type
-    const [mapType, setMapType] = useState<'standard' | 'satellite'>('standard');
+    const [mapType, setMapType] = useState<'standard' | 'satellite'>('satellite');
 
     // Refs
     const boundsChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const isFirstLoadRef = useRef(true);
     const abortControllerRef = useRef<AbortController | null>(null);
+
+    // Smart markers: Filter out churches that have events at the same location
+    const filteredChurches = useMemo(() => {
+        if (!showEvents || events.length === 0) {
+            return churches;
+        }
+
+        // Create a Set of event coordinates for fast lookup
+        const eventCoordinates = new Set(
+            events.map(event => `${event.latitude.toFixed(6)},${event.longitude.toFixed(6)}`)
+        );
+
+        // Filter out churches that have an event at the same location
+        return churches.filter(church => {
+            const churchCoord = `${church.latitude.toFixed(6)},${church.longitude.toFixed(6)}`;
+            return !eventCoordinates.has(churchCoord);
+        });
+    }, [churches, events, showEvents]);
 
     // Initialization (Geo)
     useEffect(() => {
@@ -195,6 +219,51 @@ const HomePage: React.FC = () => {
             if (abortControllerRef.current) abortControllerRef.current.abort();
             if (boundsChangeTimeoutRef.current) clearTimeout(boundsChangeTimeoutRef.current);
         };
+    }, []);
+
+    // Focus event handler: center map and open detail drawer when requested
+    useEffect(() => {
+        let mounted = true;
+
+        const doFocus = async (eventId: number) => {
+            try {
+                const { fetchEventDetails } = await import('../../services/publicMapService');
+                const details = await fetchEventDetails(Number(eventId));
+                if (!mounted || !details) return;
+                setSelectedItem(details);
+                setSelectedType('event');
+                setDetailDrawerOpen(true);
+                if (details.latitude && details.longitude) {
+                    setMapCenter([details.latitude, details.longitude]);
+                    setMapZoom(16);
+                }
+            } catch (e) {
+                console.error('Focus event failed', e);
+            }
+        };
+
+        const handler = (e: any) => {
+            const id = e?.detail?.eventId;
+            if (id) doFocus(Number(id));
+        };
+
+        window.addEventListener('light_church:focus_event', handler as EventListener);
+
+        // If URL has focusEvent param (e.g., /map?focusEvent=123), handle it
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const focusId = params.get('focusEvent');
+            if (focusId) {
+                // remove param from URL
+                const url = new URL(window.location.href);
+                params.delete('focusEvent');
+                url.search = params.toString();
+                window.history.replaceState({}, '', url.toString());
+                doFocus(Number(focusId));
+            }
+        } catch (e) { /* ignore */ }
+
+        return () => { mounted = false; window.removeEventListener('light_church:focus_event', handler as EventListener); };
     }, []);
 
     // Load Data
@@ -317,8 +386,8 @@ const HomePage: React.FC = () => {
     const participatingEventIcon = useMemo(() => createParticipatingEventIcon(), []);
     const participatingEventSelectedIcon = useMemo(() => createParticipatingEventSelectedIcon(), []);
 
-    // Read local participations from localStorage (fast, synchronous)
-    const localParticipations = useMemo(() => {
+    // Local participations: keep as state and listen to updates so UI updates without full refresh
+    const [localParticipations, setLocalParticipations] = useState<Set<number>>(() => {
         try {
             const raw = localStorage.getItem('light_church:interested_events');
             if (!raw) return new Set<number>();
@@ -327,6 +396,32 @@ const HomePage: React.FC = () => {
         } catch {
             return new Set<number>();
         }
+    });
+
+    useEffect(() => {
+        const refresh = () => {
+            try {
+                const raw = localStorage.getItem('light_church:interested_events');
+                if (!raw) { setLocalParticipations(new Set<number>()); return; }
+                const obj = JSON.parse(raw) as Record<string, number>;
+                setLocalParticipations(new Set<number>(Object.keys(obj).map(k => Number(k)).filter(Boolean)));
+            } catch {
+                setLocalParticipations(new Set<number>());
+            }
+        };
+
+        // initial read
+        refresh();
+
+        // listen for same-tab custom events and storage events (cross-tab)
+        window.addEventListener('light_church:interests_updated', refresh as EventListener);
+        const storageHandler = (e: StorageEvent) => { if (e.key === 'light_church:interested_events') refresh(); };
+        window.addEventListener('storage', storageHandler);
+
+        return () => {
+            window.removeEventListener('light_church:interests_updated', refresh as EventListener);
+            window.removeEventListener('storage', storageHandler);
+        };
     }, [events]);
 
     if (geoBlocked) {
@@ -378,7 +473,7 @@ const HomePage: React.FC = () => {
                         bottom: 24,
                         width: { xs: 'calc(100% - 32px)', sm: 360 },
                         zIndex: 900, // Below DetailDrawer but above map
-                        display: resultsPanelOpen && !detailDrawerOpen ? 'block' : 'none',
+                        display: (resultsPanelOpen || viewMode === 'participations') && !detailDrawerOpen ? 'block' : 'none',
                         pointerEvents: 'none' // Let clicks pass through container
                     }}>
                         <Box sx={{
@@ -388,17 +483,23 @@ const HomePage: React.FC = () => {
                             overflow: 'hidden',
                             boxShadow: 3
                         }}>
-                            <ResultsPanel
-                                churches={churches}
-                                events={events}
-                                loading={loading}
-                                onChurchClick={(church) => handleMarkerClick(church, 'church')}
-                                onEventClick={(event) => handleMarkerClick(event, 'event')}
-                                onClose={() => setResultsPanelOpen(false)}
-                                open={resultsPanelOpen}
-                                isGeolocated={!!userLocation}
-                                isMobileView={isMobile}
-                            />
+                            {viewMode === 'participations' ? (
+                                <MyParticipationsSidebar
+                                    onEventClick={(event) => handleMarkerClick(event, 'event')}
+                                />
+                            ) : (
+                                <ResultsPanel
+                                    churches={churches}
+                                    events={events}
+                                    loading={loading}
+                                    onChurchClick={(church) => handleMarkerClick(church, 'church')}
+                                    onEventClick={(event) => handleMarkerClick(event, 'event')}
+                                    onClose={() => setResultsPanelOpen(false)}
+                                    open={resultsPanelOpen}
+                                    isGeolocated={!!userLocation}
+                                    isMobileView={isMobile}
+                                />
+                            )}
                         </Box>
                     </Box>
 
@@ -435,13 +536,15 @@ const HomePage: React.FC = () => {
             ) : (
                 // Desktop Layout (Sidebar)
                 <Sidebar>
-                    <SearchPanel
-                        embedded
-                        onSearch={handleSearch}
-                        onFilterChange={handleFilterChange}
-                        onToggleList={handleToggleList}
-                        onLocationSelect={handleLocationSelect}
-                    />
+                    {viewMode === 'explore' && !detailDrawerOpen && (
+                        <SearchPanel
+                            embedded
+                            onSearch={handleSearch}
+                            onFilterChange={handleFilterChange}
+                            onToggleList={handleToggleList}
+                            onLocationSelect={handleLocationSelect}
+                        />
+                    )}
 
                     <Box sx={{ flex: 1, overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column' }}>
                         {detailDrawerOpen && selectedItem ? (
@@ -473,6 +576,10 @@ const HomePage: React.FC = () => {
                                         }
                                     }
                                 }}
+                            />
+                        ) : viewMode === 'participations' ? (
+                            <MyParticipationsSidebar
+                                onEventClick={(event) => handleMarkerClick(event, 'event')}
                             />
                         ) : (
                             <ResultsPanel
@@ -513,7 +620,7 @@ const HomePage: React.FC = () => {
                 )}
 
                 <MarkerClusterGroup chunkedLoading>
-                    {showChurches && churches.map(church => (
+                    {showChurches && filteredChurches.map(church => (
                         <Marker
                             key={`church-${church.id}`}
                             position={[church.latitude, church.longitude]}
@@ -540,34 +647,82 @@ const HomePage: React.FC = () => {
 
             {/* 4. Floating Action Buttons (Bottom Right) */}
             <Box sx={{ position: 'absolute', bottom: 24, right: 24, display: 'flex', flexDirection: 'column', gap: 2, zIndex: 1000 }}>
+                {/* Home Button */}
+                <Paper
+                    elevation={2}
+                    sx={{
+                        bgcolor: 'white',
+                        borderRadius: 2,
+                        width: 40,
+                        height: 40,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        '&:hover': { bgcolor: '#F1F3F4' }
+                    }}
+                    onClick={() => navigate('/')}
+                >
+                    <HomeIcon sx={{ color: '#666' }} />
+                </Paper>
                 {/* Mes participations */}
-                <Fab
-                    color="secondary"
-                    onClick={() => navigate('/my-participations')}
-                    aria-label="Mes participations"
+                <Paper
+                    elevation={2}
                     sx={{
                         bgcolor: 'secondary.main',
+                        borderRadius: 2,
+                        width: 40,
+                        height: 40,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
                         '&:hover': { bgcolor: 'secondary.dark' }
                     }}
+                    onClick={() => navigate('/my-participations')}
                 >
                     <Badge badgeContent={localParticipations.size} color="primary" max={99}>
-                        <EventIcon />
+                        <EventIcon sx={{ color: 'white' }} />
                     </Badge>
-                </Fab>
+                </Paper>
 
                 {/* Map Layer Toggle */}
-                <Fab
-                    color="inherit"
+                <Paper
+                    elevation={2}
+                    sx={{
+                        bgcolor: 'white',
+                        borderRadius: 2,
+                        width: 40,
+                        height: 40,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        '&:hover': { bgcolor: '#F1F3F4' }
+                    }}
                     onClick={() => setMapType(t => t === 'standard' ? 'satellite' : 'standard')}
-                    sx={{ bgcolor: 'white', '&:hover': { bgcolor: '#F1F3F4' } }}
-                    aria-label="Changer de vue"
                 >
-                    <Layers sx={{ color: '#5F6368' }} />
-                </Fab>
+                    <Layers sx={{ color: '#666' }} />
+                </Paper>
 
-                <Fab color="primary" onClick={handleRecenterMap} aria-label="Ma position">
-                    <MyLocationIcon />
-                </Fab>
+                {/* My Location */}
+                <Paper
+                    elevation={2}
+                    sx={{
+                        bgcolor: 'white',
+                        borderRadius: 2,
+                        width: 40,
+                        height: 40,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        '&:hover': { bgcolor: '#F1F3F4' }
+                    }}
+                    onClick={handleRecenterMap}
+                >
+                    <MyLocationIcon sx={{ color: '#666' }} />
+                </Paper>
             </Box>
 
         </React.Fragment>
