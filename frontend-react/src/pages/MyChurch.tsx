@@ -27,7 +27,8 @@ import {
     Add as AddIcon,
     Delete as DeleteIcon,
     LocationOn as LocationOnIcon,
-    ArrowBack as ArrowBackIcon
+    ArrowBack as ArrowBackIcon,
+    Visibility as VisibilityIcon
 } from '@mui/icons-material';
 import { ImageUpload } from '../components/ImageUpload';
 import { churchSchema, type ChurchFormData } from '../lib/validationSchemas';
@@ -265,18 +266,29 @@ export default function MyChurch() {
                 <Typography variant="h3" sx={{ fontWeight: 'bold', fontSize: { xs: '1.75rem', sm: '2.5rem', md: '3rem' } }}>
                     {isAdminMode ? "Modifier l'Église" : "Mon Église"}
                 </Typography>
-                <Button
-                    type="submit"
-                    disabled={isSubmitting || Object.keys(errors).length > 0}
-                    variant="contained"
-                    color="success"
-                    size="large"
-                    startIcon={<SaveIcon />}
-                    fullWidth
-                    sx={{ px: { sm: 4 }, width: { xs: '100%', sm: 'auto' } }}
-                >
-                    {isSubmitting ? 'Sauvegarde...' : 'Tout Sauvegarder'}
-                </Button>
+                <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' }, width: { xs: '100%', sm: 'auto' } }}>
+                    <Button
+                        variant="outlined"
+                        color="primary"
+                        size="large"
+                        startIcon={<VisibilityIcon />}
+                        onClick={() => window.open('/map', '_blank')}
+                        sx={{ width: { xs: '100%', sm: 'auto' } }}
+                    >
+                        Aperçu Public
+                    </Button>
+                    <Button
+                        type="submit"
+                        disabled={isSubmitting || Object.keys(errors).length > 0}
+                        variant="contained"
+                        color="success"
+                        size="large"
+                        startIcon={<SaveIcon />}
+                        sx={{ px: { sm: 4 }, width: { xs: '100%', sm: 'auto' } }}
+                    >
+                        {isSubmitting ? 'Sauvegarde...' : 'Tout Sauvegarder'}
+                    </Button>
+                </Box>
             </Box>
 
             {/* Backend Errors */}
