@@ -1943,7 +1943,7 @@ export default function MyEvents() {
             )}
 
             {/* Status Filter */}
-            {!showForm && events.length > 0 && (
+            {!showForm && hasChurch && (
                 <Box sx={{ mb: 3, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                     <Chip
                         label={`Tous (${events.length})`}
