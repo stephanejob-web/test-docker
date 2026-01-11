@@ -28,6 +28,8 @@ import {
   Logout,
   HowToReg,
   Diversity3 as NetworkIcon,
+  Map as MapIcon,
+  AccountCircle,
 } from '@mui/icons-material';
 
 const drawerWidth = 260;
@@ -67,10 +69,22 @@ export default function DashboardLayout() {
       roles: ['PASTOR', 'EVANGELIST'],
     },
     {
+      name: 'Mon Profil',
+      href: '/dashboard/my-profile',
+      icon: AccountCircle,
+      roles: ['PASTOR', 'EVANGELIST', 'SUPER_ADMIN'],
+    },
+    {
       name: 'Réseau Pastoral',
       href: '/dashboard/pastor-network',
       icon: NetworkIcon,
       roles: ['PASTOR'],
+    },
+    {
+      name: 'Carte Publique',
+      href: '/map',
+      icon: MapIcon,
+      roles: ['PASTOR', 'EVANGELIST', 'SUPER_ADMIN'],
     },
     {
       name: 'Demandes d\'inscription',

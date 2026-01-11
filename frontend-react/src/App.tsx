@@ -9,11 +9,13 @@ import LandingPage from './pages/public/LandingPage';
 
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
 import DashboardLayout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import DashboardHome from './pages/DashboardHome';
 import MyChurch from './pages/MyChurch';
 import MyEvents from './pages/MyEvents';
+import MyProfile from './pages/MyProfile';
 import PastorNetwork from './pages/PastorNetwork';
 import AdminUsers from './pages/AdminUsers';
 import AdminSettings from './pages/AdminSettings';
@@ -49,11 +51,15 @@ function App() {
               {/* Pages d'authentification */}
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
 
               {/* Dashboard protégé */}
               <Route path="/dashboard" element={<ProtectedRoute />}>
                 <Route element={<DashboardLayout />}>
                   <Route index element={<DashboardHome />} />
+
+                  {/* Profile Route - Available to all authenticated users */}
+                  <Route path="my-profile" element={<MyProfile />} />
 
                   {/* Pastor Routes */}
                   <Route element={<ProtectedRoute allowedRoles={['PASTOR', 'SUPER_ADMIN']} />}>

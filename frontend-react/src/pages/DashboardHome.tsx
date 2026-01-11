@@ -76,7 +76,7 @@ export default function DashboardHome() {
                 </Card>
 
                 {/* STATS ROW */}
-                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 3 }}>
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 3 }}>
                     <Card sx={{ height: '100%' }}>
                         <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                             <Box
@@ -125,30 +125,6 @@ export default function DashboardHome() {
                                 </Typography>
                                 <Typography variant="h6" sx={{ fontWeight: 700 }}>
                                     {myEvents.length}
-                                </Typography>
-                            </Box>
-                        </CardContent>
-                    </Card>
-
-                    <Card sx={{ height: '100%' }}>
-                        <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <Box
-                                sx={{
-                                    p: 1.5,
-                                    borderRadius: '50%',
-                                    bgcolor: 'success.main',
-                                    color: 'white',
-                                    display: 'flex'
-                                }}
-                            >
-                                <UsersIcon />
-                            </Box>
-                            <Box>
-                                <Typography variant="body2" color="text.secondary">
-                                    Membres (Est.)
-                                </Typography>
-                                <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                                    -
                                 </Typography>
                             </Box>
                         </CardContent>

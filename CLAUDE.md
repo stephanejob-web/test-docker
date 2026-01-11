@@ -27,9 +27,24 @@ docker-compose logs -f backend
 
 # Stop all services
 docker-compose down
+
+# Complete reset (removes volumes and data)
+docker-compose down -v
 ```
 
 **IMPORTANT**: Code changes require rebuild (`--build` flag) as there's no hot-reload in Docker mode.
+
+### Database Seeding
+
+```bash
+# Load test data (31 accounts: 1 super admin + 30 pastors with churches)
+./seed-database.sh
+
+# Manual seeding (if script doesn't work)
+docker exec -i mysql-db mysql -u root -proot light_church < backend-express/database/seeders.sql
+```
+
+Default credentials after seeding: `admin@lightchurch.fr` / `780662aB2` (super admin)
 
 ### Backend (Express)
 
@@ -43,9 +58,14 @@ npm install
 npm test                    # Run all tests
 npm run test:watch         # Watch mode
 npm run test:coverage      # Generate coverage report
+npm test -- validator.test.js  # Run specific test file
+
+# Development (outside Docker with hot-reload)
+npm run dev                 # Start with nodemon (if configured)
 
 # Database operations (inside Docker container)
-docker exec mysql-db mysql -u root -p${MYSQL_ROOT_PASSWORD} light_church
+docker exec mysql-db mysql -u root -proot light_church
+docker exec mysql-db mysqladmin ping -h localhost -u root -proot  # Check if MySQL is ready
 ```
 
 ### Frontend (React + Vite)
@@ -57,19 +77,23 @@ cd frontend-react
 npm install
 
 # Development
-npm run dev                # Start dev server (outside Docker)
+npm run dev                # Start dev server (outside Docker with hot-reload)
 
 # Build
 npm run build              # TypeScript + Vite build
+npm run preview            # Preview production build
 
 # Tests
 npm test                   # Run Vitest tests
 npm run test:ui            # Vitest UI
 npm run test:coverage      # Coverage report
+npm test -- validationSchemas  # Run specific test file
 
 # Linting
 npm run lint
 ```
+
+**Frontend architecture**: Uses nginx to serve static files and reverse proxy API calls to backend. API calls to `/api/*` are proxied to backend service.
 
 ### Mobile (React Native + Expo)
 
@@ -331,18 +355,39 @@ JWT_SECRET=your_secret_key
 
 Backend also reads from `backend-express/.env` when running outside Docker.
 
-## Database Migrations
+## Database Management
 
-Location: `backend-express/migrations/`
+### Schema and Seeders Location
 
-Execute migration inside Docker:
+- **Schema**: `backend-express/database/schema.sql` (auto-loaded on first Docker start)
+- **Seeders**: `backend-express/database/seeders.sql`
+- **Migrations**: `backend-express/database/migrations/`
+
+### Execute Migration
+
 ```bash
-docker exec mysql-db mysql -u root -p${MYSQL_ROOT_PASSWORD} light_church < backend-express/migrations/your_migration.sql
+docker exec mysql-db mysql -u root -proot light_church < backend-express/database/migrations/your_migration.sql
 ```
 
-Or use provided SQL dumps:
-- `bas_ok.sql` - Current schema with sample data (auto-loaded by docker-compose)
-- `database_dump.sql` - Backup dumps
+### Backups
+
+- `backup_avant_test.sql` - Database backups (manually created)
+
+### Reset Database
+
+```bash
+# 1. Stop containers and remove volumes
+docker-compose down -v
+
+# 2. Restart (creates fresh database with schema)
+docker-compose up -d
+
+# 3. Wait for MySQL to be ready (check with: docker-compose logs mysql)
+sleep 15
+
+# 4. Load test data
+./seed-database.sh
+```
 
 ## Key Files to Review
 
@@ -360,7 +405,88 @@ Or use provided SQL dumps:
 - MySQL: localhost:3306
 - Expo dev: Check terminal after `npm start` in light-church-mobile/
 
-## Notes
+## Common Workflows
+
+### Testing Changes End-to-End
+
+```bash
+# 1. Make code changes in backend or frontend
+# 2. Rebuild affected service
+docker-compose up -d --build backend  # or frontend
+
+# 3. Check logs for errors
+docker-compose logs -f backend
+
+# 4. Test in browser at http://localhost
+```
+
+### Adding a New Database Column
+
+```bash
+# 1. Create migration file in backend-express/database/migrations/
+# 2. Test migration
+docker exec mysql-db mysql -u root -proot light_church < backend-express/database/migrations/your_migration.sql
+
+# 3. Update validators in backend-express/validators/
+# 4. Update Zod schemas in frontend-react/src/lib/validationSchemas.ts
+# 5. Add tests in validationSchemas.test.ts
+# 6. Run tests: cd frontend-react && npm test
+```
+
+### Debugging Database Issues
+
+```bash
+# Check MySQL status
+docker exec mysql-db mysqladmin ping -h localhost -u root -proot
+
+# View table structure
+docker exec mysql-db mysql -u root -proot light_church -e "DESCRIBE churches;"
+
+# Query data
+docker exec mysql-db mysql -u root -proot light_church -e "SELECT * FROM admins LIMIT 5;"
+
+# Check logs
+docker logs mysql-db
+```
+
+## Troubleshooting
+
+### Port Conflicts
+
+If ports 80, 3000, or 3306 are already in use, modify `.env`:
+```env
+MYSQL_PORT=3307
+EXPRESS_PORT=5000
+FRONTEND_PORT=8080
+```
+
+### Seeding Fails
+
+```bash
+# Ensure database is ready
+docker exec mysql-db mysqladmin ping -h localhost -u root -proot
+
+# Check if seeders file exists
+ls -la backend-express/database/seeders.sql
+
+# Run manually with verbose output
+docker exec -i mysql-db mysql -u root -proot light_church -vvv < backend-express/database/seeders.sql
+```
+
+### Frontend Shows 500 Error
+
+```bash
+# Check backend logs
+docker-compose logs backend
+
+# Verify MySQL connection
+docker-compose logs mysql
+
+# Ensure seeders loaded (language id=10 must exist)
+docker exec mysql-db mysql -u root -proot light_church -e "SELECT COUNT(*) FROM languages;"
+```
+
+## Important Notes
 
 - The `website/` directory contains a static marketing site (separate from main app)
 - Temporary route files (temp1.js, temp2.js, etc.) in backend-express/routes/ should be ignored
@@ -369,3 +495,4 @@ Or use provided SQL dumps:
 - Street number is OPTIONAL (some addresses don't have numbers)
 - Event status is ALWAYS computed dynamically using enrichEventWithStatus()
 - All coordinates use PostGIS point type with generated virtual columns for lat/lng
+- Default timezone: Europe/Paris (set in docker-compose.yml)

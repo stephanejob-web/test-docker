@@ -145,6 +145,20 @@ export default function Login() {
                 }}
               />
 
+              <Box sx={{ textAlign: 'right', mt: 1, mb: 2 }}>
+                <Link
+                  to="/forgot-password"
+                  style={{
+                    color: '#60A5FA',
+                    textDecoration: 'none',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                  }}
+                >
+                  Mot de passe oublié ?
+                </Link>
+              </Box>
+
               <Button
                 type="submit"
                 fullWidth
