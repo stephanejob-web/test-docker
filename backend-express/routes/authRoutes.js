@@ -47,12 +47,15 @@ router.post('/login', validateLogin, async (req, res) => {
     const { email, password } = req.body;
 
     try {
+        console.log('Login attempt:', { email, passwordLength: password?.length });
         const [users] = await db.query('SELECT * FROM admins WHERE email = ?', [email]);
+        console.log('Users found:', users.length);
         if (users.length === 0) {
             return res.status(401).json({ message: 'Identifiants invalides' });
         }
 
         const user = users[0];
+        console.log('User status:', user.status);
 
         if (user.status === 'PENDING') {
             return res.status(403).json({ message: 'Compte en attente de validation.' });
@@ -66,6 +69,7 @@ router.post('/login', validateLogin, async (req, res) => {
 
         // Vérifier le mot de passe
         const isMatch = await bcrypt.compare(password, user.password_hash);
+        console.log('Password match:', isMatch);
         if (!isMatch) {
             return res.status(401).json({ message: 'Identifiants invalides' });
         }

@@ -20,8 +20,7 @@ const validateRegister = [
   body('email')
     .trim()
     .notEmpty().withMessage('L\'email est obligatoire')
-    .isEmail().withMessage('L\'email n\'est pas valide')
-    .normalizeEmail(),
+    .isEmail().withMessage('L\'email n\'est pas valide'),
 
   body('password')
     .notEmpty().withMessage('Le mot de passe est obligatoire')
@@ -50,8 +49,7 @@ const validateLogin = [
   body('email')
     .trim()
     .notEmpty().withMessage('L\'email est obligatoire')
-    .isEmail().withMessage('L\'email n\'est pas valide')
-    .normalizeEmail(),
+    .isEmail().withMessage('L\'email n\'est pas valide'),
 
   body('password')
     .notEmpty().withMessage('Le mot de passe est obligatoire'),

@@ -50,6 +50,26 @@ export const loginSchema = z.object({
 
 export type LoginFormData = z.infer<typeof loginSchema>;
 
+export const changePasswordSchema = z.object({
+  currentPassword: z
+    .string()
+    .min(1, 'Le mot de passe actuel est obligatoire'),
+
+  newPassword: z
+    .string()
+    .min(8, 'Le mot de passe doit contenir au moins 8 caractères')
+    .regex(/[A-Z]/, 'Le mot de passe doit contenir au moins une majuscule')
+    .regex(/[a-z]/, 'Le mot de passe doit contenir au moins une minuscule')
+    .regex(/[0-9]/, 'Le mot de passe doit contenir au moins un chiffre'),
+
+  confirmNewPassword: z.string()
+}).refine((data) => data.newPassword === data.confirmNewPassword, {
+  message: 'Les mots de passe ne correspondent pas',
+  path: ['confirmNewPassword'],
+});
+
+export type ChangePasswordFormData = z.infer<typeof changePasswordSchema>;
+
 // ===============================
 // SCHÉMAS ÉGLISE
 // ===============================
