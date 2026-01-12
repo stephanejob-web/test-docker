@@ -27,7 +27,6 @@ function AppContent() {
       <NavigationThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <Stack
           screenOptions={{
-            headerBackTitleVisible: false, // Hide "tabs" or previous screen name
             headerTintColor: '#4285F4', // Google Blue for back arrow
           }}
         >

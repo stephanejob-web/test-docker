@@ -357,16 +357,15 @@ export default function EventDetailScreen() {
               {event.translations && event.translations.length > 0 && (
                 <Text color="textTertiary">
                   {' (Traduit en : '}
-                  {event.translations.map((t: any, index) => {
-                    // Handle various potential data structures safely
-                    const name = t.language_name || t.language?.name || t.language?.name_native || t.name;
-                    // Ensure flag is a string, fallback to empty string if missing
-                    const flag = t.language_flag || t.language?.flag || t.language?.flag_emoji || t.flag || '';
+                  {event.translations.map((t, index) => {
+                    // EventTranslation type already defined, use it directly
+                    const name = t.language_name;
+                    const flag = t.language_flag || '';
 
                     if (!name) return null;
 
                     return (
-                      <Text key={t.language_id || t.id || index}>
+                      <Text key={t.language_id || index}>
                         {index > 0 ? ', ' : ''}
                         {flag ? `${flag} ` : ''}{name}
                       </Text>

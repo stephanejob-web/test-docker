@@ -89,7 +89,7 @@ export async function addEventToCalendar(event: CalendarEvent): Promise<boolean>
     }
 
     // Create event
-    const eventDetails: Calendar.Event = {
+    const eventDetails = {
       title: event.title,
       startDate: event.startDate,
       endDate: event.endDate,
@@ -100,11 +100,13 @@ export async function addEventToCalendar(event: CalendarEvent): Promise<boolean>
         { relativeOffset: -60 }, // 1 hour before
         { relativeOffset: -1440 }, // 1 day before
       ],
-    };
+    } as Calendar.Event;
 
     // Add URL if available (works on iOS)
+    // Type assertion needed because url is an iOS-only property
     if (Platform.OS === 'ios' && event.url) {
-      (eventDetails as any).url = event.url;
+      const eventWithUrl = eventDetails as Calendar.Event & { url?: string };
+      eventWithUrl.url = event.url;
     }
 
     const eventId = await Calendar.createEventAsync(calendarId, eventDetails);

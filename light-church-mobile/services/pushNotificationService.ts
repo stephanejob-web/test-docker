@@ -9,9 +9,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '@/lib/axios';
 import Constants from 'expo-constants';
 
+/**
+ * Types for expo-notifications and expo-device modules
+ * Loaded conditionally to support Expo Go
+ */
+type NotificationsModule = typeof import('expo-notifications') | null;
+type DeviceModule = typeof import('expo-device') | null;
+
 // Import conditionnel pour éviter l'erreur dans Expo Go
-let Notifications: any = null;
-let Device: any = null;
+let Notifications: NotificationsModule = null;
+let Device: DeviceModule = null;
 
 // Détecter si on est dans Expo Go
 const isExpoGo = Constants.appOwnership === 'expo';
@@ -23,13 +30,17 @@ if (!isExpoGo) {
     Device = require('expo-device');
 
     // Configuration des notifications (seulement en dev build)
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-      }),
-    });
+    if (Notifications) {
+      Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowAlert: true,
+          shouldPlaySound: true,
+          shouldSetBadge: true,
+          shouldShowBanner: true,
+          shouldShowList: true,
+        }),
+      });
+    }
   } catch (error) {
     console.warn('Push notifications not available in Expo Go');
   }

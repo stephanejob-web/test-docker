@@ -33,6 +33,24 @@ interface NominatimResult {
 }
 
 /**
+ * data.gouv.fr API response types
+ */
+interface DataGouvFeature {
+  properties: {
+    label: string;
+    city?: string;
+    postcode?: string;
+  };
+  geometry: {
+    coordinates: [number, number]; // [longitude, latitude]
+  };
+}
+
+interface DataGouvResponse {
+  features: DataGouvFeature[];
+}
+
+/**
  * Helper: Fetch with timeout (React Native compatible)
  */
 const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = 5000): Promise<Response> => {
@@ -67,13 +85,13 @@ const searchAddressesWithDataGouv = async (query: string): Promise<AddressSugges
       throw new Error(`HTTP ${response.status}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as DataGouvResponse;
 
     if (!data?.features || !Array.isArray(data.features)) {
       return [];
     }
 
-    return data.features.map((feature: any) => ({
+    return data.features.map((feature) => ({
       label: feature.properties.label,
       city: feature.properties.city || '',
       postcode: feature.properties.postcode || '',
