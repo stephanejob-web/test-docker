@@ -116,7 +116,9 @@ function handleAxiosError(
         return;
       }
 
-      const message = (error.response.data as any)?.message || 'Le serveur rencontre un problème';
+      // Type-safe extraction du message d'erreur
+      const responseData = error.response.data as { message?: string } | undefined;
+      const message = responseData?.message || 'Le serveur rencontre un problème';
       showError(message);
       return;
     }

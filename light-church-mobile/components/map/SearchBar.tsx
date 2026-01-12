@@ -36,7 +36,7 @@ export default function SearchBar({ onLocationSelect }: SearchBarProps) {
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const debounceRef = useRef<NodeJS.Timeout>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Fetch address suggestions with automatic fallback (data.gouv.fr → Nominatim)
   useEffect(() => {

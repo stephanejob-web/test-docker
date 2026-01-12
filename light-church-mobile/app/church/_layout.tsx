@@ -5,7 +5,6 @@ export default function ChurchLayout() {
     <Stack
       screenOptions={{
         headerBackTitle: '',
-        headerBackTitleVisible: false,
         headerTintColor: '#4285F4',
         headerStyle: {
           backgroundColor: '#FFFFFF',

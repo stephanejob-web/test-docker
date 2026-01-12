@@ -17,6 +17,7 @@ export interface Event {
   church_id?: number;
   event_address?: string;
   event_city?: string;
+  city?: string; // Alias for event_city (used in some components)
   event_postal_code?: string;
   distance_km?: number;
   interested_count?: number;
