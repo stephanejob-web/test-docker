@@ -14,6 +14,9 @@ import api from '@/lib/axios';
 import { getDeviceId } from '@/services/pushNotificationService';
 import type { Event } from '@/types';
 
+// Note: Toast is NOT imported here to avoid circular dependencies
+// Toasts are handled in the component using this hook
+
 interface InterestedEventsResponse {
   success: boolean;
   count: number;
@@ -53,6 +56,25 @@ export function useInterestedEvents() {
     retry: 2,
     refetchOnWindowFocus: true, // Refetch when user returns to app
     refetchOnReconnect: true, // Refetch when network reconnects
+  });
+}
+
+/**
+ * Hook: Get count of interested events (for badge)
+ * Lightweight version with immediate updates
+ */
+export function useInterestedEventsCount() {
+  return useQuery({
+    queryKey: ['interestedEventsCount'],
+    queryFn: async () => {
+      const events = await fetchInterestedEvents();
+      return events.length;
+    },
+    staleTime: 0, // Always fresh - updates immediately after invalidation
+    gcTime: 30 * 60 * 1000, // 30 minutes cache retention
+    retry: 1,
+    refetchOnWindowFocus: true,
+    refetchOnMount: 'always', // Always refetch on mount
   });
 }
 
@@ -102,6 +124,7 @@ export function useRemoveInterest() {
     // Always refetch after mutation (success or error)
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['interestedEvents'] });
+      queryClient.invalidateQueries({ queryKey: ['interestedEventsCount'] }); // Update badge
       queryClient.invalidateQueries({ queryKey: ['events'] }); // Update main list
       queryClient.invalidateQueries({ queryKey: ['event'] }); // Update detail screens
     },
