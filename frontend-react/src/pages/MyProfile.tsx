@@ -15,12 +15,10 @@ import {
   IconButton,
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
-import axios from 'axios';
+import api from '../lib/axios';
 import { changePasswordSchema, type ChangePasswordFormData } from '../lib/validationSchemas';
 import PasswordStrength from '../components/PasswordStrength';
 import FormError from '../components/FormError';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 interface ProfileData {
   id: number;
@@ -76,10 +74,7 @@ export default function MyProfile() {
 
   const fetchProfile = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/api/profile`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await api.get('/profile');
       setProfile(response.data);
       setNewEmail(response.data.email);
     } catch (error) {
@@ -96,12 +91,7 @@ export default function MyProfile() {
     setEmailLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.put(
-        `${API_URL}/api/profile/email`,
-        { email: newEmail },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await api.put('/profile/email', { email: newEmail });
 
       setEmailMessage({ type: 'success', text: response.data.message });
       fetchProfile(); // Recharger le profil
@@ -120,12 +110,10 @@ export default function MyProfile() {
     setPasswordMessage(null);
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.put(
-        `${API_URL}/api/profile/password`,
-        { currentPassword: data.currentPassword, newPassword: data.newPassword },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await api.put('/profile/password', {
+        currentPassword: data.currentPassword,
+        newPassword: data.newPassword,
+      });
 
       setPasswordMessage({ type: 'success', text: response.data.message });
       reset(); // Réinitialiser le formulaire
@@ -150,15 +138,12 @@ export default function MyProfile() {
     setDocumentLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
-
       // Upload du fichier
       const formData = new FormData();
       formData.append('document', documentFile);
 
-      const uploadResponse = await axios.post(`${API_URL}/api/upload/sirene`, formData, {
+      const uploadResponse = await api.post('/upload/sirene', formData, {
         headers: {
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data',
         },
       });
@@ -166,11 +151,9 @@ export default function MyProfile() {
       const documentPath = uploadResponse.data.path;
 
       // Mise à jour du profil avec le nouveau chemin
-      const response = await axios.put(
-        `${API_URL}/api/profile/document`,
-        { document_sirene_path: documentPath },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await api.put('/profile/document', {
+        document_sirene_path: documentPath,
+      });
 
       setDocumentMessage({ type: 'success', text: response.data.message });
       setDocumentFile(null);
@@ -399,7 +382,7 @@ export default function MyProfile() {
                 <Alert severity="info" sx={{ mb: 2 }}>
                   Document actuel:{' '}
                   <a
-                    href={`${API_URL}${profile.document_sirene_path}`}
+                    href={profile.document_sirene_path}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
