@@ -1,6 +1,8 @@
 /**
  * SearchBar Component
- * Address autocomplete using French Government API
+ * Address autocomplete with automatic failover:
+ * - Primary: data.gouv.fr (French Government API)
+ * - Fallback: Nominatim (OpenStreetMap)
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -16,6 +18,7 @@ import {
 } from 'react-native';
 import { Box, Text } from '@/components/ui';
 import { Ionicons } from '@expo/vector-icons';
+import { searchAddresses } from '@/services/geoService';
 
 interface AddressSuggestion {
   label: string;
@@ -35,7 +38,7 @@ export default function SearchBar({ onLocationSelect }: SearchBarProps) {
   const [isLoading, setIsLoading] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout>();
 
-  // Fetch address suggestions from French Government API
+  // Fetch address suggestions with automatic fallback (data.gouv.fr → Nominatim)
   useEffect(() => {
     if (query.length < 3) {
       setSuggestions([]);
@@ -51,29 +54,11 @@ export default function SearchBar({ onLocationSelect }: SearchBarProps) {
     debounceRef.current = setTimeout(async () => {
       setIsLoading(true);
       try {
-        const response = await fetch(
-          `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&limit=5`
-        );
-        const data = await response.json();
-
-        // Check if response has expected structure
-        if (!data || !data.features || !Array.isArray(data.features)) {
-          setSuggestions([]);
-          setIsOpen(false);
-          return;
-        }
-
-        const formattedSuggestions: AddressSuggestion[] = data.features.map((feature: any) => ({
-          label: feature.properties.label,
-          city: feature.properties.city,
-          postcode: feature.properties.postcode,
-          coordinates: feature.geometry.coordinates, // [lng, lat]
-        }));
-
-        setSuggestions(formattedSuggestions);
-        setIsOpen(formattedSuggestions.length > 0);
-      } catch {
-        // Silently handle API errors
+        const results = await searchAddresses(query);
+        setSuggestions(results);
+        setIsOpen(results.length > 0);
+      } catch (error) {
+        // Search failed, show no suggestions
         setSuggestions([]);
         setIsOpen(false);
       } finally {
