@@ -2994,8 +2994,9 @@ export default function MyEvents() {
                 onClose={() => setCancelDialogOpen(false)}
                 maxWidth="sm"
                 fullWidth
+                aria-labelledby="cancel-event-title"
             >
-                <DialogTitle>Annuler l'événement</DialogTitle>
+                <DialogTitle id="cancel-event-title">Annuler l&apos;événement</DialogTitle>
                 <DialogContent>
                     <Box sx={{ pt: 2 }}>
                         <Alert severity="warning" sx={{ mb: 2 }}>
@@ -3053,6 +3054,7 @@ export default function MyEvents() {
                 onClose={handleConfirmDialogClose}
                 maxWidth="sm"
                 fullWidth
+                aria-label="Confirmation"
             >
                 <DialogTitle>{confirmDialogTitle}</DialogTitle>
                 <DialogContent>

@@ -208,6 +208,7 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
                                         target="_blank"
                                         rel="noopener"
                                         size="small"
+                                        aria-label={`Voir ${social.platform}`}
                                         sx={{
                                             border: '1px solid #DADCE0',
                                             borderRadius: 1,
@@ -563,6 +564,7 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
 
                 <IconButton
                     onClick={handleClose}
+                    aria-label="Fermer"
                     sx={{
                         position: 'absolute',
                         top: 8,

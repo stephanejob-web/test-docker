@@ -123,9 +123,11 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
             maxWidth="md"
             fullWidth
             scroll="paper"
+            aria-labelledby="event-details-title"
         >
             {/* En-tête */}
             <DialogTitle
+                id="event-details-title"
                 sx={{
                     display: 'flex',
                     alignItems: 'center',

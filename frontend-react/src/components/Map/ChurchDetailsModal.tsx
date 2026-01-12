@@ -106,9 +106,11 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
             maxWidth="md"
             fullWidth
             scroll="paper"
+            aria-labelledby="church-details-title"
         >
             {/* En-tête */}
             <DialogTitle
+                id="church-details-title"
                 sx={{
                     display: 'flex',
                     alignItems: 'center',
