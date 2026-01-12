@@ -13,40 +13,7 @@ const api = axios.create({
   },
 });
 
-// Request interceptor
-api.interceptors.request.use(
-  (config) => {
-    // You can add auth token here if needed
-    // const token = await getStoredToken();
-    // if (token) {
-    //   config.headers.Authorization = `Bearer ${token}`;
-    // }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Response interceptor
-api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
-  (error) => {
-    // Handle common errors
-    if (error.response) {
-      // Server responded with error
-      console.error('API Error:', error.response.status, error.response.data);
-    } else if (error.request) {
-      // Request made but no response
-      console.error('Network Error:', error.message);
-    } else {
-      // Something else happened
-      console.error('Error:', error.message);
-    }
-    return Promise.reject(error);
-  }
-);
+// Request/Response interceptors configurés via useAxiosInterceptor hook
+// pour avoir accès au ToastContext. Voir hooks/useAxiosInterceptor.ts
 
 export default api;

@@ -4,14 +4,13 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useInterestedEvents } from '@/hooks/query/useInterestedEvents';
+import { useInterestedEventsCount } from '@/hooks/query/useInterestedEvents';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
 
-  // Get saved events count for badge
-  const { data: savedEvents = [] } = useInterestedEvents();
-  const savedCount = savedEvents.length;
+  // Get saved events count for badge (updates in real-time)
+  const { data: savedCount = 0 } = useInterestedEventsCount();
 
   // Google Maps style colors
   const activeColor = '#4285F4'; // Google Blue
