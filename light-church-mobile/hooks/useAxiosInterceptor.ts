@@ -64,11 +64,19 @@ export function useAxiosInterceptor() {
 }
 
 /**
+ * Toast action type (from ToastContext)
+ */
+interface ToastAction {
+  label: string;
+  onPress: () => void;
+}
+
+/**
  * Gestion intelligente des erreurs selon leur type avec throttling
  */
 function handleAxiosError(
   error: AxiosError,
-  showError: (message: string, action?: any) => void,
+  showError: (message: string, action?: ToastAction) => void,
   showWarning: (message: string) => void
 ) {
   // 1. Erreurs réseau (pas de connexion, timeout)
