@@ -4,9 +4,10 @@ import {
     Paper,
     useMediaQuery,
     useTheme,
-    Typography,
     LinearProgress,
     Badge,
+    Alert,
+    Snackbar,
 } from '@mui/material';
 import {
     MyLocation as MyLocationIcon,
@@ -148,7 +149,7 @@ const HomePage: React.FC<HomePageProps> = ({ viewMode = 'explore' }) => {
     const [loading, setLoading] = useState(true);
     const [_error, setError] = useState<string | null>(null);
     const [_isMapReady, setIsMapReady] = useState(false);
-    const [geoBlocked, setGeoBlocked] = useState(false);
+    const [showGeoAlert, setShowGeoAlert] = useState(false);
 
     // UI States
     const [showChurches, setShowChurches] = useState(true);
@@ -183,7 +184,7 @@ const HomePage: React.FC<HomePageProps> = ({ viewMode = 'explore' }) => {
         });
     }, [churches, events, showEvents]);
 
-    // Initialization (Geo)
+    // Initialization (Geo) - Optional, falls back to France center
     useEffect(() => {
         const initializeMap = async () => {
             setLoading(true);
@@ -195,13 +196,18 @@ const HomePage: React.FC<HomePageProps> = ({ viewMode = 'explore' }) => {
                     setMapCenter([latitude, longitude]);
                     setMapZoom(13);
                 } else {
-                    setGeoBlocked(true);
-                    return;
+                    // No geolocation: center on France
+                    console.log('Geolocation not available, centering on France');
+                    setMapCenter([46.603354, 1.888334]); // Center of France
+                    setMapZoom(6);
+                    setShowGeoAlert(true);
                 }
             } catch (err: any) {
-                console.error('Error initializing map:', err);
-                setGeoBlocked(true);
-                return;
+                console.error('Error getting location:', err);
+                // Geolocation denied/failed: center on France
+                setMapCenter([46.603354, 1.888334]); // Center of France
+                setMapZoom(6);
+                setShowGeoAlert(true);
             } finally {
                 setLoading(false);
                 setTimeout(() => setIsMapReady(true), 500);
@@ -225,7 +231,7 @@ const HomePage: React.FC<HomePageProps> = ({ viewMode = 'explore' }) => {
     useEffect(() => {
         let mounted = true;
 
-        const doFocus = async (eventId: number) => {
+        const doFocusEvent = async (eventId: number) => {
             try {
                 const { fetchEventDetails } = await import('../../services/publicMapService');
                 const details = await fetchEventDetails(Number(eventId));
@@ -242,24 +248,51 @@ const HomePage: React.FC<HomePageProps> = ({ viewMode = 'explore' }) => {
             }
         };
 
+        const doFocusChurch = async (churchId: number) => {
+            try {
+                const { fetchChurchDetails } = await import('../../services/publicMapService');
+                const details = await fetchChurchDetails(Number(churchId));
+                if (!mounted || !details) return;
+                setSelectedItem(details);
+                setSelectedType('church');
+                setDetailDrawerOpen(true);
+                if (details.latitude && details.longitude) {
+                    setMapCenter([details.latitude, details.longitude]);
+                    setMapZoom(16);
+                }
+            } catch (e) {
+                console.error('Focus church failed', e);
+            }
+        };
+
         const handler = (e: any) => {
             const id = e?.detail?.eventId;
-            if (id) doFocus(Number(id));
+            if (id) doFocusEvent(Number(id));
         };
 
         window.addEventListener('light_church:focus_event', handler as EventListener);
 
         // If URL has focusEvent param (e.g., /map?focusEvent=123), handle it
+        // If URL has church_id param (e.g., /map?church_id=123), handle it
         try {
             const params = new URLSearchParams(window.location.search);
-            const focusId = params.get('focusEvent');
-            if (focusId) {
+            const focusEventId = params.get('focusEvent');
+            const churchId = params.get('church_id');
+
+            if (focusEventId) {
                 // remove param from URL
                 const url = new URL(window.location.href);
                 params.delete('focusEvent');
                 url.search = params.toString();
                 window.history.replaceState({}, '', url.toString());
-                doFocus(Number(focusId));
+                doFocusEvent(Number(focusEventId));
+            } else if (churchId) {
+                // remove param from URL
+                const url = new URL(window.location.href);
+                params.delete('church_id');
+                url.search = params.toString();
+                window.history.replaceState({}, '', url.toString());
+                doFocusChurch(Number(churchId));
             }
         } catch (e) { /* ignore */ }
 
@@ -424,16 +457,6 @@ const HomePage: React.FC<HomePageProps> = ({ viewMode = 'explore' }) => {
         };
     }, [events]);
 
-    if (geoBlocked) {
-        // ... (Keep existing geo blocked UI or simplify it)
-        return (
-            <Box sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Typography>Géolocalisation requise pour explorer la carte.</Typography>
-                {/* Re-use the nice UI from before ideally */}
-            </Box>
-        );
-    }
-
     const [resultsPanelOpen, setResultsPanelOpen] = useState(true);
 
     const handleToggleList = () => {
@@ -453,6 +476,24 @@ const HomePage: React.FC<HomePageProps> = ({ viewMode = 'explore' }) => {
                     <LinearProgress sx={{ height: 4 }} />
                 </Box>
             )}
+
+            {/* Geolocation Alert */}
+            <Snackbar
+                open={showGeoAlert}
+                autoHideDuration={8000}
+                onClose={() => setShowGeoAlert(false)}
+                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+                sx={{ top: { xs: 70, md: 24 } }}
+            >
+                <Alert
+                    onClose={() => setShowGeoAlert(false)}
+                    severity="info"
+                    sx={{ width: '100%', boxShadow: 3 }}
+                >
+                    Pour une meilleure expérience, activez la géolocalisation pour voir les églises près de chez vous
+                </Alert>
+            </Snackbar>
+
             {isMobile ? (
                 // Mobile Layout (Floating Panels)
                 <>

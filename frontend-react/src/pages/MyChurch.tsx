@@ -46,6 +46,7 @@ export default function MyChurch() {
     const [activeTab, setActiveTab] = useState(0);
     const [success, setSuccess] = useState('');
     const [backendErrors, setBackendErrors] = useState<Array<{ field: string; message: string }>>([]);
+    const [myChurchId, setMyChurchId] = useState<number | null>(null); // Store church ID for preview
 
     // Reference Data
     const [denominations, setDenominations] = useState<Denomination[]>([]);
@@ -155,6 +156,9 @@ export default function MyChurch() {
             const { data } = await api.get(endpoint);
 
             if (data && data.id) {
+                // Store church ID for preview button
+                setMyChurchId(data.id);
+
                 // Normaliser les horaires: convertir HH:MM:SS en HH:MM
                 const normalizedSchedules = (data.schedules || []).map((schedule: any) => ({
                     ...schedule,
@@ -272,7 +276,12 @@ export default function MyChurch() {
                         color="primary"
                         size="large"
                         startIcon={<VisibilityIcon />}
-                        onClick={() => window.open('/map', '_blank')}
+                        onClick={() => {
+                            const targetChurchId = isAdminMode ? churchId : myChurchId;
+                            const url = targetChurchId ? `/map?church_id=${targetChurchId}` : '/map';
+                            window.open(url, '_blank');
+                        }}
+                        disabled={!myChurchId && !churchId}
                         sx={{ width: { xs: '100%', sm: 'auto' } }}
                     >
                         Aperçu Public
