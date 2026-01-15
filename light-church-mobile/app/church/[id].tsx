@@ -10,8 +10,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Box, Text, Card } from '@/components/ui';
 import { useChurchDetail } from '@/hooks/query';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
 
 export default function ChurchDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -311,23 +309,76 @@ export default function ChurchDetailScreen() {
         </Card>
       )}
 
-      {/* Social Media */}
+      {/* Social Media - Enhanced with Icons */}
       {church.socials && church.socials.length > 0 && (
         <Card marginHorizontal="m" marginBottom="m">
           <Text variant="subtitle" marginBottom="m">
             Réseaux sociaux
           </Text>
-          {church.socials.map((social, index) => (
-            <Box key={index} marginBottom="s">
-              <Text
-                variant="body"
-                color="primary"
-                onPress={() => Linking.openURL(social.url)}
-              >
-                {social.platform}
-              </Text>
-            </Box>
-          ))}
+          <Box gap="m">
+            {church.socials.map((social, index) => {
+              // Détecter la plateforme et définir l'icône et la couleur basé sur social.platform
+              let iconName: keyof typeof Ionicons.glyphMap = 'link-outline';
+              let iconColor = '#4285F4';
+
+              const platform = social.platform.toUpperCase();
+
+              if (platform === 'FACEBOOK') {
+                iconName = 'logo-facebook';
+                iconColor = '#1877F2';
+              } else if (platform === 'INSTAGRAM') {
+                iconName = 'logo-instagram';
+                iconColor = '#E4405F';
+              } else if (platform === 'YOUTUBE') {
+                iconName = 'logo-youtube';
+                iconColor = '#FF0000';
+              } else if (platform === 'TWITTER' || platform === 'X') {
+                iconName = 'logo-twitter';
+                iconColor = '#1DA1F2';
+              } else if (platform === 'TIKTOK') {
+                iconName = 'logo-tiktok';
+                iconColor = '#000000';
+              } else if (platform === 'LINKEDIN') {
+                iconName = 'logo-linkedin';
+                iconColor = '#0A66C2';
+              } else if (platform === 'WHATSAPP') {
+                iconName = 'logo-whatsapp';
+                iconColor = '#25D366';
+              }
+
+              return (
+                <TouchableOpacity
+                  key={index}
+                  onPress={() => Linking.openURL(social.url)}
+                  activeOpacity={0.7}
+                >
+                  <Box flexDirection="row" alignItems="center" gap="m">
+                    <Box
+                      width={40}
+                      height={40}
+                      borderRadius="l"
+                      backgroundColor="card"
+                      justifyContent="center"
+                      alignItems="center"
+                      borderWidth={1}
+                      borderColor="border"
+                    >
+                      <Ionicons name={iconName} size={22} color={iconColor} />
+                    </Box>
+                    <Box flex={1}>
+                      <Text variant="body" fontWeight="600" color="text">
+                        {social.platform}
+                      </Text>
+                      <Text variant="caption" color="textSecondary" numberOfLines={1}>
+                        Voir le profil
+                      </Text>
+                    </Box>
+                    <Ionicons name="chevron-forward" size={20} color="#5F6368" />
+                  </Box>
+                </TouchableOpacity>
+              );
+            })}
+          </Box>
         </Card>
       )}
     </ScrollView>

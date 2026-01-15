@@ -31,6 +31,7 @@ export default function EventDetailScreen() {
   const isInterested = interestData?.is_interested || false;
   const interestedCount = data?.event?.interested_count || 0;
   const isCancelled = Boolean(data?.event?.cancelled_at);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
   const handleOpenMaps = () => {
     if (!data?.event) return;
@@ -480,9 +481,24 @@ export default function EventDetailScreen() {
           <Text variant="subtitle" marginBottom="m">
             Description
           </Text>
-          <Text variant="body" color="textSecondary">
+          <Text
+            variant="body"
+            color="textSecondary"
+            numberOfLines={isDescriptionExpanded ? undefined : 4}
+          >
             {event.details.description}
           </Text>
+          {event.details.description.length > 200 && (
+            <TouchableOpacity
+              onPress={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+              style={{ marginTop: 12 }}
+              activeOpacity={0.7}
+            >
+              <Text variant="body" color="primary" fontWeight="600">
+                {isDescriptionExpanded ? '▲ Voir moins' : '▼ Lire plus'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </Card>
       )}
 

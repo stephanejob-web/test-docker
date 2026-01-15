@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Drawer, Box, Typography, Button, IconButton, Skeleton, Divider, Chip, Link, Stack, Alert } from '@mui/material';
-import { Close, Directions, PunchClock, Call, Language, LocationOn, LocalParking, Accessible, Mic, Person, People, Euro, YouTube, InsertLink, CancelOutlined, Info, Email, Translate, Facebook, Instagram, Twitter, LinkedIn, EventBusy, Image as ImageIcon } from '@mui/icons-material';
+import { Close, Directions, PunchClock, Call, Language, LocationOn, LocalParking, Accessible, Mic, Person, People, Euro, YouTube, InsertLink, CancelOutlined, Info, Email, Translate, Facebook, Instagram, Twitter, LinkedIn, WhatsApp, EventBusy, Image as ImageIcon } from '@mui/icons-material';
 import type { ChurchDetails, EventDetails } from '../../types/publicMap';
 import useEventInterestWeb from '../../hooks/useEventInterestWeb';
+import TikTokIcon from '../icons/TikTokIcon';
 
 interface DetailDrawerProps {
     open: boolean;
@@ -33,11 +34,14 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
         const getSocialIcon = (platform: string) => {
             const p = platform.toUpperCase();
             switch (p) {
-                case 'FACEBOOK': return <Facebook fontSize="small" />;
-                case 'INSTAGRAM': return <Instagram fontSize="small" />;
-                case 'YOUTUBE': return <YouTube fontSize="small" />;
-                case 'TWITTER': return <Twitter fontSize="small" />;
-                case 'LINKEDIN': return <LinkedIn fontSize="small" />;
+                case 'FACEBOOK': return <Facebook fontSize="small" sx={{ color: '#1877F2' }} />;
+                case 'INSTAGRAM': return <Instagram fontSize="small" sx={{ color: '#E4405F' }} />;
+                case 'YOUTUBE': return <YouTube fontSize="small" sx={{ color: '#FF0000' }} />;
+                case 'TWITTER': return <Twitter fontSize="small" sx={{ color: '#1DA1F2' }} />;
+                case 'X': return <Twitter fontSize="small" sx={{ color: '#1DA1F2' }} />;
+                case 'WHATSAPP': return <WhatsApp fontSize="small" sx={{ color: '#25D366' }} />;
+                case 'LINKEDIN': return <LinkedIn fontSize="small" sx={{ color: '#0A66C2' }} />;
+                case 'TIKTOK': return <TikTokIcon fontSize="small" sx={{ color: '#000000' }} />;
                 default: return <Language fontSize="small" />;
             }
         };
@@ -184,7 +188,7 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
                             {church.schedules.map((sch) => (
                                 <Box key={sch.id} sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
                                     <Typography variant="body2" color="#5F6368">{sch.day_of_week}</Typography>
-                                    <Typography variant="body2" fontWeight="500" color="#3C4043">{sch.start_time} - {sch.activity_type || 'Service'}</Typography>
+                                    <Typography variant="body2" fontWeight="500" color="#3C4043">{sch.start_time.slice(0, 5)} - {sch.activity_type || 'Service'}</Typography>
                                 </Box>
                             ))}
                         </Box>
