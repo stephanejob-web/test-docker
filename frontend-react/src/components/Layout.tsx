@@ -359,7 +359,7 @@ export default function DashboardLayout() {
         component="main"
         sx={{
           flexGrow: 1,
-          p: { xs: 2, sm: 3, md: 4 },
+          p: { xs: 1.5, sm: 3, md: 4 },
           width: { lg: `calc(100% - ${drawerWidth}px)` },
           mt: { xs: 8, lg: 0 }, // Account for mobile AppBar
           minHeight: '100vh',

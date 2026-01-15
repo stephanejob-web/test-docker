@@ -247,7 +247,7 @@ export default function MyChurch() {
     };
 
     return (
-        <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: '1200px', mx: 'auto', pb: 4 }}>
+        <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, sm: 4 }, maxWidth: '1200px', mx: 'auto', pb: { xs: 12, sm: 4 } }}>
             {/* Bouton Retour en mode admin */}
             {isAdminMode && (
                 <Button
@@ -267,10 +267,11 @@ export default function MyChurch() {
                 alignItems: { xs: 'stretch', sm: 'center' },
                 gap: 2
             }}>
-                <Typography variant="h3" sx={{ fontWeight: 'bold', fontSize: { xs: '1.75rem', sm: '2.5rem', md: '3rem' } }}>
+                <Typography variant="h3" sx={{ fontWeight: 'bold', fontSize: { xs: '1.5rem', sm: '2.5rem', md: '3rem' } }}>
                     {isAdminMode ? "Modifier l'Église" : "Mon Église"}
                 </Typography>
-                <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' }, width: { xs: '100%', sm: 'auto' } }}>
+                {/* Boutons desktop uniquement */}
+                <Box sx={{ display: { xs: 'none', sm: 'flex' }, gap: 2, flexDirection: 'row', width: 'auto' }}>
                     <Button
                         variant="outlined"
                         color="primary"
@@ -282,7 +283,6 @@ export default function MyChurch() {
                             window.open(url, '_blank');
                         }}
                         disabled={!myChurchId && !churchId}
-                        sx={{ width: { xs: '100%', sm: 'auto' } }}
                     >
                         Aperçu Public
                     </Button>
@@ -293,7 +293,7 @@ export default function MyChurch() {
                         color="success"
                         size="large"
                         startIcon={<SaveIcon />}
-                        sx={{ px: { sm: 4 }, width: { xs: '100%', sm: 'auto' } }}
+                        sx={{ px: 4 }}
                     >
                         {isSubmitting ? 'Sauvegarde...' : 'Tout Sauvegarder'}
                     </Button>
@@ -309,20 +309,27 @@ export default function MyChurch() {
             )}
 
             {/* Tabs Header */}
-            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', mx: { xs: -1.5, sm: 0 } }}>
                 <Tabs
                     value={activeTab}
                     onChange={(_, newValue) => setActiveTab(newValue)}
                     variant="scrollable"
                     scrollButtons="auto"
                     allowScrollButtonsMobile
+                    sx={{
+                        '& .MuiTab-root': {
+                            minWidth: { xs: 80, sm: 120 },
+                            fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                            px: { xs: 1, sm: 2 }
+                        }
+                    }}
                 >
                     <Tab
                         label={
                             <Badge
                                 badgeContent={getTabErrorCount(0)}
                                 color="error"
-                                sx={{ '& .MuiBadge-badge': { right: -12, top: 2 } }}
+                                sx={{ '& .MuiBadge-badge': { right: { xs: -8, sm: -12 }, top: 2, fontSize: { xs: '0.65rem', sm: '0.75rem' } } }}
                             >
                                 Général
                             </Badge>
@@ -333,9 +340,9 @@ export default function MyChurch() {
                             <Badge
                                 badgeContent={getTabErrorCount(1)}
                                 color="error"
-                                sx={{ '& .MuiBadge-badge': { right: -12, top: 2 } }}
+                                sx={{ '& .MuiBadge-badge': { right: { xs: -8, sm: -12 }, top: 2, fontSize: { xs: '0.65rem', sm: '0.75rem' } } }}
                             >
-                                Détails & Infos
+                                Détails
                             </Badge>
                         }
                     />
@@ -344,9 +351,9 @@ export default function MyChurch() {
                             <Badge
                                 badgeContent={getTabErrorCount(2)}
                                 color="error"
-                                sx={{ '& .MuiBadge-badge': { right: -12, top: 2 } }}
+                                sx={{ '& .MuiBadge-badge': { right: { xs: -8, sm: -12 }, top: 2, fontSize: { xs: '0.65rem', sm: '0.75rem' } } }}
                             >
-                                Réseaux Sociaux
+                                Réseaux
                             </Badge>
                         }
                     />
@@ -355,7 +362,7 @@ export default function MyChurch() {
                             <Badge
                                 badgeContent={getTabErrorCount(3)}
                                 color="error"
-                                sx={{ '& .MuiBadge-badge': { right: -12, top: 2 } }}
+                                sx={{ '& .MuiBadge-badge': { right: { xs: -8, sm: -12 }, top: 2, fontSize: { xs: '0.65rem', sm: '0.75rem' } } }}
                             >
                                 Horaires
                             </Badge>
@@ -364,18 +371,18 @@ export default function MyChurch() {
                 </Tabs>
             </Box>
 
-            <Box sx={{ mt: 2 }}>
+            <Box sx={{ mt: { xs: 1, sm: 2 } }}>
                 {/* GENERAL TAB */}
                 {activeTab === 0 && (
-                    <Card>
-                        <CardContent sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <Card elevation={0} sx={{ border: { xs: 0, sm: 1 }, borderColor: 'divider' }}>
+                        <CardContent sx={{ p: { xs: 1.5, sm: 3, md: 4 } }}>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, sm: 4 } }}>
                                 {/* SECTION 1: ADRESSE (PRIORITAIRE) */}
-                                <Box sx={{ pb: 4, borderBottom: 1, borderColor: 'divider' }}>
-                                    <Typography variant="h5" sx={{ mb: 1, color: 'primary.main', display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        <LocationOnIcon /> Localisation de l'Église
+                                <Box sx={{ pb: { xs: 2, sm: 4 }, borderBottom: 1, borderColor: 'divider' }}>
+                                    <Typography variant="h5" sx={{ mb: 1, color: 'primary.main', display: 'flex', alignItems: 'center', gap: 1, fontSize: { xs: '1.1rem', sm: '1.5rem' } }}>
+                                        <LocationOnIcon sx={{ fontSize: { xs: 20, sm: 24 } }} /> Localisation de l'Église
                                     </Typography>
-                                    <Alert severity="info" sx={{ mb: 3 }}>
+                                    <Alert severity="info" sx={{ mb: 3, py: { xs: 0.5, sm: 1 }, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                         Utilisez la recherche d'adresse ci-dessous. Tous les champs d'adresse et coordonnées GPS seront remplis automatiquement.
                                     </Alert>
                                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -487,8 +494,8 @@ export default function MyChurch() {
                                 </Box>
 
                                 {/* SECTION 2: INFORMATIONS DE BASE */}
-                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                                    <Typography variant="h5" sx={{ color: 'text.primary' }}>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, sm: 3 } }}>
+                                    <Typography variant="h5" sx={{ color: 'text.primary', fontSize: { xs: '1.1rem', sm: '1.5rem' } }}>
                                         Informations Générales
                                     </Typography>
 
@@ -548,10 +555,10 @@ export default function MyChurch() {
 
                 {/* DETAILS TAB */}
                 {activeTab === 1 && (
-                    <Card>
-                        <CardContent sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                                <Typography variant="h6" sx={{ mb: 2, color: 'text.primary' }}>
+                    <Card elevation={0} sx={{ border: { xs: 0, sm: 1 }, borderColor: 'divider' }}>
+                        <CardContent sx={{ p: { xs: 1.5, sm: 3, md: 4 } }}>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, sm: 3 } }}>
+                                <Typography variant="h6" sx={{ mb: { xs: 1.5, sm: 2 }, color: 'text.primary', fontSize: { xs: '1rem', sm: '1.25rem' } }}>
                                     Pasteur Principal
                                 </Typography>
                                 <Grid container spacing={2}>
@@ -604,8 +611,8 @@ export default function MyChurch() {
                                     </Grid>
                                 </Grid>
 
-                                <Box sx={{ pt: 3, borderTop: 1, borderColor: 'divider' }}>
-                                    <Typography variant="h6" sx={{ mb: 2 }}>
+                                <Box sx={{ pt: { xs: 2, sm: 3 }, borderTop: 1, borderColor: 'divider' }}>
+                                    <Typography variant="h6" sx={{ mb: { xs: 1.5, sm: 2 }, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
                                         Parking
                                     </Typography>
                                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -646,8 +653,8 @@ export default function MyChurch() {
                                     </Box>
                                 </Box>
 
-                                <Box sx={{ pt: 3, borderTop: 1, borderColor: 'divider' }}>
-                                    <Typography variant="h6" sx={{ mb: 2 }}>
+                                <Box sx={{ pt: { xs: 2, sm: 3 }, borderTop: 1, borderColor: 'divider' }}>
+                                    <Typography variant="h6" sx={{ mb: { xs: 1.5, sm: 2 }, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
                                         Réseau Pastoral
                                     </Typography>
                                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -675,8 +682,8 @@ export default function MyChurch() {
 
                 {/* SOCIALS TAB */}
                 {activeTab === 2 && (
-                    <Card>
-                        <CardContent sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+                    <Card elevation={0} sx={{ border: { xs: 0, sm: 1 }, borderColor: 'divider' }}>
+                        <CardContent sx={{ p: { xs: 1.5, sm: 3, md: 4 } }}>
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                 {socialFields.map((field, idx) => (
                                     <Box key={field.id} sx={{ display: 'flex', gap: 2, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
@@ -723,9 +730,9 @@ export default function MyChurch() {
 
                 {/* SCHEDULES TAB */}
                 {activeTab === 3 && (
-                    <Card>
-                        <CardContent sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
-                            <Alert severity="info" sx={{ mb: 3 }}>
+                    <Card elevation={0} sx={{ border: { xs: 0, sm: 1 }, borderColor: 'divider' }}>
+                        <CardContent sx={{ p: { xs: 1.5, sm: 3, md: 4 } }}>
+                            <Alert severity="info" sx={{ mb: 3, py: { xs: 0.5, sm: 1 }, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                 Au moins un horaire est obligatoire pour votre église.
                             </Alert>
                             {errors.schedules && !Array.isArray(errors.schedules) && (
@@ -785,6 +792,54 @@ export default function MyChurch() {
                         </CardContent>
                     </Card>
                 )}
+            </Box>
+
+            {/* Boutons sticky en bas pour mobile */}
+            <Box
+                sx={{
+                    display: { xs: 'flex', sm: 'none' },
+                    position: 'fixed',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    p: 1.5,
+                    bgcolor: 'background.paper',
+                    borderTop: 1,
+                    borderColor: 'divider',
+                    boxShadow: '0 -4px 12px rgba(0,0,0,0.08)',
+                    gap: 1.5,
+                    zIndex: 1200,
+                    flexDirection: 'column'
+                }}
+            >
+                <Button
+                    type="submit"
+                    disabled={isSubmitting || Object.keys(errors).length > 0}
+                    variant="contained"
+                    color="success"
+                    size="medium"
+                    startIcon={<SaveIcon sx={{ fontSize: 20 }} />}
+                    fullWidth
+                    sx={{ py: 1.25, fontWeight: 600 }}
+                >
+                    {isSubmitting ? 'Sauvegarde...' : 'Sauvegarder'}
+                </Button>
+                <Button
+                    variant="outlined"
+                    color="primary"
+                    size="small"
+                    startIcon={<VisibilityIcon sx={{ fontSize: 18 }} />}
+                    onClick={() => {
+                        const targetChurchId = isAdminMode ? churchId : myChurchId;
+                        const url = targetChurchId ? `/map?church_id=${targetChurchId}` : '/map';
+                        window.open(url, '_blank');
+                    }}
+                    disabled={!myChurchId && !churchId}
+                    fullWidth
+                    sx={{ py: 0.75 }}
+                >
+                    Aperçu Public
+                </Button>
             </Box>
         </Box>
     );
