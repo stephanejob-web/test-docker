@@ -68,6 +68,7 @@ export default function MyChurch() {
         defaultValues: {
             socials: [],
             schedules: [],
+            allow_network_visibility: true,
         }
     });
 

@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import api from '../lib/axios';
 import {
   Box,
   Drawer,
@@ -15,6 +16,7 @@ import {
   ListItemIcon,
   ListItemText,
   Avatar,
+  Badge,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
@@ -48,6 +50,22 @@ export default function DashboardLayout() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('lg'));
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  // Charger le nombre de demandes en attente (SUPER_ADMIN uniquement)
+  useEffect(() => {
+    const fetchPendingCount = async () => {
+      if (user?.role === 'SUPER_ADMIN') {
+        try {
+          const { data } = await api.get('/admin/stats');
+          setPendingCount(data.kpi.pending_users);
+        } catch (error) {
+          console.error('Erreur lors du chargement du count pending:', error);
+        }
+      }
+    };
+    fetchPendingCount();
+  }, [user?.role, location.pathname]);
 
   const navigation: NavigationItem[] = [
     {
@@ -204,7 +222,13 @@ export default function DashboardLayout() {
                     color: isActive ? 'inherit' : 'text.secondary',
                   }}
                 >
-                  <Icon />
+                  {item.href === '/dashboard/admin/registrations' && pendingCount > 0 ? (
+                    <Badge badgeContent={pendingCount} color="error">
+                      <Icon />
+                    </Badge>
+                  ) : (
+                    <Icon />
+                  )}
                 </ListItemIcon>
                 <ListItemText
                   primary={item.name}
