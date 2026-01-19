@@ -49,7 +49,7 @@ CREATE TABLE `admins` (
   `last_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `document_sirene_path` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
-  `allow_network_visibility` tinyint(1) DEFAULT '0' COMMENT 'Permet au pasteur d apparaÃ®tre dans le rÃ©seau pastoral',
+  `allow_network_visibility` tinyint(1) DEFAULT '1' COMMENT 'Permet au pasteur d apparaître dans le réseau pastoral',
   PRIMARY KEY (`id`),
   UNIQUE KEY `email_UNIQUE` (`email`),
   KEY `idx_admins_status` (`status`),
