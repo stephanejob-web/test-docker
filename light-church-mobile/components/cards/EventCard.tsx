@@ -56,9 +56,14 @@ export default React.memo(function EventCard({ event, onPress }: EventCardProps)
 
   const startDate = new Date(event.start_datetime);
   const endDate = event.end_datetime ? new Date(event.end_datetime) : null;
-  const formattedDay = format(startDate, 'dd', { locale: fr });
+  const isSameDay = endDate ? startDate.toDateString() === endDate.toDateString() : true;
+  const formattedDay = isSameDay
+    ? format(startDate, 'dd', { locale: fr })
+    : `${format(startDate, 'd', { locale: fr })}-${format(endDate!, 'd', { locale: fr })}`;
   const formattedMonth = format(startDate, 'MMM', { locale: fr }).toUpperCase();
-  const formattedTime = format(startDate, 'HH:mm', { locale: fr });
+  const formattedTime = isSameDay
+    ? format(startDate, 'HH:mm', { locale: fr })
+    : `${format(startDate, 'd MMM', { locale: fr })} - ${format(endDate!, 'd MMM', { locale: fr })}`;
 
   // Calculer le statut de l'événement
   const eventStatus = useMemo(() => {
@@ -112,7 +117,7 @@ export default React.memo(function EventCard({ event, onPress }: EventCardProps)
 
         {/* Date Badge */}
         <Box
-          width={54}
+          width={isSameDay ? 54 : 64}
           height={54}
           borderRadius="l"
           backgroundColor={eventStatus === 'CANCELLED' ? 'card' : 'card'}
@@ -136,8 +141,8 @@ export default React.memo(function EventCard({ event, onPress }: EventCardProps)
             variant="title"
             color={eventStatus === 'CANCELLED' ? 'textSecondary' : 'text'}
             fontWeight="700"
-            fontSize={20}
-            lineHeight={24}
+            fontSize={isSameDay ? 20 : 16}
+            lineHeight={isSameDay ? 24 : 20}
           >
             {formattedDay}
           </Text>
