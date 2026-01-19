@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Box,
@@ -12,6 +12,11 @@ import {
     Stack,
     IconButton,
     Divider,
+    Drawer,
+    List,
+    ListItem,
+    ListItemButton,
+    ListItemText,
 } from '@mui/material';
 import { motion } from 'framer-motion';
 import lightChurchLogo from '../../assets/light-church.png';
@@ -24,6 +29,7 @@ import {
     Apple,
     PlayCircle,
     Menu as MenuIcon,
+    X as CloseIcon,
     Star,
     CheckCircle,
 } from 'lucide-react';
@@ -54,6 +60,7 @@ const LandingPage: React.FC = () => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const [stats, setStats] = React.useState({ churches: 500, events: 1200 });
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     React.useEffect(() => {
         const loadStats = async () => {
@@ -166,13 +173,84 @@ const LandingPage: React.FC = () => {
                                 </Button>
                             </Stack>
                         ) : (
-                            <IconButton color="default">
+                            <IconButton
+                                color="default"
+                                onClick={() => setMobileMenuOpen(true)}
+                                aria-label="Menu"
+                            >
                                 <MenuIcon size={24} color="#5F6368" />
                             </IconButton>
                         )}
                     </Box>
                 </Container>
             </Box>
+
+            {/* Mobile Menu Drawer */}
+            <Drawer
+                anchor="right"
+                open={mobileMenuOpen}
+                onClose={() => setMobileMenuOpen(false)}
+                PaperProps={{
+                    sx: {
+                        width: 280,
+                        bgcolor: '#FFFFFF',
+                    }
+                }}
+            >
+                <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #F1F3F4' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <img src={lightChurchLogo} alt="Light Church" style={{ height: 32 }} />
+                    </Box>
+                    <IconButton onClick={() => setMobileMenuOpen(false)} size="small">
+                        <CloseIcon size={20} color="#5F6368" />
+                    </IconButton>
+                </Box>
+                <List sx={{ pt: 2 }}>
+                    <ListItem disablePadding>
+                        <ListItemButton
+                            onClick={() => {
+                                navigate('/map');
+                                setMobileMenuOpen(false);
+                            }}
+                            sx={{ py: 1.5 }}
+                        >
+                            <ListItemText
+                                primary="Explorer la carte"
+                                primaryTypographyProps={{ fontWeight: 500, color: '#202124' }}
+                            />
+                        </ListItemButton>
+                    </ListItem>
+                    <ListItem disablePadding>
+                        <ListItemButton
+                            onClick={() => {
+                                navigate('/login');
+                                setMobileMenuOpen(false);
+                            }}
+                            sx={{ py: 1.5 }}
+                        >
+                            <ListItemText
+                                primary="Espace Responsable"
+                                primaryTypographyProps={{ fontWeight: 500, color: '#202124' }}
+                            />
+                        </ListItemButton>
+                    </ListItem>
+                    <Divider sx={{ my: 1 }} />
+                    <ListItem disablePadding>
+                        <ListItemButton
+                            onClick={() => {
+                                navigate('/register');
+                                setMobileMenuOpen(false);
+                            }}
+                            sx={{ py: 1.5, bgcolor: '#E8F0FE', mx: 1, borderRadius: 1, '&:hover': { bgcolor: '#D2E3FC' } }}
+                        >
+                            <ListItemText
+                                primary="Ajouter mon église"
+                                primaryTypographyProps={{ fontWeight: 600, color: '#1A73E8' }}
+                            />
+                        </ListItemButton>
+                    </ListItem>
+                </List>
+            </Drawer>
 
             {/* Hero Section */}
             <Box

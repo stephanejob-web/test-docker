@@ -91,6 +91,7 @@ export function useToggleEventInterest(eventId: number) {
       queryClient.invalidateQueries({ queryKey: ['events'] });
       // IMPORTANT: Invalider aussi interestedEvents pour mettre à jour l'onglet "Enregistrés"
       queryClient.invalidateQueries({ queryKey: ['interestedEvents'] });
+      queryClient.invalidateQueries({ queryKey: ['interestedEventsCount'] }); // Update badge
     },
   });
 }

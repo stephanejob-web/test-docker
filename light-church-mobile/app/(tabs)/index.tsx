@@ -168,16 +168,23 @@ export default function MapScreen() {
       ]);
 
       // Forcer le refetch des queries actives sur cette page
-      await Promise.all([
+      const [churchResult, eventResult] = await Promise.all([
         refetchChurches(),
         refetchEvents()
       ]);
-      toast.showSuccess('Données actualisées');
+
+      // N'afficher le toast de succès que si les deux refetch ont réussi
+      // (pas d'erreur ET vraiment refetch, pas juste cache)
+      const hasError = churchResult.isError || eventResult.isError;
+
+      if (!hasError) {
+        toast.showSuccess('Données actualisées');
+      }
+      // Si erreur réseau, le toast est déjà géré par l'intercepteur axios
     } catch (error) {
-      toast.showError('Impossible d\'actualiser les données', {
-        label: 'Réessayer',
-        onPress: handleRefresh,
-      });
+      // Cette erreur ne devrait jamais arriver car refetch ne throw pas
+      // Mais on garde le try/catch par sécurité
+      console.error('Erreur lors du refresh:', error);
     } finally {
       setIsRefreshing(false);
     }

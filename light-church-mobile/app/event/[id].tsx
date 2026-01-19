@@ -31,6 +31,7 @@ export default function EventDetailScreen() {
   const isInterested = interestData?.is_interested || false;
   const interestedCount = data?.event?.interested_count || 0;
   const isCancelled = Boolean(data?.event?.cancelled_at);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
   const handleOpenMaps = () => {
     if (!data?.event) return;
@@ -237,6 +238,20 @@ export default function EventDetailScreen() {
   const startDate = new Date(event.start_datetime);
   const endDate = new Date(event.end_datetime);
 
+  // Vérifier si l'événement dure plusieurs jours
+  const isSameDay = startDate.toDateString() === endDate.toDateString();
+
+  // Formater l'affichage des dates selon la durée
+  const formatEventDates = () => {
+    if (isSameDay) {
+      // Événement d'une journée : "Vendredi 6 mars • 07:00 - 18:00"
+      return `${format(startDate, 'EEEE d MMMM', { locale: fr })} • ${format(startDate, 'HH:mm', { locale: fr })} - ${format(endDate, 'HH:mm', { locale: fr })}`;
+    } else {
+      // Événement multi-jours : "Du ven. 6 mars 07:00 au dim. 8 mars 18:00"
+      return `Du ${format(startDate, 'EEE d MMM', { locale: fr })} ${format(startDate, 'HH:mm', { locale: fr })} au ${format(endDate, 'EEE d MMM', { locale: fr })} ${format(endDate, 'HH:mm', { locale: fr })}`;
+    }
+  };
+
   return (
     <ScrollView
       style={styles.container}
@@ -311,7 +326,7 @@ export default function EventDetailScreen() {
         <Box flexDirection="row" alignItems="center" marginTop="s" marginBottom="s">
           {/* Date Badge */}
           <Box
-            width={56}
+            width={isSameDay ? 56 : 70}
             height={56}
             borderRadius="l"
             backgroundColor="card"
@@ -324,16 +339,19 @@ export default function EventDetailScreen() {
             <Text variant="small" color="error" fontWeight="700" textTransform="uppercase" fontSize={10}>
               {format(startDate, 'MMM', { locale: fr }).toUpperCase()}
             </Text>
-            <Text variant="title" color="text" fontWeight="700" fontSize={22} lineHeight={26}>
-              {format(startDate, 'dd', { locale: fr })}
+            <Text variant="title" color="text" fontWeight="700" fontSize={isSameDay ? 22 : 18} lineHeight={isSameDay ? 26 : 22}>
+              {isSameDay
+                ? format(startDate, 'dd', { locale: fr })
+                : `${format(startDate, 'd', { locale: fr })}-${format(endDate, 'd', { locale: fr })}`
+              }
             </Text>
           </Box>
 
           <Box flex={1}>
-            <Box flexDirection="row" alignItems="center" gap="xs" marginBottom="xs">
+            <Box flexDirection="row" alignItems="center" gap="xs" marginBottom="xs" flex={1}>
               <Ionicons name="time-outline" size={16} color="#5F6368" />
-              <Text variant="body" color="textSecondary">
-                {format(startDate, 'EEEE', { locale: fr })} • {format(startDate, 'HH:mm', { locale: fr })} - {format(endDate, 'HH:mm', { locale: fr })}
+              <Text variant="body" color="textSecondary" style={{ flex: 1 }}>
+                {formatEventDates()}
               </Text>
             </Box>
             <Box flexDirection="row" alignItems="center" gap="xs">
@@ -357,16 +375,15 @@ export default function EventDetailScreen() {
               {event.translations && event.translations.length > 0 && (
                 <Text color="textTertiary">
                   {' (Traduit en : '}
-                  {event.translations.map((t: any, index) => {
-                    // Handle various potential data structures safely
-                    const name = t.language_name || t.language?.name || t.language?.name_native || t.name;
-                    // Ensure flag is a string, fallback to empty string if missing
-                    const flag = t.language_flag || t.language?.flag || t.language?.flag_emoji || t.flag || '';
+                  {event.translations.map((t, index) => {
+                    // EventTranslation type already defined, use it directly
+                    const name = t.language_name;
+                    const flag = t.language_flag || '';
 
                     if (!name) return null;
 
                     return (
-                      <Text key={t.language_id || t.id || index}>
+                      <Text key={t.language_id || index}>
                         {index > 0 ? ', ' : ''}
                         {flag ? `${flag} ` : ''}{name}
                       </Text>
@@ -481,9 +498,24 @@ export default function EventDetailScreen() {
           <Text variant="subtitle" marginBottom="m">
             Description
           </Text>
-          <Text variant="body" color="textSecondary">
+          <Text
+            variant="body"
+            color="textSecondary"
+            numberOfLines={isDescriptionExpanded ? undefined : 4}
+          >
             {event.details.description}
           </Text>
+          {event.details.description.length > 200 && (
+            <TouchableOpacity
+              onPress={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+              style={{ marginTop: 12 }}
+              activeOpacity={0.7}
+            >
+              <Text variant="body" color="primary" fontWeight="600">
+                {isDescriptionExpanded ? '▲ Voir moins' : '▼ Lire plus'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </Card>
       )}
 

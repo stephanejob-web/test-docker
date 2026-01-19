@@ -34,11 +34,14 @@ import {
     Instagram as InstagramIcon,
     YouTube as YouTubeIcon,
     Twitter as TwitterIcon,
+    WhatsApp as WhatsAppIcon,
+    LinkedIn as LinkedInIcon,
     Person as PersonIcon,
     Church as ChurchIcon
 } from '@mui/icons-material';
 import { fetchChurchDetails } from '../../services/publicMapService';
 import type { ChurchDetails } from '../../types/publicMap';
+import TikTokIcon from '../icons/TikTokIcon';
 
 interface ChurchDetailsModalProps {
     open: boolean;
@@ -84,16 +87,23 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
     }, [open, churchId]);
 
     const getSocialIcon = (platform: string) => {
-        switch (platform.toLowerCase()) {
-            case 'facebook':
-                return <FacebookIcon />;
-            case 'instagram':
-                return <InstagramIcon />;
-            case 'youtube':
-                return <YouTubeIcon />;
-            case 'twitter':
-            case 'x':
-                return <TwitterIcon />;
+        const platformUpper = platform.toUpperCase();
+        switch (platformUpper) {
+            case 'FACEBOOK':
+                return <FacebookIcon sx={{ color: '#1877F2' }} />;
+            case 'INSTAGRAM':
+                return <InstagramIcon sx={{ color: '#E4405F' }} />;
+            case 'YOUTUBE':
+                return <YouTubeIcon sx={{ color: '#FF0000' }} />;
+            case 'TWITTER':
+            case 'X':
+                return <TwitterIcon sx={{ color: '#1DA1F2' }} />;
+            case 'WHATSAPP':
+                return <WhatsAppIcon sx={{ color: '#25D366' }} />;
+            case 'TIKTOK':
+                return <TikTokIcon sx={{ color: '#000000' }} />;
+            case 'LINKEDIN':
+                return <LinkedInIcon sx={{ color: '#0A66C2' }} />;
             default:
                 return <WebsiteIcon />;
         }
@@ -106,9 +116,11 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
             maxWidth="md"
             fullWidth
             scroll="paper"
+            aria-labelledby="church-details-title"
         >
             {/* En-tête */}
             <DialogTitle
+                id="church-details-title"
                 sx={{
                     display: 'flex',
                     alignItems: 'center',
@@ -254,7 +266,7 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
                                             <ListItem key={`schedule-${schedule.day_of_week}-${schedule.start_time}`} disableGutters>
                                                 <ListItemText
                                                     primary={schedule.day_of_week}
-                                                    secondary={`${schedule.start_time} - ${schedule.activity_type || 'Culte'}`}
+                                                    secondary={`${schedule.start_time.slice(0, 5)} - ${schedule.activity_type || 'Culte'}`}
                                                     primaryTypographyProps={{ fontWeight: 500 }}
                                                 />
                                             </ListItem>

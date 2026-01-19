@@ -117,6 +117,7 @@ const PastorDetailsModal = ({ open, onClose, pastorId }: PastorDetailsModalProps
                 onClose={onClose}
                 maxWidth="md"
                 fullWidth
+                aria-labelledby="pastor-details-title"
                 PaperProps={{
                     sx: {
                         borderRadius: 2,
@@ -124,21 +125,24 @@ const PastorDetailsModal = ({ open, onClose, pastorId }: PastorDetailsModalProps
                     }
                 }}
             >
-                <DialogTitle sx={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center',
-                    borderBottom: 1,
-                    borderColor: 'divider',
-                    pb: 2
-                }}>
+                <DialogTitle
+                    id="pastor-details-title"
+                    sx={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        borderBottom: 1,
+                        borderColor: 'divider',
+                        pb: 2
+                    }}
+                >
                     <Stack direction="row" spacing={1} alignItems="center">
                         <PersonIcon color="primary" />
                         <Typography variant="h6" component="div">
                             Détails du Pasteur
                         </Typography>
                     </Stack>
-                    <IconButton onClick={onClose} size="small">
+                    <IconButton onClick={onClose} size="small" aria-label="Fermer la fenêtre">
                         <CloseIcon />
                     </IconButton>
                 </DialogTitle>

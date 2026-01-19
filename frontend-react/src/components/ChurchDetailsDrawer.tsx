@@ -30,8 +30,11 @@ import {
     Facebook as FacebookIcon,
     Instagram as InstagramIcon,
     YouTube as YouTubeIcon,
+    WhatsApp as WhatsAppIcon,
+    LinkedIn as LinkedInIcon,
     Language as LanguageIcon
 } from '@mui/icons-material';
+import TikTokIcon from './icons/TikTokIcon';
 
 interface ChurchDetailsDrawerProps {
     open: boolean;
@@ -84,10 +87,14 @@ const ChurchDetailsDrawer: React.FC<ChurchDetailsDrawerProps> = ({
     const [loading] = useState(false);
 
     const getSocialIcon = (platform: string) => {
-        const lowerPlatform = platform.toLowerCase();
-        if (lowerPlatform.includes('facebook')) return <FacebookIcon />;
-        if (lowerPlatform.includes('instagram')) return <InstagramIcon />;
-        if (lowerPlatform.includes('youtube')) return <YouTubeIcon />;
+        const platformUpper = platform.toUpperCase();
+        if (platformUpper === 'FACEBOOK') return <FacebookIcon sx={{ color: '#1877F2' }} />;
+        if (platformUpper === 'INSTAGRAM') return <InstagramIcon sx={{ color: '#E4405F' }} />;
+        if (platformUpper === 'YOUTUBE') return <YouTubeIcon sx={{ color: '#FF0000' }} />;
+        if (platformUpper === 'WHATSAPP') return <WhatsAppIcon sx={{ color: '#25D366' }} />;
+        if (platformUpper === 'TWITTER' || platformUpper === 'X') return <LanguageIcon sx={{ color: '#1DA1F2' }} />;
+        if (platformUpper === 'TIKTOK') return <TikTokIcon sx={{ color: '#000000' }} />;
+        if (platformUpper === 'LINKEDIN') return <LinkedInIcon sx={{ color: '#0A66C2' }} />;
         return <LanguageIcon />;
     };
 
@@ -339,7 +346,7 @@ const ChurchDetailsDrawer: React.FC<ChurchDetailsDrawerProps> = ({
                                                                         {schedule.activity_type || 'Activité'}
                                                                     </Typography>
                                                                     <Typography variant="body2" color="text.secondary">
-                                                                        {schedule.start_time}
+                                                                        {schedule.start_time.slice(0, 5)}
                                                                     </Typography>
                                                                 </Stack>
                                                             </Box>

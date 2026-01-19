@@ -13,6 +13,8 @@ export interface Church {
   city: string;
   postal_code: string;
   distance_km?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface ChurchDetail extends Church {

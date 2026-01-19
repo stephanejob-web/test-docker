@@ -7,7 +7,7 @@
 
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { View, StyleSheet, RefreshControl, Alert, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
+import { FlashList, type FlashListProps } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,6 +18,10 @@ import { useToast } from '@/contexts/ToastContext';
 import type { Event } from '@/types';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
+
+// FlashList component with proper typing to handle estimatedItemSize prop
+// This resolves the type mismatch in FlashList v2.2.0 without using 'any'
+const TypedFlashList = FlashList as React.ComponentType<FlashListProps<Event> & { estimatedItemSize?: number }>;
 
 export default function SavedScreen() {
   const router = useRouter();
@@ -77,24 +81,37 @@ export default function SavedScreen() {
             text: 'Ne plus participer',
             style: 'destructive',
             onPress: () => {
-              removeInterestMutation.mutate(event.id, {
-                onSuccess: () => {
-                  toast.showInfo('Vous ne recevrez plus de notifications pour cet événement');
-                },
-                onError: (error) => {
-                  toast.showError('Impossible de retirer votre participation', {
-                    label: 'Réessayer',
-                    onPress: () => handleRemoveInterest(event),
-                  });
-                },
-              });
+              // Appel simple sans callbacks pour ne pas écraser ceux du hook
+              removeInterestMutation.mutate(event.id);
+              // Toast affiché après succès (voir useEffect ci-dessous)
             },
           },
         ]
       );
     },
-    [removeInterestMutation, toast]
+    [removeInterestMutation]
   );
+
+  // Effect: Show toast on mutation success/error
+  useEffect(() => {
+    if (removeInterestMutation.isSuccess) {
+      toast.showInfo('Vous ne recevrez plus de notifications pour cet événement');
+    }
+  }, [removeInterestMutation.isSuccess, toast]);
+
+  useEffect(() => {
+    if (removeInterestMutation.isError) {
+      // L'erreur réseau est déjà gérée par l'intercepteur axios
+      // On affiche un toast spécifique seulement si c'est une erreur autre
+      const error = removeInterestMutation.error;
+      if (error && 'response' in error) {
+        const axiosError = error as { response?: { status?: number } };
+        if (axiosError.response?.status === 400 || axiosError.response?.status === 404) {
+          toast.showError('Impossible de retirer votre participation');
+        }
+      }
+    }
+  }, [removeInterestMutation.isError, removeInterestMutation.error, toast]);
 
   // Render single event item (memoized)
   const renderItem = useCallback(
@@ -226,12 +243,12 @@ export default function SavedScreen() {
       </View>
 
       {/* Event List with FlashList (10x faster than FlatList) */}
-      {events.length > 0 ? (
-        <FlashList
+      {events.length > 0 && (
+        <TypedFlashList
           data={events}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
-          estimatedItemSize={120} // Optimize for smooth scrolling
+          estimatedItemSize={120}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -243,7 +260,9 @@ export default function SavedScreen() {
             />
           }
         />
-      ) : (
+      )}
+
+      {events.length === 0 && (
         renderEmptyState
       )}
     </View>

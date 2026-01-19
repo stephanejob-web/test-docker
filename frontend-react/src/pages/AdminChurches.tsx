@@ -133,13 +133,14 @@ export default function AdminChurches() {
                 onClose={() => setEditingId(null)}
                 maxWidth="md"
                 fullWidth
+                aria-labelledby="edit-church-title"
                 PaperProps={{
                     sx: { maxHeight: '90vh' }
                 }}
             >
-                <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <DialogTitle id="edit-church-title" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Typography variant="h6">Édition Église #{editingId}</Typography>
-                    <IconButton onClick={() => setEditingId(null)} size="small">
+                    <IconButton onClick={() => setEditingId(null)} size="small" aria-label="Fermer">
                         <CloseIcon />
                     </IconButton>
                 </DialogTitle>

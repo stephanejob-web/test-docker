@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const FileType = require('file-type');
 
 // Ensure upload directories exist
 const uploadDir = 'uploads';
@@ -96,23 +97,65 @@ const uploadSirene = multer({
     fileFilter: sireneFileFilter
 });
 
+// Types MIME autorisés pour les documents SIRENE (vérification par magic bytes)
+const ALLOWED_SIRENE_MIMES = {
+    'application/pdf': '.pdf',
+    'image/jpeg': '.jpg',
+    'image/png': '.png'
+};
+
 // Route d'upload pour les documents SIRENE (pas de token requis pour l'inscription)
-router.post('/sirene', uploadSirene.single('document'), (req, res) => {
+router.post('/sirene', uploadSirene.single('document'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ message: 'Document SIRENE obligatoire' });
         }
 
+        const filePath = req.file.path;
+
+        // Vérifier le vrai type du fichier via les magic bytes
+        const fileTypeResult = await FileType.fromFile(filePath);
+
+        // Vérifier si le type est autorisé
+        if (!fileTypeResult || !ALLOWED_SIRENE_MIMES[fileTypeResult.mime]) {
+            // Supprimer le fichier invalide
+            fs.unlinkSync(filePath);
+
+            const detectedType = fileTypeResult ? fileTypeResult.mime : 'inconnu';
+            return res.status(400).json({
+                message: `Format de fichier invalide. Le fichier uploadé est de type "${detectedType}". Seuls les PDF, JPG et PNG sont acceptés.`
+            });
+        }
+
+        // Corriger l'extension si elle ne correspond pas au contenu réel
+        const correctExtension = ALLOWED_SIRENE_MIMES[fileTypeResult.mime];
+        const currentExtension = path.extname(req.file.filename).toLowerCase();
+
+        let finalFilename = req.file.filename;
+        let finalPath = filePath;
+
+        if (currentExtension !== correctExtension) {
+            // Renommer le fichier avec la bonne extension
+            const baseName = path.basename(req.file.filename, currentExtension);
+            finalFilename = baseName + correctExtension;
+            finalPath = path.join(path.dirname(filePath), finalFilename);
+            fs.renameSync(filePath, finalPath);
+        }
+
         // Retourner le chemin relatif (sera stocké en BDD)
-        const filePath = `/uploads/sirene/${req.file.filename}`;
+        const relativePath = `/uploads/sirene/${finalFilename}`;
 
         res.json({
             message: 'Document SIRENE uploadé avec succès',
-            path: filePath,
-            filename: req.file.filename
+            path: relativePath,
+            filename: finalFilename
         });
     } catch (error) {
         console.error('Erreur upload SIRENE:', error);
+        // Nettoyer le fichier en cas d'erreur
+        if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
         res.status(500).json({ message: 'Erreur lors de l\'upload du document' });
     }
 });

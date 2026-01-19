@@ -192,7 +192,7 @@ export default function AdminRegistrations() {
                                                 size="small"
                                                 variant="outlined"
                                                 startIcon={<VisibilityIcon />}
-                                                onClick={() => window.open(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}${registration.document_sirene_path}`, '_blank')}
+                                                onClick={() => window.open(registration.document_sirene_path, '_blank')}
                                                 fullWidth
                                             >
                                                 Voir le document
@@ -265,7 +265,7 @@ export default function AdminRegistrations() {
                                             <IconButton
                                                 size="small"
                                                 color="primary"
-                                                onClick={() => window.open(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}${registration.document_sirene_path}`, '_blank')}
+                                                onClick={() => window.open(registration.document_sirene_path, '_blank')}
                                                 title="Voir le document"
                                             >
                                                 <VisibilityIcon />

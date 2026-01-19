@@ -39,6 +39,8 @@ import {
     Instagram as InstagramIcon,
     YouTube as YouTubeIcon,
     Twitter as TwitterIcon,
+    WhatsApp as WhatsAppIcon,
+    LinkedIn as LinkedInIcon,
     Translate as TranslateIcon,
     EventSeat as EventSeatIcon,
     MoneyOff as MoneyOffIcon,
@@ -46,6 +48,7 @@ import {
 } from '@mui/icons-material';
 import { fetchEventDetails } from '../../services/publicMapService';
 import type { EventDetails } from '../../types/publicMap';
+import TikTokIcon from '../icons/TikTokIcon';
 
 interface EventDetailsModalProps {
     open: boolean;
@@ -101,16 +104,23 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
     };
 
     const getSocialIcon = (platform: string) => {
-        switch (platform.toLowerCase()) {
-            case 'facebook':
-                return <FacebookIcon />;
-            case 'instagram':
-                return <InstagramIcon />;
-            case 'youtube':
-                return <YouTubeIcon />;
-            case 'twitter':
-            case 'x':
-                return <TwitterIcon />;
+        const platformUpper = platform.toUpperCase();
+        switch (platformUpper) {
+            case 'FACEBOOK':
+                return <FacebookIcon sx={{ color: '#1877F2' }} />;
+            case 'INSTAGRAM':
+                return <InstagramIcon sx={{ color: '#E4405F' }} />;
+            case 'YOUTUBE':
+                return <YouTubeIcon sx={{ color: '#FF0000' }} />;
+            case 'TWITTER':
+            case 'X':
+                return <TwitterIcon sx={{ color: '#1DA1F2' }} />;
+            case 'WHATSAPP':
+                return <WhatsAppIcon sx={{ color: '#25D366' }} />;
+            case 'TIKTOK':
+                return <TikTokIcon sx={{ color: '#000000' }} />;
+            case 'LINKEDIN':
+                return <LinkedInIcon sx={{ color: '#0A66C2' }} />;
             default:
                 return <WebsiteIcon />;
         }
@@ -123,9 +133,11 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
             maxWidth="md"
             fullWidth
             scroll="paper"
+            aria-labelledby="event-details-title"
         >
             {/* En-tête */}
             <DialogTitle
+                id="event-details-title"
                 sx={{
                     display: 'flex',
                     alignItems: 'center',
@@ -555,7 +567,7 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
                                                     <ListItem key={`schedule-${schedule.day_of_week}-${schedule.start_time}`} disableGutters>
                                                         <ListItemText
                                                             primary={schedule.day_of_week}
-                                                            secondary={`${schedule.start_time} - ${schedule.activity_type || 'Culte'}`}
+                                                            secondary={`${schedule.start_time.slice(0, 5)} - ${schedule.activity_type || 'Culte'}`}
                                                             primaryTypographyProps={{ fontWeight: 500 }}
                                                         />
                                                     </ListItem>
