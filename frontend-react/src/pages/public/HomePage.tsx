@@ -8,12 +8,15 @@ import {
     Badge,
     Alert,
     Snackbar,
+    Tooltip,
 } from '@mui/material';
 import {
     MyLocation as MyLocationIcon,
     Layers,
     Event as EventIcon,
     Home as HomeIcon,
+    Add as AddIcon,
+    Remove as RemoveIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
@@ -68,6 +71,79 @@ const MapEventsHandler: React.FC<MapEventsHandlerProps> = React.memo(({ onBounds
     return null;
 });
 MapEventsHandler.displayName = 'MapEventsHandler';
+
+// ZoomControls Component - Custom zoom buttons
+interface ZoomControlsProps {
+    isMobile: boolean;
+}
+const ZoomControls: React.FC<ZoomControlsProps> = ({ isMobile }) => {
+    const map = useMap();
+
+    const handleZoomIn = () => {
+        map.zoomIn();
+    };
+
+    const handleZoomOut = () => {
+        map.zoomOut();
+    };
+
+    return (
+        <Box
+            sx={{
+                position: 'absolute',
+                bottom: 24,
+                // Sur mobile: à gauche, sur desktop: après le sidebar (440px)
+                left: isMobile ? 24 : 440,
+                display: 'flex',
+                flexDirection: 'column',
+                zIndex: 1000,
+                borderRadius: 2,
+                overflow: 'hidden',
+                boxShadow: 2,
+            }}
+        >
+            <Tooltip title="Zoom avant" placement="right" arrow>
+                <Paper
+                    elevation={0}
+                    sx={{
+                        bgcolor: 'white',
+                        width: 40,
+                        height: 40,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        borderBottom: '1px solid #E0E0E0',
+                        borderRadius: 0,
+                        '&:hover': { bgcolor: '#F1F3F4' }
+                    }}
+                    onClick={handleZoomIn}
+                >
+                    <AddIcon sx={{ color: '#666' }} />
+                </Paper>
+            </Tooltip>
+            <Tooltip title="Zoom arrière" placement="right" arrow>
+                <Paper
+                    elevation={0}
+                    sx={{
+                        bgcolor: 'white',
+                        width: 40,
+                        height: 40,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        borderRadius: 0,
+                        '&:hover': { bgcolor: '#F1F3F4' }
+                    }}
+                    onClick={handleZoomOut}
+                >
+                    <RemoveIcon sx={{ color: '#666' }} />
+                </Paper>
+            </Tooltip>
+        </Box>
+    );
+};
 
 // Icons (Same as before)
 const createChurchIcon = () => L.divIcon({
@@ -655,6 +731,7 @@ const HomePage: React.FC<HomePageProps> = ({ viewMode = 'explore' }) => {
 
                 <MapCenter center={mapCenter} zoom={mapZoom} />
                 <MapEventsHandler onBoundsChange={handleBoundsChange} />
+                <ZoomControls isMobile={isMobile} />
 
                 {userLocation && (
                     <Marker position={[userLocation.latitude, userLocation.longitude]} icon={userIconInstance} />
@@ -689,81 +766,90 @@ const HomePage: React.FC<HomePageProps> = ({ viewMode = 'explore' }) => {
             {/* 4. Floating Action Buttons (Bottom Right) */}
             <Box sx={{ position: 'absolute', bottom: 24, right: 24, display: 'flex', flexDirection: 'column', gap: 2, zIndex: 1000 }}>
                 {/* Home Button */}
-                <Paper
-                    elevation={2}
-                    sx={{
-                        bgcolor: 'white',
-                        borderRadius: 2,
-                        width: 40,
-                        height: 40,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        '&:hover': { bgcolor: '#F1F3F4' }
-                    }}
-                    onClick={() => navigate('/')}
-                >
-                    <HomeIcon sx={{ color: '#666' }} />
-                </Paper>
+                <Tooltip title="Accueil" placement="left" arrow>
+                    <Paper
+                        elevation={2}
+                        sx={{
+                            bgcolor: 'white',
+                            borderRadius: 2,
+                            width: 40,
+                            height: 40,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            '&:hover': { bgcolor: '#F1F3F4' }
+                        }}
+                        onClick={() => navigate('/')}
+                    >
+                        <HomeIcon sx={{ color: '#666' }} />
+                    </Paper>
+                </Tooltip>
+
                 {/* Mes participations */}
-                <Paper
-                    elevation={2}
-                    sx={{
-                        bgcolor: 'secondary.main',
-                        borderRadius: 2,
-                        width: 40,
-                        height: 40,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        '&:hover': { bgcolor: 'secondary.dark' }
-                    }}
-                    onClick={() => navigate('/my-participations')}
-                >
-                    <Badge badgeContent={localParticipations.size} color="primary" max={99}>
-                        <EventIcon sx={{ color: 'white' }} />
-                    </Badge>
-                </Paper>
+                <Tooltip title="Mes participations" placement="left" arrow>
+                    <Paper
+                        elevation={2}
+                        sx={{
+                            bgcolor: 'secondary.main',
+                            borderRadius: 2,
+                            width: 40,
+                            height: 40,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            '&:hover': { bgcolor: 'secondary.dark' }
+                        }}
+                        onClick={() => navigate('/my-participations')}
+                    >
+                        <Badge badgeContent={localParticipations.size} color="primary" max={99}>
+                            <EventIcon sx={{ color: 'white' }} />
+                        </Badge>
+                    </Paper>
+                </Tooltip>
 
                 {/* Map Layer Toggle */}
-                <Paper
-                    elevation={2}
-                    sx={{
-                        bgcolor: 'white',
-                        borderRadius: 2,
-                        width: 40,
-                        height: 40,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        '&:hover': { bgcolor: '#F1F3F4' }
-                    }}
-                    onClick={() => setMapType(t => t === 'standard' ? 'satellite' : 'standard')}
-                >
-                    <Layers sx={{ color: '#666' }} />
-                </Paper>
+                <Tooltip title={mapType === 'satellite' ? 'Vue standard' : 'Vue satellite'} placement="left" arrow>
+                    <Paper
+                        elevation={2}
+                        sx={{
+                            bgcolor: 'white',
+                            borderRadius: 2,
+                            width: 40,
+                            height: 40,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            '&:hover': { bgcolor: '#F1F3F4' }
+                        }}
+                        onClick={() => setMapType(t => t === 'standard' ? 'satellite' : 'standard')}
+                    >
+                        <Layers sx={{ color: '#666' }} />
+                    </Paper>
+                </Tooltip>
 
                 {/* My Location */}
-                <Paper
-                    elevation={2}
-                    sx={{
-                        bgcolor: 'white',
-                        borderRadius: 2,
-                        width: 40,
-                        height: 40,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        '&:hover': { bgcolor: '#F1F3F4' }
-                    }}
-                    onClick={handleRecenterMap}
-                >
-                    <MyLocationIcon sx={{ color: '#666' }} />
-                </Paper>
+                <Tooltip title="Ma position" placement="left" arrow>
+                    <Paper
+                        elevation={2}
+                        sx={{
+                            bgcolor: 'white',
+                            borderRadius: 2,
+                            width: 40,
+                            height: 40,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            '&:hover': { bgcolor: '#F1F3F4' }
+                        }}
+                        onClick={handleRecenterMap}
+                    >
+                        <MyLocationIcon sx={{ color: '#666' }} />
+                    </Paper>
+                </Tooltip>
             </Box>
 
         </React.Fragment>
