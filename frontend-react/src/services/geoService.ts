@@ -53,7 +53,7 @@ const geocodeWithDataGouv = async (address: string): Promise<{ latitude: number;
                 limit: 1,
                 autocomplete: 0
             },
-            timeout: 5000 // 5 secondes max
+            timeout: 10000 // 5 secondes max
         });
 
         const feature = response.data.features[0];
@@ -82,7 +82,7 @@ const geocodeWithNominatim = async (address: string): Promise<{ latitude: number
             headers: {
                 'User-Agent': 'LightChurch/1.0' // Nominatim require un User-Agent
             },
-            timeout: 5000
+            timeout: 10000
         });
 
         const result = response.data[0];
@@ -108,7 +108,8 @@ export const searchCities = async (query: string): Promise<CitySuggestion[]> => 
                 type: 'municipality', // Limit to cities
                 limit: 5,
                 autocomplete: 1
-            }
+            },
+            timeout: 10000 // 5 secondes max
         });
 
         return response.data.features.map(feature => ({

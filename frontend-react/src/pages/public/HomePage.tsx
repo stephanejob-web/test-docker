@@ -9,6 +9,7 @@ import {
     Alert,
     Snackbar,
     Tooltip,
+    Button,
 } from '@mui/material';
 import {
     MyLocation as MyLocationIcon,
@@ -223,7 +224,8 @@ const HomePage: React.FC<HomePageProps> = ({ viewMode = 'explore' }) => {
     const [mapCenter, setMapCenter] = useState<[number, number]>([48.8566, 2.3522]);
     const [mapZoom, setMapZoom] = useState<number>(6);
     const [loading, setLoading] = useState(true);
-    const [_error, setError] = useState<string | null>(null);
+    const [slowLoading, setSlowLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [_isMapReady, setIsMapReady] = useState(false);
     const [showGeoAlert, setShowGeoAlert] = useState(false);
 
@@ -302,6 +304,21 @@ const HomePage: React.FC<HomePageProps> = ({ viewMode = 'explore' }) => {
             if (boundsChangeTimeoutRef.current) clearTimeout(boundsChangeTimeoutRef.current);
         };
     }, []);
+
+    // Show slow loading message after 3 seconds
+    useEffect(() => {
+        let timer: NodeJS.Timeout;
+        if (loading) {
+            timer = setTimeout(() => {
+                setSlowLoading(true);
+            }, 3000);
+        } else {
+            setSlowLoading(false);
+        }
+        return () => {
+            if (timer) clearTimeout(timer);
+        };
+    }, [loading]);
 
     // Focus event handler: center map and open detail drawer when requested
     useEffect(() => {
@@ -414,6 +431,7 @@ const HomePage: React.FC<HomePageProps> = ({ viewMode = 'explore' }) => {
         } catch (err: any) {
             if (err.name !== 'AbortError' && !abortController.signal.aborted) {
                 console.error('Error loading data:', err);
+                setError('Impossible de charger les données. Vérifiez votre connexion.');
             }
         } finally {
             if (!abortController.signal.aborted) setLoading(false);
@@ -567,6 +585,48 @@ const HomePage: React.FC<HomePageProps> = ({ viewMode = 'explore' }) => {
                     sx={{ width: '100%', boxShadow: 3 }}
                 >
                     Pour une meilleure expérience, activez la géolocalisation pour voir les églises près de chez vous
+                </Alert>
+            </Snackbar>
+
+            {/* Error Alert */}
+            <Snackbar
+                open={!!error}
+                onClose={() => setError(null)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert
+                    onClose={() => setError(null)}
+                    severity="error"
+                    sx={{ width: '100%', boxShadow: 3 }}
+                    action={
+                        <Button
+                            color="inherit"
+                            size="small"
+                            onClick={() => {
+                                setError(null);
+                                // Reload data by triggering bounds change
+                                window.location.reload();
+                            }}
+                            sx={{ fontWeight: 600 }}
+                        >
+                            Réessayer
+                        </Button>
+                    }
+                >
+                    {error}
+                </Alert>
+            </Snackbar>
+
+            {/* Slow Loading Alert */}
+            <Snackbar
+                open={slowLoading && !error}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert
+                    severity="warning"
+                    sx={{ width: '100%', boxShadow: 3 }}
+                >
+                    Le chargement prend plus de temps que prévu, veuillez patienter...
                 </Alert>
             </Snackbar>
 
@@ -830,26 +890,28 @@ const HomePage: React.FC<HomePageProps> = ({ viewMode = 'explore' }) => {
                     </Paper>
                 </Tooltip>
 
-                {/* My Location */}
-                <Tooltip title="Ma position" placement="left" arrow>
-                    <Paper
-                        elevation={2}
-                        sx={{
-                            bgcolor: 'white',
-                            borderRadius: 2,
-                            width: 40,
-                            height: 40,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            '&:hover': { bgcolor: '#F1F3F4' }
-                        }}
-                        onClick={handleRecenterMap}
-                    >
-                        <MyLocationIcon sx={{ color: '#666' }} />
-                    </Paper>
-                </Tooltip>
+                {/* My Location - Only show if geolocation is available */}
+                {userLocation && (
+                    <Tooltip title="Ma position" placement="left" arrow>
+                        <Paper
+                            elevation={2}
+                            sx={{
+                                bgcolor: 'white',
+                                borderRadius: 2,
+                                width: 40,
+                                height: 40,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                '&:hover': { bgcolor: '#F1F3F4' }
+                            }}
+                            onClick={handleRecenterMap}
+                        >
+                            <MyLocationIcon sx={{ color: '#666' }} />
+                        </Paper>
+                    </Tooltip>
+                )}
             </Box>
 
         </React.Fragment>

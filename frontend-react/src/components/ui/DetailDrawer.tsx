@@ -537,12 +537,17 @@ const DetailDrawer: React.FC<DetailDrawerProps> = ({ open, onClose, loading, dat
         );
     };
 
-    const innerContent = loading ? (
+    // Show skeleton when loading OR when drawer is open but data is not yet loaded
+    const showSkeleton = loading || (open && !data);
+
+    const innerContent = showSkeleton ? (
         <Box sx={{ p: 2 }}>
             <Skeleton variant="rectangular" height={200} sx={{ borderRadius: 2, mb: 2 }} />
             <Skeleton variant="text" width="60%" height={40} />
             <Skeleton variant="text" width="40%" />
             <Skeleton variant="rectangular" height={100} sx={{ mt: 2 }} />
+            <Skeleton variant="text" width="80%" sx={{ mt: 2 }} />
+            <Skeleton variant="text" width="50%" />
         </Box>
     ) : data ? (
         <Box>
