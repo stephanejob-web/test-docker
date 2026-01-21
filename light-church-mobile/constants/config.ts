@@ -3,7 +3,7 @@
  */
 
 export const API_CONFIG = {
-  BASE_URL: process.env.EXPO_PUBLIC_API_URL || 'http://192.168.10.145:3000/api',
+  BASE_URL: process.env.EXPO_PUBLIC_API_URL || 'http://192.168.10.137:3000/api',
   TIMEOUT: 10000, // 10 seconds
 } as const;
 
