@@ -390,7 +390,7 @@ const EventCard: React.FC<{
                         fontWeight: 700,
                         textTransform: 'uppercase',
                         fontSize: '0.7rem',
-                        lineHeight: 1
+                        lineHeight: 1,
                     }}
                 >
                     {startDate.toLocaleDateString('fr-FR', { month: 'short' }).replace('.', '')}
@@ -401,7 +401,7 @@ const EventCard: React.FC<{
                         color: '#202124',
                         fontWeight: 400,
                         fontSize: '1.5rem',
-                        lineHeight: 1.2
+                        lineHeight: 1
                     }}
                 >
                     {startDate.getDate()}
@@ -411,7 +411,7 @@ const EventCard: React.FC<{
                     sx={{
                         color: '#5F6368',
                         fontSize: '0.65rem',
-                        mt: 0.5
+                        mt: 0.25
                     }}
                 >
                     {startDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}

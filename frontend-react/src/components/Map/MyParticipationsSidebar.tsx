@@ -136,8 +136,8 @@ const MyParticipationsSidebar: React.FC<MyParticipationsSidebarProps> = ({ onEve
                                         <Paper
                                             elevation={0}
                                             sx={{
-                                                width: 84,
-                                                height: 84,
+                                                width: 72,
+                                                height: 72,
                                                 borderRadius: 2,
                                                 border: '1px solid #DADCE0',
                                                 bgcolor: '#FFFFFF',
@@ -154,7 +154,7 @@ const MyParticipationsSidebar: React.FC<MyParticipationsSidebarProps> = ({ onEve
                                                     color: '#EA4335',
                                                     fontWeight: 700,
                                                     textTransform: 'uppercase',
-                                                    fontSize: '0.75rem',
+                                                    fontSize: '0.7rem',
                                                     lineHeight: 1
                                                 }}
                                             >
@@ -165,8 +165,8 @@ const MyParticipationsSidebar: React.FC<MyParticipationsSidebarProps> = ({ onEve
                                                 sx={{
                                                     color: '#202124',
                                                     fontWeight: 400,
-                                                    fontSize: '1.75rem',
-                                                    lineHeight: 1.2
+                                                    fontSize: '1.5rem',
+                                                    lineHeight: 1
                                                 }}
                                             >
                                                 {startDate.getDate()}
@@ -175,8 +175,8 @@ const MyParticipationsSidebar: React.FC<MyParticipationsSidebarProps> = ({ onEve
                                                 variant="caption"
                                                 sx={{
                                                     color: '#5F6368',
-                                                    fontSize: '0.7rem',
-                                                    mt: 0.5
+                                                    fontSize: '0.65rem',
+                                                    mt: 0.25
                                                 }}
                                             >
                                                 {startDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
