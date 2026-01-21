@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Box, Typography, List, ListItem, ListItemButton, Paper, Button, Divider, CircularProgress } from '@mui/material';
+import { Box, Typography, List, ListItem, ListItemButton, Paper, Button, Divider, CircularProgress, Chip } from '@mui/material';
 import { ArrowBack as ArrowBackIcon, Event as EventIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import type { EventDetails } from '../../types/publicMap';
@@ -100,6 +100,7 @@ const MyParticipationsSidebar: React.FC<MyParticipationsSidebarProps> = ({ onEve
                 <List>
                     {events.map(ev => {
                         const startDate = new Date(ev.start_datetime);
+                        const isCancelled = !!ev.cancelled_at;
                         return (
                             <React.Fragment key={ev.id}>
                                 <ListItem disablePadding>
@@ -111,12 +112,38 @@ const MyParticipationsSidebar: React.FC<MyParticipationsSidebarProps> = ({ onEve
                                             px: 2,
                                             display: 'flex',
                                             gap: 2,
-                                            '&:hover': { bgcolor: '#F8F9FA' }
+                                            borderLeft: isCancelled ? '4px solid #EA4335' : 'none',
+                                            pl: isCancelled ? 1.5 : 2,
+                                            opacity: isCancelled ? 0.8 : 1,
+                                            bgcolor: isCancelled ? '#F1F3F4' : 'transparent',
+                                            '&:hover': { bgcolor: isCancelled ? '#E8EAED' : '#F8F9FA' }
                                         }}
                                     >
                                         {/* Left Content */}
                                         <Box sx={{ flex: 1, minWidth: 0 }}>
-                                            <Typography variant="subtitle1" sx={{ fontWeight: 500, color: '#202124', lineHeight: 1.2, mb: 0.5 }}>
+                                            {/* Badge ANNULÉ */}
+                                            {isCancelled && (
+                                                <Box sx={{ mb: 0.5 }}>
+                                                    <Chip
+                                                        label="ANNULÉ"
+                                                        size="small"
+                                                        sx={{
+                                                            height: 20,
+                                                            fontSize: '0.65rem',
+                                                            fontWeight: 700,
+                                                            bgcolor: '#EA4335',
+                                                            color: '#FFFFFF',
+                                                            letterSpacing: '0.5px'
+                                                        }}
+                                                    />
+                                                    {ev.cancellation_reason && (
+                                                        <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: '#EA4335', fontStyle: 'italic' }}>
+                                                            "{ev.cancellation_reason}"
+                                                        </Typography>
+                                                    )}
+                                                </Box>
+                                            )}
+                                            <Typography variant="subtitle1" sx={{ fontWeight: 500, color: isCancelled ? '#5F6368' : '#202124', lineHeight: 1.2, mb: 0.5, textDecoration: isCancelled ? 'line-through' : 'none' }}>
                                                 {ev.title}
                                             </Typography>
                                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
