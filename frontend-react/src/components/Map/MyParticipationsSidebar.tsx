@@ -144,43 +144,73 @@ const MyParticipationsSidebar: React.FC<MyParticipationsSidebarProps> = ({ onEve
                                                 display: 'flex',
                                                 flexDirection: 'column',
                                                 alignItems: 'center',
-                                                justifyContent: 'center',
+                                                justifyContent: 'flex-start',
+                                                overflow: 'hidden',
                                                 flexShrink: 0
                                             }}
                                         >
-                                            <Typography
-                                                variant="caption"
+                                            {/* Header (Mois) */}
+                                            <Box
                                                 sx={{
-                                                    color: '#EA4335',
-                                                    fontWeight: 700,
-                                                    textTransform: 'uppercase',
-                                                    fontSize: '0.7rem',
-                                                    lineHeight: 1
+                                                    width: '100%',
+                                                    height: 22,
+                                                    bgcolor: '#EA4335',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center'
                                                 }}
                                             >
-                                                {startDate.toLocaleDateString('fr-FR', { month: 'short' }).replace('.', '')}
-                                            </Typography>
-                                            <Typography
-                                                variant="h5"
+                                                <Typography
+                                                    variant="caption"
+                                                    sx={{
+                                                        color: '#FFFFFF',
+                                                        fontWeight: 700,
+                                                        textTransform: 'uppercase',
+                                                        fontSize: '0.65rem',
+                                                        letterSpacing: '0.5px',
+                                                        lineHeight: 1
+                                                    }}
+                                                >
+                                                    {startDate.toLocaleDateString('fr-FR', { month: 'short' }).replace('.', '')}
+                                                </Typography>
+                                            </Box>
+
+                                            {/* Body (Jour + Heure) */}
+                                            <Box
                                                 sx={{
-                                                    color: '#202124',
-                                                    fontWeight: 400,
-                                                    fontSize: '1.5rem',
-                                                    lineHeight: 1
+                                                    flex: 1,
+                                                    width: '100%',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    pb: 0.5
                                                 }}
                                             >
-                                                {startDate.getDate()}
-                                            </Typography>
-                                            <Typography
-                                                variant="caption"
-                                                sx={{
-                                                    color: '#5F6368',
-                                                    fontSize: '0.65rem',
-                                                    mt: 0.25
-                                                }}
-                                            >
-                                                {startDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                                            </Typography>
+                                                <Typography
+                                                    variant="h5"
+                                                    sx={{
+                                                        color: '#202124',
+                                                        fontWeight: 400,
+                                                        fontSize: '1.5rem',
+                                                        lineHeight: 1,
+                                                        mt: 0.5
+                                                    }}
+                                                >
+                                                    {startDate.getDate()}
+                                                </Typography>
+                                                <Typography
+                                                    variant="caption"
+                                                    sx={{
+                                                        color: '#EA4335',
+                                                        fontSize: '0.65rem',
+                                                        fontWeight: 500,
+                                                        mt: 0.25
+                                                    }}
+                                                >
+                                                    {startDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                                </Typography>
+                                            </Box>
                                         </Paper>
                                     </ListItemButton>
                                 </ListItem>
