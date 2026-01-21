@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../lib/axios';
@@ -13,7 +13,7 @@ import {
   InputAdornment,
   IconButton,
 } from '@mui/material';
-import { Visibility, VisibilityOff, Church } from '@mui/icons-material';
+import { Visibility, VisibilityOff, Church, ArrowBack } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 
 export default function Login() {
@@ -22,8 +22,15 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  // Rediriger si déjà connecté
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,8 +57,30 @@ export default function Login() {
         justifyContent: 'center',
         background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #0F172A 100%)',
         px: 2,
+        position: 'relative' // Ensure relative positioning for absolute child
       }}
     >
+      <Button
+        component={Link}
+        to="/"
+        startIcon={<ArrowBack />}
+        sx={{
+          position: 'absolute',
+          top: 24,
+          left: 24,
+          color: 'white',
+          textTransform: 'none',
+          fontWeight: 500,
+          opacity: 0.8,
+          '&:hover': {
+            opacity: 1,
+            bgcolor: 'rgba(255, 255, 255, 0.1)'
+          }
+        }}
+      >
+        Retour à l'accueil
+      </Button>
+
       <Container maxWidth="sm">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

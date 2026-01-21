@@ -19,7 +19,7 @@ import {
   IconButton,
   FormHelperText,
 } from '@mui/material';
-import { Visibility, VisibilityOff, Church, Upload as UploadIcon, CheckCircle as CheckCircleIcon } from '@mui/icons-material';
+import { Visibility, VisibilityOff, Church, Upload as UploadIcon, CheckCircle as CheckCircleIcon, ArrowBack } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 
 export default function Register() {
@@ -132,8 +132,30 @@ export default function Register() {
         background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #0F172A 100%)',
         px: 2,
         py: 4,
+        position: 'relative'
       }}
     >
+      <Button
+        component={Link}
+        to="/"
+        startIcon={<ArrowBack />}
+        sx={{
+          position: 'absolute',
+          top: 24,
+          left: 24,
+          color: 'white',
+          textTransform: 'none',
+          fontWeight: 500,
+          opacity: 0.8,
+          '&:hover': {
+            opacity: 1,
+            bgcolor: 'rgba(255, 255, 255, 0.1)'
+          }
+        }}
+      >
+        Retour à l'accueil
+      </Button>
+
       <Container maxWidth="sm">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
