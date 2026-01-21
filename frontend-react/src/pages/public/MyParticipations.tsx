@@ -44,7 +44,6 @@ export default function MyParticipations() {
                 const promises = ids.map(id => fetchEventDetails(id).catch(() => null));
                 const results = await Promise.all(promises);
                 const good = results.filter(Boolean) as EventDetails[];
-                console.log('Loaded events:', good);
                 if (mounted) setEvents(good);
             } catch (err) {
                 console.error('Erreur chargement participations', err);
@@ -103,15 +102,7 @@ export default function MyParticipations() {
                     const now = new Date();
                     const endDate = ev.end_datetime ? new Date(ev.end_datetime) : null;
                     const isCompleted = !!(endDate && now > endDate);
-
-                    // Debug log
-                    if (ev.title.toLowerCase().includes('jesus')) {
-                        console.log('Event:', ev.title);
-                        console.log('Now:', now.toISOString(), now.getTime());
-                        console.log('End date string:', ev.end_datetime);
-                        console.log('End date parsed:', endDate?.toISOString(), endDate?.getTime());
-                        console.log('Is completed:', isCompleted);
-                    }
+                    const isCancelled = !!ev.cancelled_at;
 
                     return (
                         <React.Fragment key={ev.id}>
@@ -121,8 +112,10 @@ export default function MyParticipations() {
                                     alignItems: isMobile ? 'stretch' : 'center',
                                     py: 2,
                                     gap: isMobile ? 2 : 0,
-                                    opacity: isCompleted ? 0.6 : 1,
-                                    bgcolor: isCompleted ? '#F8F9FA' : 'transparent'
+                                    opacity: (isCompleted || isCancelled) ? 0.6 : 1,
+                                    bgcolor: isCancelled ? '#FEF7F7' : (isCompleted ? '#F8F9FA' : 'transparent'),
+                                    borderLeft: isCancelled ? '4px solid #EA4335' : 'none',
+                                    pl: isCancelled ? 1.5 : 2
                                 }}
                                 secondaryAction={!isMobile ? (
                                     <Box sx={{ display: 'flex', gap: 1 }}>
@@ -144,8 +137,30 @@ export default function MyParticipations() {
                             >
                                 <Box sx={{ flex: 1, pr: isMobile ? 0 : 2 }}>
                                     <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
-                                        <Typography variant="body1">{ev.title}</Typography>
-                                        {isCompleted && (
+                                        <Typography
+                                            variant="body1"
+                                            sx={{
+                                                textDecoration: isCancelled ? 'line-through' : 'none',
+                                                color: isCancelled ? '#5F6368' : 'inherit'
+                                            }}
+                                        >
+                                            {ev.title}
+                                        </Typography>
+                                        {isCancelled && (
+                                            <Chip
+                                                label="ANNULÉ"
+                                                size="small"
+                                                sx={{
+                                                    height: 20,
+                                                    fontSize: '0.65rem',
+                                                    fontWeight: 700,
+                                                    bgcolor: '#EA4335',
+                                                    color: '#FFFFFF',
+                                                    letterSpacing: '0.5px'
+                                                }}
+                                            />
+                                        )}
+                                        {isCompleted && !isCancelled && (
                                             <Chip
                                                 label="TERMINÉ"
                                                 size="small"
@@ -153,7 +168,7 @@ export default function MyParticipations() {
                                                     height: 20,
                                                     fontSize: '0.65rem',
                                                     fontWeight: 700,
-                                                    bgcolor: '#EA4335',
+                                                    bgcolor: '#5F6368',
                                                     color: '#FFFFFF'
                                                 }}
                                             />
